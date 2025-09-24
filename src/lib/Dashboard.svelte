@@ -110,15 +110,19 @@
 
         if (activeView === 'verification') {
             try {
-                const response = await fetch(`${API_URL}${viewConfig.verification.endpoint}`, {
+                const response = await fetch(`${API_URL}/admin/brokers`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) throw new Error('Falha ao buscar solicitações pendentes');
                 
-                const data = await response.json();
-                pendingBrokers = data;
+                if (!response.ok) throw new Error('Falha ao buscar corretores');
+                
+                const allBrokers = await response.json();
+                pendingBrokers = allBrokers.data.filter((broker: { status: string; verification_status: string; }) => 
+                    broker.status === 'pending_verification' || 
+                    broker.verification_status === 'pending'
+                );
             } catch (error) {
-                console.error("Erro ao buscar solicitações de verificação:", error);
+                console.error("Erro ao buscar corretores pendentes:", error);
                 pendingBrokers = [];
             } finally {
                 isLoading = false;

@@ -21,12 +21,11 @@ export interface Broker {
     creci: string;
     created_at: string;
     property_count?: number;
-    // NOVOS CAMPOS PARA VERIFICAÇÃO
     status: 'pending_verification' | 'approved' | 'rejected';
-    verification_status?: 'pending' | 'approved' | 'rejected';
     creci_front_url?: string;
     creci_back_url?: string;
     selfie_url?: string;
+    verification_status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface User {
