@@ -13,8 +13,7 @@
         const statusMap: Record<string, string> = {
             'pending_verification': 'Pendente',
             'approved': 'Aprovado', 
-            'rejected': 'Rejeitado',
-            'pending': 'Pendente'
+            'rejected': 'Rejeitado'
         };
         return statusMap[status] || status;
     }
@@ -23,17 +22,21 @@
         const statusMap: Record<string, string> = {
             'approved': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
             'rejected': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-            'pending_verification': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-            'pending': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+            'pending_verification': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
         };
         return statusMap[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
 
-    // Função para construir URL completa dos documentos
+    // Função para construir URL completa
     function getFullUrl(url: string | undefined): string {
         if (!url) return '';
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
-        return url.startsWith('http') ? url : `${API_URL}${url}`;
+        // Se a URL já é absoluta, retorna como está
+        if (url.startsWith('http')) return url;
+        // Se começa com /, adiciona a base da API
+        if (url.startsWith('/')) return `${API_URL}${url}`;
+        // Caso contrário, assume que é relativa à API
+        return `${API_URL}/${url}`;
     }
 </script>
 
@@ -57,7 +60,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Nenhuma solicitação pendente</h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Todas as verificações estão em dia.</p>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Todos os corretores estão verificados.</p>
                     </td>
                 </tr>
             {:else}
@@ -78,61 +81,61 @@
                                 {getStatusText(broker.status)}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex flex-col space-y-2">
+                        <td class="px-6 py-4">
+                            <div class="flex flex-col space-y-2 min-w-[200px]">
                                 {#if broker.creci_front_url}
                                     <a href={getFullUrl(broker.creci_front_url)} target="_blank" 
-                                       class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        Frente CRECI
+                                        Frente do CRECI
                                     </a>
                                 {:else}
-                                    <span class="text-xs text-gray-400">Frente não enviada</span>
+                                    <span class="text-xs text-gray-400 italic">Frente do CRECI não enviada</span>
                                 {/if}
                                 
                                 {#if broker.creci_back_url}
                                     <a href={getFullUrl(broker.creci_back_url)} target="_blank"
-                                       class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        Verso CRECI
+                                        Verso do CRECI
                                     </a>
                                 {:else}
-                                    <span class="text-xs text-gray-400">Verso não enviado</span>
+                                    <span class="text-xs text-gray-400 italic">Verso do CRECI não enviado</span>
                                 {/if}
                                 
                                 {#if broker.selfie_url}
                                     <a href={getFullUrl(broker.selfie_url)} target="_blank"
-                                       class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                         </svg>
                                         Selfie
                                     </a>
                                 {:else}
-                                    <span class="text-xs text-gray-400">Selfie não enviada</span>
+                                    <span class="text-xs text-gray-400 italic">Selfie não enviada</span>
                                 {/if}
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex space-x-2">
+                            <div class="flex flex-col space-y-2">
                                 <button 
                                     on:click={() => handleVerification(broker.id, 'approved')}
-                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
                                 >
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                     Aprovar
                                 </button>
                                 <button 
                                     on:click={() => handleVerification(broker.id, 'rejected')}
-                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                                 >
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                     Rejeitar
