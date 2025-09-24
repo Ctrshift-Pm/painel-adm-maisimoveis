@@ -1,76 +1,147 @@
 <script lang="ts">
-  import { authToken } from './store';
-  import Background from './Background.svelte';
-  import Logo from './Logo.svelte';
+    import { authToken } from './store';
+    
+    let email = ''; 
+    let password = ''; 
+    let error = '';
+    let isLoading = false;
 
-  let email: string = 'admin@imobiliaria.com';
-  let password: string = 'admin123';
-  let error: string = '';
-  let isLoading: boolean = false;
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
 
-  const API_URL: string = 'https://backend-production-6acc.up.railway.app';
+    async function handleLogin() {
+        isLoading = true;
+        error = '';
 
-  async function handleLogin() {
-    isLoading = true;
-    error = '';
-    try {
-      const response = await fetch(`${API_URL}/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao fazer login.');
-      authToken.set(data.token);
-    } catch (err) {
-      if (err instanceof Error) {
-        error = err.message;
-      } else {
-        error = 'Ocorreu um erro desconhecido.';
-      }
-    } finally {
-      isLoading = false;
+        // Validação básica
+        if (!email || !password) {
+            error = 'Por favor, preencha email e senha.';
+            isLoading = false;
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/admin/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
+
+            console.log('Login response status:', response.status);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Login error details:', errorText);
+                
+                if (response.status === 404) {
+                    error = 'Serviço indisponível. Tente novamente mais tarde.';
+                } else if (response.status === 401) {
+                    error = 'Email ou senha incorretos.';
+                } else {
+                    error = `Erro ${response.status}: ${errorText}`;
+                }
+                return;
+            }
+
+            const data = await response.json();
+            console.log('Login successful, token received');
+            
+            if (data.token) {
+                authToken.set(data.token);
+                localStorage.setItem('authToken', data.token);
+            } else {
+                error = 'Resposta inválida do servidor.';
+            }
+            
+        } catch (err) {
+            error = 'Erro de conexão. Verifique sua internet.';
+            console.error('Erro completo no login:', err);
+        } finally {
+            isLoading = false;
+        }
     }
-  }
+
+    // Enter key support
+    function handleKeypress(event: KeyboardEvent) {
+        if (event.key === 'Enter') {
+            handleLogin();
+        }
+    }
 </script>
 
-<div class="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
-    <Background />
-    <div class="w-full max-w-sm rounded-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-md shadow-2xl shadow-black/20 z-10 overflow-hidden">
-        <div class="p-8 md:p-10 space-y-6">
-            <div class="flex justify-center">
-                <Logo className="w-20 h-20" />
-            </div>
-            <div class="text-center">
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">MaisImóveis</h2>
-                <p class="mt-1 text-gray-500 dark:text-gray-400">Painel Administrativo</p>
-            </div>
-            <form on:submit|preventDefault={handleLogin} class="space-y-6">
-                <div>
-                    <input type="email" id="email" required placeholder="Email"
-                           class="w-full px-4 py-3 text-gray-800 bg-gray-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent dark:bg-gray-700 dark:text-white transition-all">
-                </div>
-                <div>
-                    <input type="password" id="password" required placeholder="Senha"
-                           class="w-full px-4 py-3 text-gray-800 bg-gray-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent dark:bg-gray-700 dark:text-white transition-all">
-                </div>
-                {#if error}
-                    <p class="text-sm text-center text-red-500 dark:text-red-400 font-medium">{error}</p>
-                {/if}
-            </form>
+<div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <img src="/logo_circular.png" alt="MaisImóveis" class="mx-auto h-32 w-auto" />
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+                Painel Administrativo
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                MaisImóveis
+            </p>
         </div>
-        <div class="relative h-24">
-            <div class="absolute bottom-0 left-0 w-full h-full overflow-hidden">
-                <svg viewBox="0 0 500 150" preserveAspectRatio="none" class="w-full h-full">
-                    <path d="M-5.58,53.48 C149.99,150.00 349.20,-49.98 503.66,53.48 L500.00,150.00 L0.00,150.00 Z" class="fill-current text-brand-green-dark/50"></path>
-                    <path d="M-2.22,83.98 C149.99,100.00 271.49,-49.98 503.66,83.98 L500.00,150.00 L0.00,150.00 Z" class="fill-current text-brand-green/50"></path>
-                </svg>
+        
+        {#if error}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                <strong class="font-bold">Erro: </strong>
+                <span class="block sm:inline">{error}</span>
             </div>
-            <div class="absolute inset-0 flex items-center justify-center">
-                 <button on:click={handleLogin} disabled={isLoading} class="px-10 py-3 font-semibold text-white bg-brand-green rounded-lg shadow-lg hover:bg-brand-green-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-brand-green transition-transform transform hover:scale-105 disabled:opacity-70 disabled:scale-100">
-                    {isLoading ? 'A entrar...' : 'Login'}
+        {/if}
+
+        <form class="mt-8 space-y-6" on:submit|preventDefault={handleLogin}>
+            <div class="rounded-md shadow-sm -space-y-px">
+                <div>
+                    <label for="email" class="sr-only">Email</label>
+                    <input 
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        autocomplete="email" 
+                        required 
+                        bind:value={email}
+                        on:keypress={handleKeypress}
+                        class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        placeholder="Email administrativo" 
+                    />
+                </div>
+                <div>
+                    <label for="password" class="sr-only">Senha</label>
+                    <input 
+                        id="password" 
+                        name="password" 
+                        type="password" 
+                        autocomplete="current-password" 
+                        required 
+                        bind:value={password}
+                        on:keypress={handleKeypress}
+                        class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        placeholder="Senha" 
+                    />
+                </div>
+            </div>
+
+            <div>
+                <button 
+                    type="submit" 
+                    disabled={isLoading}
+                    class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {#if isLoading}
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Entrando...
+                    {:else}
+                        Entrar
+                    {/if}
                 </button>
             </div>
+        </form>
+
+        <div class="text-center text-xs text-gray-500">
+            <p>Entre com suas credenciais administrativas</p>
         </div>
     </div>
 </div>
