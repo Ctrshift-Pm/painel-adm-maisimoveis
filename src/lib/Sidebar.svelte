@@ -38,7 +38,7 @@
 <aside class="fixed inset-y-0 left-0 z-30 w-64 bg-gray-800 dark:bg-gray-900 text-white flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'}">
     <div class="h-16 flex items-center justify-center gap-2 text-xl font-bold border-b border-gray-700 dark:border-gray-800">
         <Logo className="w-8 h-8" />
-        <span>ConectImóvel</span>
+        <span>MaisImóveis</span>
     </div>
     <nav class="flex-1 px-4 py-4 space-y-2">
         <button class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'dashboard' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}" on:click={() => handleNavigation('dashboard')}>
