@@ -85,6 +85,16 @@
         }
     };
 
+    // Função helper para obter configuração da view com fallback seguro
+    function getViewConfig(view: View): ViewConfig {
+        return viewConfig[view] || { title: 'Dashboard' };
+    }
+
+    // Função para verificar se a view é válida
+    function isValidView(view: string): view is View {
+        return view in viewConfig;
+    }
+
     let debounceTimer: NodeJS.Timeout;
     async function fetchData() {
         isLoading = true;
@@ -112,7 +122,7 @@
 
         if (activeView === 'verification') {
             try {
-                const config = viewConfig[activeView];
+                const config = getViewConfig(activeView);
                 const response = await fetch(`${API_URL}${config.endpoint}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -133,7 +143,7 @@
             return;
         }
 
-        const config = viewConfig[activeView];
+        const config = getViewConfig(activeView);
         if (!config.endpoint) return;
 
         const params = new URLSearchParams({
@@ -167,8 +177,13 @@
         }
     }
 
-    function changeView(newView: View) {
-        activeView = newView;
+    function changeView(newView: string) {
+        if (!isValidView(newView)) {
+            console.error(`View inválida: ${newView}`);
+            activeView = 'dashboard';
+        } else {
+            activeView = newView;
+        }
         isSidebarOpen = false;
         searchTerm = '';
         searchColumn = 'all';
@@ -181,7 +196,7 @@
 
     function handleSortToggle() {
         if (activeView === 'dashboard' || activeView === 'verification') return;
-        const config = viewConfig[activeView];
+        const config = getViewConfig(activeView);
         if (!config.sortColumn) return;
 
         const alphaSortColumn = config.sortColumn;
@@ -328,7 +343,7 @@
     <Sidebar bind:isOpen={isSidebarOpen} {activeView} onNavigate={changeView} />
 
     <div class="flex-1 flex flex-col overflow-hidden lg:pl-64">
-        <Header pageTitle={viewConfig[activeView].title} onToggleSidebar={() => isSidebarOpen = !isSidebarOpen} />
+        <Header pageTitle={getViewConfig(activeView).title} onToggleSidebar={() => isSidebarOpen = !isSidebarOpen} />
         
         <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
             {#if isLoading}
@@ -364,12 +379,11 @@
                     />
                 </div>
             {:else}
-                <!-- Mova a declaração @const para ser o primeiro filho do bloco {:else} -->
-                {@const config = viewConfig[activeView]}
+                {@const config = getViewConfig(activeView)}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700 space-y-4">
                         <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
-                            {#if config.filterOptions}
+                            {#if config.filterOptions && config.filterOptions.length > 0}
                                 <FilterControls 
                                     bind:itemsPerPage
                                     bind:searchTerm
@@ -410,7 +424,6 @@
                         </div>
                     {/if}
                     
-                    <!-- Remova a segunda declaração @const e use a variável config já definida -->
                     <Table 
                         headers={config.headers || []} 
                         data={paginatedData} 
