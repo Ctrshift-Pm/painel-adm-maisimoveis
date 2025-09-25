@@ -19,7 +19,6 @@
     let itemToDelete: { id: number; type: string } | null = null;
     let isSidebarOpen = false;
 
-    // Estado para os controlos da tabela
     let searchTerm = '';
     let searchColumn = 'all';
     let itemsPerPage = 10;
@@ -131,8 +130,6 @@
                 
                 const result = await response.json();
                 pendingBrokers = result.data || result;
-                
-                console.log('Corretores pendentes carregados:', pendingBrokers.length);
                 
             } catch (error) {
                 console.error("Erro ao buscar solicitações de verificação:", error);
@@ -325,8 +322,6 @@
         fetchData();
     });
 
-    // ✅ CORREÇÃO: Reatividade dos filtros
-    // Função para aplicar filtros imediatamente
     function applyFilters() {
         currentPage = 1;
         fetchData();
