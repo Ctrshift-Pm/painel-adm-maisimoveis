@@ -20,7 +20,6 @@
         return statusMap[status] || status;
     }
 
-    // Função para obter classes do status
     function getStatusClasses(status: string) {
         const statusMap: Record<string, string> = {
             'approved': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -31,11 +30,29 @@
         return statusMap[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
 
-    // Função para construir URL completa dos documentos
-    function getFullUrl(url: string | undefined): string {
+    // ✅ CORREÇÃO: Função simplificada para URLs
+    function getDocumentUrl(url: string | undefined): string {
         if (!url) return '';
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
-        return url.startsWith('http') ? url : `${API_URL}${url}`;
+        
+        // Se a URL já é completa (http/https) ou é do Cloudinary, retorna como está
+        if (url.startsWith('http') || url.includes('cloudinary')) {
+            return url;
+        }
+        
+        // Se for um caminho local (uploads/docs), não tente acessar - retorna vazio
+        // pois no Railway esses arquivos não existem
+        if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
+            console.warn('URL local encontrada (não acessível em produção):', url);
+            return '';
+        }
+        
+        return url;
+    }
+
+    // ✅ Nova função para verificar se a URL é válida e acessível
+    function isUrlAccessible(url: string | undefined): boolean {
+        if (!url) return false;
+        return url.startsWith('http') || url.includes('cloudinary');
     }
 </script>
 
@@ -82,8 +99,8 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex flex-col space-y-2 min-w-[200px]">
-                                {#if broker.creci_front_url}
-                                    <a href={getFullUrl(broker.creci_front_url)} target="_blank" 
+                                {#if broker.creci_front_url && isUrlAccessible(broker.creci_front_url)}
+                                    <a href={getDocumentUrl(broker.creci_front_url)} target="_blank" 
                                        class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -91,11 +108,13 @@
                                         Frente do CRECI
                                     </a>
                                 {:else}
-                                    <span class="text-xs text-gray-400 italic">Frente do CRECI não enviada</span>
+                                    <span class="text-xs text-gray-400 italic">
+                                        {broker.creci_front_url ? 'URL não acessível' : 'Frente do CRECI não enviada'}
+                                    </span>
                                 {/if}
                                 
-                                {#if broker.creci_back_url}
-                                    <a href={getFullUrl(broker.creci_back_url)} target="_blank"
+                                {#if broker.creci_back_url && isUrlAccessible(broker.creci_back_url)}
+                                    <a href={getDocumentUrl(broker.creci_back_url)} target="_blank"
                                        class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -103,11 +122,13 @@
                                         Verso do CRECI
                                     </a>
                                 {:else}
-                                    <span class="text-xs text-gray-400 italic">Verso do CRECI não enviado</span>
+                                    <span class="text-xs text-gray-400 italic">
+                                        {broker.creci_back_url ? 'URL não acessível' : 'Verso do CRECI não enviado'}
+                                    </span>
                                 {/if}
                                 
-                                {#if broker.selfie_url}
-                                    <a href={getFullUrl(broker.selfie_url)} target="_blank"
+                                {#if broker.selfie_url && isUrlAccessible(broker.selfie_url)}
+                                    <a href={getDocumentUrl(broker.selfie_url)} target="_blank"
                                        class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -115,7 +136,9 @@
                                         Selfie
                                     </a>
                                 {:else}
-                                    <span class="text-xs text-gray-400 italic">Selfie não enviada</span>
+                                    <span class="text-xs text-gray-400 italic">
+                                        {broker.selfie_url ? 'URL não acessível' : 'Selfie não enviada'}
+                                    </span>
                                 {/if}
                             </div>
                         </td>
