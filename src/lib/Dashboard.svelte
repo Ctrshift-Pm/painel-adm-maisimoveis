@@ -25,7 +25,7 @@
     let itemsPerPage = 10;
     let currentPage = 1;
     let totalItems = 0;
-	let statusFilter = '';
+    let statusFilter = '';
     
     // Estado para edição
     let editingId: number | null = null;
@@ -155,9 +155,9 @@
             sortOrder: sortOrder,
         });
 
-		if (activeView === 'properties' && statusFilter) {
-			params.append('status', statusFilter);
-		}
+        if (activeView === 'properties' && statusFilter) {
+            params.append('status', statusFilter);
+        }
 
         try {
             const response = await fetch(`${API_URL}${config.endpoint}?${params.toString()}`, {
@@ -188,7 +188,7 @@
         searchTerm = '';
         searchColumn = 'all';
         currentPage = 1;
-		statusFilter = '';
+        statusFilter = '';
         sortBy = 'id';
         sortOrder = 'desc';
         fetchData();
@@ -208,6 +208,9 @@
             sortBy = alphaSortColumn;
             sortOrder = 'asc';
         }
+        // Aplica imediatamente
+        currentPage = 1;
+        fetchData();
     }
 
     function openDeleteModal(detail: { id: number; type: string }) {
@@ -322,16 +325,43 @@
         fetchData();
     });
 
-    let initialLoad = true;
+    // ✅ CORREÇÃO: Reatividade dos filtros
+    // Função para aplicar filtros imediatamente
+    function applyFilters() {
+        currentPage = 1;
+        fetchData();
+    }
+
+    // ✅ Reatividade correta - separar os efeitos
     $: {
-        if (!initialLoad) {
+        // Efeito para busca e ordenação (com debounce)
+        if (searchTerm !== '' || sortBy !== 'id' || sortOrder !== 'desc') {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 currentPage = 1;
                 fetchData();
-            }, 300);
+            }, 500);
         }
-        initialLoad = false;
+    }
+
+    // ✅ Efeito separado para status filter (sem debounce)
+    $: if (statusFilter !== '') {
+        currentPage = 1;
+        fetchData();
+    }
+
+    // ✅ Efeito separado para items per page
+    $: if (itemsPerPage !== 10) {
+        currentPage = 1;
+        fetchData();
+    }
+
+    // ✅ Função específica para status
+    function setStatusFilter(status: string) {
+        statusFilter = status;
+        // Aplica imediatamente
+        currentPage = 1;
+        fetchData();
     }
     
     $: paginatedData = allData;
@@ -406,11 +436,11 @@
                             <div>
                                 <span class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por Status:</span>
                                 <div class="flex flex-wrap gap-2" role="group">
-                                    <button type="button" on:click={() => statusFilter = ''} class="px-3 py-1.5 text-sm font-medium {statusFilter === '' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Todos</button>
-                                    <button type="button" on:click={() => statusFilter = 'Disponível'} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Disponível' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Disponível</button>
-                                    <button type="button" on:click={() => statusFilter = 'Negociando'} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Negociando' ? 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Negociando</button>
-                                    <button type="button" on:click={() => statusFilter = 'Vendido'} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Vendido' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Vendido</button>
-                                    <button type="button" on:click={() => statusFilter = 'Alugado'} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Alugado' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Alugado</button>
+                                    <button type="button" on:click={() => setStatusFilter('')} class="px-3 py-1.5 text-sm font-medium {statusFilter === '' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Todos</button>
+                                    <button type="button" on:click={() => setStatusFilter('Disponível')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Disponível' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Disponível</button>
+                                    <button type="button" on:click={() => setStatusFilter('Negociando')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Negociando' ? 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Negociando</button>
+                                    <button type="button" on:click={() => setStatusFilter('Vendido')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Vendido' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Vendido</button>
+                                    <button type="button" on:click={() => setStatusFilter('Alugado')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Alugado' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Alugado</button>
                                 </div>
                             </div>
                         {/if}
