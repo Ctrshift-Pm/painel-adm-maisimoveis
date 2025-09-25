@@ -9,7 +9,7 @@
     import VerificationTable from './VerificationTable.svelte';
     import { authToken } from './store';
     import { onMount } from 'svelte';
-    import type { Property, Broker, User, View, DataItem } from './types';
+    import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
     
     let activeView: View = 'dashboard';
     let allData: DataItem[] = [];
@@ -52,8 +52,10 @@
 
     const API_URL = 'https://backend-production-6acc.up.railway.app';
 
-    const viewConfig = {
-        dashboard: { title: 'Dashboard' },
+    const viewConfig: Record<View, ViewConfig> = {
+        dashboard: { 
+            title: 'Dashboard'
+        },
         properties: { 
             endpoint: '/admin/properties-with-brokers', 
             title: 'Gerenciamento de Imóveis', 
@@ -64,13 +66,13 @@
         brokers: { 
             endpoint: '/admin/brokers', 
             title: 'Gerenciamento de Corretores', 
-            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Documentos', 'Criado em', 'Total de Imóveis'],
+            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de Imóveis'],
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
         },
-        users: { 
-            endpoint: '/admin/users', 
-            title: 'Gerenciamento de Usuários', 
+        clients: { 
+            endpoint: '/admin/clients', 
+            title: 'Gerenciamento de Clientes', 
             headers: ['ID', 'Nome', 'Email', 'Telefone', 'Criado em'],
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
@@ -83,7 +85,7 @@
         }
     };
 
-    let debounceTimer: ReturnType<typeof setTimeout>;
+    let debounceTimer: NodeJS.Timeout;
     async function fetchData() {
         isLoading = true;
         const token = localStorage.getItem('authToken');
@@ -110,19 +112,20 @@
 
         if (activeView === 'verification') {
             try {
-                const response = await fetch(`${API_URL}/admin/brokers`, {
+                const config = viewConfig[activeView];
+                const response = await fetch(`${API_URL}${config.endpoint}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (!response.ok) throw new Error('Falha ao buscar corretores');
+                if (!response.ok) throw new Error('Falha ao buscar solicitações pendentes');
                 
-                const allBrokers = await response.json();
-                pendingBrokers = allBrokers.data.filter((broker: { status: string; verification_status: string; }) => 
-                    broker.status === 'pending_verification' || 
-                    broker.verification_status === 'pending'
-                );
+                const result = await response.json();
+                pendingBrokers = result.data || result;
+                
+                console.log('Corretores pendentes carregados:', pendingBrokers.length);
+                
             } catch (error) {
-                console.error("Erro ao buscar corretores pendentes:", error);
+                console.error("Erro ao buscar solicitações de verificação:", error);
                 pendingBrokers = [];
             } finally {
                 isLoading = false;
@@ -131,6 +134,8 @@
         }
 
         const config = viewConfig[activeView];
+        if (!config.endpoint) return;
+
         const params = new URLSearchParams({
             page: String(currentPage),
             limit: String(itemsPerPage),
@@ -150,10 +155,10 @@
             });
             if (!response.ok) throw new Error('Falha na autenticação');
             
-            const { data, total } = await response.json();
-            allData = data;
-            totalItems = total;
-            headers = config.headers;
+            const result = await response.json();
+            allData = result.data || result;
+            totalItems = result.total || result.length;
+            headers = config.headers || [];
         } catch (error) {
             console.error(`Erro ao buscar dados de ${activeView}:`, error);
             authToken.set(null);
@@ -226,7 +231,9 @@
 
         const endpoint = type === 'property' 
             ? `/admin/properties/${id}` 
-            : `/admin/${type}s/${id}`;
+            : type === 'broker'
+            ? `/admin/brokers/${id}`
+            : `/admin/clients/${id}`;
 
         try {
             const response = await fetch(`${API_URL}${endpoint}`, {
@@ -288,12 +295,8 @@
             if (!response.ok) throw new Error('Falha na verificação');
             
             showSaveMessage(`Corretor ${status === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso!`, 'success');
-            // Recarregar os dados
-            if (activeView === 'verification') {
-                fetchData();
-            } else if (activeView === 'brokers') {
-                fetchData(); // Recarregar lista de corretores
-            }
+            fetchData();
+            
         } catch (error) {
             console.error(`Erro ao ${status} corretor:`, error);
             showSaveMessage(`Erro ao ${status === 'approved' ? 'aprovar' : 'rejeitar'} corretor.`, 'error');
@@ -306,7 +309,6 @@
 
     let initialLoad = true;
     $: {
-        currentPage, itemsPerPage, searchTerm, searchColumn, statusFilter, sortBy, sortOrder;
         if (!initialLoad) {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
@@ -330,12 +332,14 @@
         
         <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
             {#if isLoading}
-                <div class="flex justify-center items-center h-full"><p class="text-gray-500 dark:text-gray-400">A carregar...</p></div>
+                <div class="flex justify-center items-center h-64">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                </div>
             {:else if activeView === 'dashboard'}
                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <KpiCard title="Total de Imóveis" value={stats?.totalProperties ?? 0} color="green" />
                     <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
-                    <KpiCard title="Total de Utilizadores" value={stats?.totalUsers ?? 0} color="yellow" />
+                    <KpiCard title="Total de Clientes" value={stats?.totalUsers ?? 0} color="yellow" />
                 </div>
             {:else if activeView === 'verification'}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
@@ -360,15 +364,19 @@
                     />
                 </div>
             {:else}
+                <!-- Mova a declaração @const para ser o primeiro filho do bloco {:else} -->
+                {@const config = viewConfig[activeView]}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700 space-y-4">
                         <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
-                            <FilterControls 
-                                bind:itemsPerPage
-                                bind:searchTerm
-                                bind:searchColumn
-                                filterOptions={viewConfig[activeView].filterOptions}
-                            />
+                            {#if config.filterOptions}
+                                <FilterControls 
+                                    bind:itemsPerPage
+                                    bind:searchTerm
+                                    bind:searchColumn
+                                    filterOptions={config.filterOptions}
+                                />
+                            {/if}
                             <button on:click={handleSortToggle} class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
                                 {#if sortBy === 'id'}
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 13a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4Zm-2-1a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10ZM11.5 7h-1a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1Zm-2-3h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1Zm-2 6h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1 0-1Z"/></svg>
@@ -402,8 +410,9 @@
                         </div>
                     {/if}
                     
+                    <!-- Remova a segunda declaração @const e use a variável config já definida -->
                     <Table 
-                        {headers} 
+                        headers={config.headers || []} 
                         data={paginatedData} 
                         view={activeView}
                         bind:editingId

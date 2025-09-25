@@ -9,34 +9,33 @@
         dispatch('verify', { brokerId, status });
     }
 
+    // Função para obter texto do status
     function getStatusText(status: string) {
         const statusMap: Record<string, string> = {
             'pending_verification': 'Pendente',
             'approved': 'Aprovado', 
-            'rejected': 'Rejeitado'
+            'rejected': 'Rejeitado',
+            'pending': 'Pendente'
         };
         return statusMap[status] || status;
     }
 
+    // Função para obter classes do status
     function getStatusClasses(status: string) {
         const statusMap: Record<string, string> = {
             'approved': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
             'rejected': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-            'pending_verification': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+            'pending_verification': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+            'pending': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
         };
         return statusMap[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
 
-    // Função para construir URL completa
+    // Função para construir URL completa dos documentos
     function getFullUrl(url: string | undefined): string {
         if (!url) return '';
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
-        // Se a URL já é absoluta, retorna como está
-        if (url.startsWith('http')) return url;
-        // Se começa com /, adiciona a base da API
-        if (url.startsWith('/')) return `${API_URL}${url}`;
-        // Caso contrário, assume que é relativa à API
-        return `${API_URL}/${url}`;
+        return url.startsWith('http') ? url : `${API_URL}${url}`;
     }
 </script>
 
@@ -56,11 +55,11 @@
             {#if pendingBrokers.length === 0}
                 <tr>
                     <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                         <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Nenhuma solicitação pendente</h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Todos os corretores estão verificados.</p>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Todas as verificações estão em dia.</p>
                     </td>
                 </tr>
             {:else}

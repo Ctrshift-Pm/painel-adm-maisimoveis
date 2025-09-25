@@ -2,9 +2,9 @@
     import type { Property, Broker, User, View, DataItem } from './types';
     import { createEventDispatcher } from 'svelte';
 
-    export let headers: string[];
-    export let data: DataItem[];
-    export let view: 'properties' | 'brokers' | 'users';
+    export let headers: string[] = [];
+    export let data: DataItem[] = [];
+    export let view: View;
     export let editingId: number | null = null;
     export let editableItemData: Partial<DataItem> = {};
     export let isSaving = false;
@@ -16,11 +16,11 @@
     let isEditingSaleDetails = false;
     let showSaleDeletionWarning = false;
 
-    function getSingularType(plural: 'properties' | 'brokers' | 'users'): 'property' | 'broker' | 'user' {
-        if (plural === 'properties') {
-            return 'property';
-        }
-        return plural.slice(0, -1) as 'broker' | 'user';
+    function getSingularType(plural: View): string {
+        if (plural === 'properties') return 'property';
+        if (plural === 'brokers') return 'broker';
+        if (plural === 'clients') return 'client';
+        return 'item';
     }
 
     function handleEditStart(item: DataItem) {
@@ -31,7 +31,7 @@
         if (view === 'properties') {
             const prop = item as Property;
             if (prop.status === 'Vendido') {
-                isEditingSaleDetails = prop.sale_value == null; // Começa a editar se for uma nova venda
+                isEditingSaleDetails = prop.sale_value == null;
                 updateCommissionDisplay(prop.sale_value, prop.commission_rate);
             }
         }
@@ -59,6 +59,9 @@
             case 'Negociando': return 'bg-orange-500';
             case 'Vendido': return 'bg-red-500';
             case 'Alugado': return 'bg-blue-500';
+            case 'approved': return 'bg-green-500';
+            case 'rejected': return 'bg-red-500';
+            case 'pending_verification': return 'bg-yellow-500';
             default: return 'bg-gray-400';
         }
     }
@@ -70,6 +73,9 @@
             case 'Negociando': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
             case 'Vendido': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
             case 'Alugado': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+            case 'approved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+            case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+            case 'pending_verification': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
             default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
     }
@@ -114,7 +120,7 @@
             {#if data.length === 0}
                 <tr><td colspan={headers.length + 1} class="px-6 py-10 text-center text-gray-500 dark:text-gray-400">Nenhum resultado encontrado.</td></tr>
             {:else}
-                {#each data as item (item.id)}
+                {#each data as item (item.id!)}
                     {@const isEditing = editingId === item.id && editableItemData.id === item.id}
                     <tr class="{isEditing ? 'bg-gray-50 dark:bg-gray-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors duration-150">
                         <!-- Células da Tabela -->
@@ -136,12 +142,34 @@
                                 <td class="px-2 py-2"><input type="number" step="1" bind:value={prop.price} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
                                 <td class="px-2 py-2"><input type="text" bind:value={prop.city} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
                                 <td class="px-2 py-2"><input type="text" value={prop.broker_name || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
-                            {:else}
-                                <!-- Lógica de edição para corretores e utilizadores (se necessário) -->
+                            
+                            {:else if view === 'brokers'}
+                                {@const broker = editableItemData as Partial<Broker>}
+                                <td class="px-6 py-4 whitespace-nowrap"><span class="font-mono text-gray-500 dark:text-gray-400">{broker.id}</span></td>
+                                <td class="px-2 py-2"><input type="text" bind:value={broker.name} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input type="email" bind:value={broker.email} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input type="text" bind:value={broker.creci} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2">
+                                    <select bind:value={broker.status} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white">
+                                        <option value="pending_verification">Pendente</option>
+                                        <option value="approved">Aprovado</option>
+                                        <option value="rejected">Rejeitado</option>
+                                    </select>
+                                </td>
+                                <td class="px-2 py-2"><input type="text" value={broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
+                                <td class="px-2 py-2"><input type="text" value={broker.property_count || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
+
+                            {:else if view === 'clients'}
+                                {@const client = editableItemData as Partial<User>}
+                                <td class="px-6 py-4 whitespace-nowrap"><span class="font-mono text-gray-500 dark:text-gray-400">{client.id}</span></td>
+                                <td class="px-2 py-2"><input type="text" bind:value={client.name} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input type="email" bind:value={client.email} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input type="text" bind:value={client.phone} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input type="text" value={client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
                             {/if}
                         {:else}
                             <!-- MODO DE VISUALIZAÇÃO -->
-                             {#if view === 'properties'}
+                            {#if view === 'properties'}
                                 {@const prop = item as Property}
                                 <td class="px-6 py-4 whitespace-nowrap text-sm"><div class="flex items-center"><span class="h-2.5 w-2.5 rounded-full {getStatusDotClasses(prop.status)} mr-2.5"></span>{prop.id}</div></td>
                                 <td class="px-6 py-4 whitespace-nowrap font-mono text-gray-500 dark:text-gray-400">{prop.code || 'N/A'}</td>
@@ -152,55 +180,25 @@
                                 <td class="px-6 py-4 whitespace-nowrap">{prop.city}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{prop.broker_name || 'N/A'}</td>
                             {:else if view === 'brokers'}
-                            {@const broker = item as Broker}
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">{broker.id}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">{broker.name}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{broker.email}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{broker.creci}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold 
-                                    {broker.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
-                                    broker.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : 
-                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'}">
-                                    {broker.status === 'approved' ? 'Aprovado' : 
-                                    broker.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                {#if broker.creci_front_url || broker.creci_back_url || broker.selfie_url}
-                                    <div class="flex flex-col space-y-1">
-                                        {#if broker.creci_front_url}
-                                            <a href={broker.creci_front_url} target="_blank" 
-                                            class="text-green-600 hover:text-green-800 dark:text-green-400 text-xs">
-                                                📄 Frente
-                                            </a>
-                                        {/if}
-                                        {#if broker.creci_back_url}
-                                            <a href={broker.creci_back_url} target="_blank"
-                                            class="text-green-600 hover:text-green-800 dark:text-green-400 text-xs">
-                                                📄 Verso
-                                            </a>
-                                        {/if}
-                                        {#if broker.selfie_url}
-                                            <a href={broker.selfie_url} target="_blank"
-                                            class="text-green-600 hover:text-green-800 dark:text-green-400 text-xs">
-                                                📸 Selfie
-                                            </a>
-                                        {/if}
-                                    </div>
-                                {:else}
-                                    <span class="text-gray-400 text-sm">Nenhum</span>
-                                {/if}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">{broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{broker.property_count}</td>
-                            {:else if view === 'users'}
-                                {@const user = item as User}
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">{user.id}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">{user.name}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{user.email}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{user.phone}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : ''}</td>
+                                {@const broker = item as Broker}
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">{broker.id}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">{broker.name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{broker.email}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{broker.creci}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {getStatusBadgeClasses(broker.status)}">
+                                        {broker.status === 'approved' ? 'Aprovado' : broker.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">{broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{broker.property_count}</td>
+                            {:else if view === 'clients'}
+                                {@const client = item as User}
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">{client.id}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">{client.name}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{client.email}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{client.phone}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : ''}</td>
                             {/if}
                         {/if}
 
@@ -294,4 +292,3 @@
         background-color: rgba(124, 45, 18, 0.2); /* Equivalente a orange-900 com 20% de opacidade */
     }
 </style>
-

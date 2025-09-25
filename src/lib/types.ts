@@ -25,7 +25,6 @@ export interface Broker {
     creci_front_url?: string;
     creci_back_url?: string;
     selfie_url?: string;
-    verification_status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface User {
@@ -36,6 +35,14 @@ export interface User {
     created_at: string;
 }
 
-export type View = 'dashboard' | 'properties' | 'brokers' | 'users' | 'verification';
+export type View = 'dashboard' | 'properties' | 'brokers' | 'clients' | 'verification';
 
 export type DataItem = Property | Broker | User;
+
+export interface ViewConfig {
+    title: string;
+    endpoint?: string;
+    headers?: string[];
+    filterOptions?: { value: string; label: string }[];
+    sortColumn?: string;
+}
