@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
     import Sidebar from './Sidebar.svelte';
     import Header from './Header.svelte';
     import Table from './Table.svelte';
@@ -7,6 +7,8 @@
     import FilterControls from './FilterControls.svelte';
     import KpiCard from './KpiCard.svelte';
     import VerificationTable from './VerificationTable.svelte';
+    import PropertyManagement from './PropertyManagement.svelte';
+    import BrokerManagement from './BrokerManagement.svelte';
     import { authToken } from './store';
     import { onMount } from 'svelte';
     import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
@@ -26,7 +28,7 @@
     let totalItems = 0;
     let statusFilter = '';
     
-    // Estado para edição
+    // Estado para ediÃ§Ã£o
     let editingId: number | null = null;
     let editableItemData: Partial<DataItem> = {};
 
@@ -35,7 +37,7 @@
     let saveMessage = '';
     let saveMessageType: 'success' | 'error' = 'success';
 
-    // Estados para ordenação
+    // Estados para ordenaÃ§Ã£o
     let sortBy = 'id';
     let sortOrder = 'desc';
     
@@ -46,7 +48,7 @@
     }
     let stats: Stats | null = null;
 
-    // Estado para dados de verificação
+    // Estado para dados de verificaÃ§Ã£o
     let pendingBrokers: Broker[] = [];
 
     const API_URL = 'https://backend-production-6acc.up.railway.app';
@@ -57,15 +59,15 @@
         },
         properties: { 
             endpoint: '/admin/properties-with-brokers', 
-            title: 'Gerenciamento de Imóveis', 
-            headers: ['ID', 'Código', 'Título', 'Tipo', 'Status', 'Preço', 'Cidade', 'Corretor'],
-            filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'Código' }, { value: 'p.title', label: 'Título' } ],
+            title: 'Gerenciamento de ImÃ³veis', 
+            headers: ['ID', 'CÃ³digo', 'TÃ­tulo', 'Tipo', 'Status', 'PreÃ§o', 'Cidade', 'Corretor'],
+            filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'CÃ³digo' }, { value: 'p.title', label: 'TÃ­tulo' } ],
             sortColumn: 'p.title'
         },
         brokers: { 
             endpoint: '/admin/brokers', 
             title: 'Gerenciamento de Corretores', 
-            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de Imóveis'],
+            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de ImÃ³veis'],
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
         },
@@ -78,18 +80,18 @@
         },
         verification: { 
             endpoint: '/admin/brokers/pending', 
-            title: 'Solicitações de Verificação', 
-            headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'Ações'],
+            title: 'SolicitaÃ§Ãµes de VerificaÃ§Ã£o', 
+            headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'AÃ§Ãµes'],
             filterOptions: [] 
         }
     };
 
-    // Função helper para obter configuração da view com fallback seguro
+    // FunÃ§Ã£o helper para obter configuraÃ§Ã£o da view com fallback seguro
     function getViewConfig(view: View): ViewConfig {
         return viewConfig[view] || { title: 'Dashboard' };
     }
 
-    // Função para verificar se a view é válida
+    // FunÃ§Ã£o para verificar se a view Ã© vÃ¡lida
     function isValidView(view: string): view is View {
         return view in viewConfig;
     }
@@ -97,6 +99,15 @@
     let debounceTimer: NodeJS.Timeout;
     async function fetchData() {
         isLoading = true;
+
+        if (activeView === 'properties' || activeView === 'brokers') {
+            headers = [];
+            allData = [];
+            totalItems = 0;
+            isLoading = false;
+            return;
+        }
+
         const token = localStorage.getItem('authToken');
         if (!token) {
             authToken.set(null);
@@ -108,10 +119,10 @@
                 const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) throw new Error('Falha ao buscar estatísticas');
+                if (!response.ok) throw new Error('Falha ao buscar estatÃ­sticas');
                 stats = await response.json();
             } catch (error) {
-                console.error("Erro ao buscar estatísticas do dashboard:", error);
+                console.error("Erro ao buscar estatÃ­sticas do dashboard:", error);
                 stats = null;
             } finally {
                 isLoading = false;
@@ -126,13 +137,13 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (!response.ok) throw new Error('Falha ao buscar solicitações pendentes');
+                if (!response.ok) throw new Error('Falha ao buscar solicitaÃ§Ãµes pendentes');
                 
                 const result = await response.json();
                 pendingBrokers = result.data || result;
                 
             } catch (error) {
-                console.error("Erro ao buscar solicitações de verificação:", error);
+                console.error("Erro ao buscar solicitaÃ§Ãµes de verificaÃ§Ã£o:", error);
                 pendingBrokers = [];
             } finally {
                 isLoading = false;
@@ -160,7 +171,7 @@
             const response = await fetch(`${API_URL}${config.endpoint}?${params.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error('Falha na autenticação');
+            if (!response.ok) throw new Error('Falha na autenticaÃ§Ã£o');
             
             const result = await response.json();
             allData = result.data || result;
@@ -176,7 +187,7 @@
 
     function changeView(newView: string) {
         if (!isValidView(newView)) {
-            console.error(`View inválida: ${newView}`);
+            console.error(`View invÃ¡lida: ${newView}`);
             activeView = 'dashboard';
         } else {
             activeView = newView;
@@ -192,7 +203,7 @@
     }
 
     function handleSortToggle() {
-        if (activeView === 'dashboard' || activeView === 'verification') return;
+        if (activeView === 'dashboard' || activeView === 'verification' || activeView === 'properties' || activeView === 'brokers') return;
         const config = getViewConfig(activeView);
         if (!config.sortColumn) return;
 
@@ -293,7 +304,7 @@
         editableItemData = {};
     }
 
-    // Função para aprovar/rejeitar corretor
+    // FunÃ§Ã£o para aprovar/rejeitar corretor
     async function handleVerification(event: CustomEvent<{ brokerId: number; status: 'approved' | 'rejected' }>) {
         const { brokerId, status } = event.detail;
         const token = localStorage.getItem('authToken');
@@ -307,7 +318,7 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (!response.ok) throw new Error('Falha na verificação');
+            if (!response.ok) throw new Error('Falha na verificaÃ§Ã£o');
             
             showSaveMessage(`Corretor ${status === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso!`, 'success');
             fetchData();
@@ -327,10 +338,14 @@
         fetchData();
     }
 
-    // ✅ Reatividade correta - separar os efeitos
+    // âœ… Reatividade correta - separar os efeitos
     $: {
-        // Efeito para busca e ordenação (com debounce)
-        if (searchTerm !== '' || sortBy !== 'id' || sortOrder !== 'desc') {
+        // Efeito para busca e ordenaÃ§Ã£o (com debounce)
+        if (
+            activeView !== 'properties' &&
+            activeView !== 'brokers' &&
+            (searchTerm !== '' || sortBy !== 'id' || sortOrder !== 'desc')
+        ) {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 currentPage = 1;
@@ -339,19 +354,19 @@
         }
     }
 
-    // ✅ Efeito separado para status filter (sem debounce)
-    $: if (statusFilter !== '') {
+    // âœ… Efeito separado para status filter (sem debounce)
+    $: if (statusFilter !== '' && activeView !== 'properties' && activeView !== 'brokers') {
         currentPage = 1;
         fetchData();
     }
 
-    // ✅ Efeito separado para items per page
-    $: if (itemsPerPage !== 10) {
+    // âœ… Efeito separado para items per page
+    $: if (itemsPerPage !== 10 && activeView !== 'properties' && activeView !== 'brokers') {
         currentPage = 1;
         fetchData();
     }
 
-    // ✅ Função específica para status
+    // âœ… FunÃ§Ã£o especÃ­fica para status
     function setStatusFilter(status: string) {
         statusFilter = status;
         // Aplica imediatamente
@@ -377,16 +392,16 @@
                 </div>
             {:else if activeView === 'dashboard'}
                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <KpiCard title="Total de Imóveis" value={stats?.totalProperties ?? 0} color="green" />
+                    <KpiCard title="Total de ImÃ³veis" value={stats?.totalProperties ?? 0} color="green" />
                     <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
                     <KpiCard title="Total de Clientes" value={stats?.totalUsers ?? 0} color="yellow" />
                 </div>
             {:else if activeView === 'verification'}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitações de Verificação de Corretores</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">SolicitaÃ§Ãµes de VerificaÃ§Ã£o de Corretores</h2>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {pendingBrokers.length} solicitação(ões) pendente(s)
+                            {pendingBrokers.length} solicitaÃ§Ã£o(Ãµes) pendente(s)
                         </p>
                     </div>
                     
@@ -403,6 +418,10 @@
                         on:verify={handleVerification}
                     />
                 </div>
+            {:else if activeView === 'properties'}
+                <PropertyManagement />
+            {:else if activeView === 'brokers'}
+                <BrokerManagement />
             {:else}
                 {@const config = getViewConfig(activeView)}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
@@ -422,23 +441,10 @@
                                     <span>Ordenar A-Z</span>
                                 {:else}
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/></svg>
-                                    <span>Ordem Padrão</span>
+                                    <span>Ordem PadrÃ£o</span>
                                 {/if}
                             </button>
                         </div>
-                        
-                        {#if activeView === 'properties'}
-                            <div>
-                                <span class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por Status:</span>
-                                <div class="flex flex-wrap gap-2" role="group">
-                                    <button type="button" on:click={() => setStatusFilter('')} class="px-3 py-1.5 text-sm font-medium {statusFilter === '' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Todos</button>
-                                    <button type="button" on:click={() => setStatusFilter('Disponível')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Disponível' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Disponível</button>
-                                    <button type="button" on:click={() => setStatusFilter('Negociando')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Negociando' ? 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Negociando</button>
-                                    <button type="button" on:click={() => setStatusFilter('Vendido')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Vendido' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Vendido</button>
-                                    <button type="button" on:click={() => setStatusFilter('Alugado')} class="px-3 py-1.5 text-sm font-medium {statusFilter === 'Alugado' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'} border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition-colors">Alugado</button>
-                                </div>
-                            </div>
-                        {/if}
                     </div>
 
                     {#if saveMessage}
@@ -477,9 +483,10 @@
 
 {#if showModal}
     <Modal onConfirm={handleDeleteConfirm} onCancel={() => showModal = false}>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar Exclusão</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar ExclusÃ£o</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 px-4 py-3">
-            Você tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
+            VocÃª tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
         </p>
     </Modal>
 {/if}
+

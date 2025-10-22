@@ -1,4 +1,6 @@
 <script lang="ts">
+    import NotificationBell from './NotificationBell.svelte';
+
     export let pageTitle: string;
     export let onToggleSidebar: () => void = () => {};
 </script>
@@ -11,6 +13,8 @@
         
         <h1 class="text-xl md:text-2xl font-semibold text-gray-800 dark:text-white">{pageTitle}</h1>
         
-        <div class="w-6 lg:hidden"></div>
+        <div class="flex items-center gap-3">
+            <NotificationBell />
+        </div>
     </div>
 </header>
