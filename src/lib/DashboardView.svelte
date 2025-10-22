@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { baseURL } from './api';
     import { authToken } from './store';
     import KpiCard from './KpiCard.svelte';
 
@@ -11,7 +12,7 @@
 
     let stats: Stats | null = null;
     let isLoading = true;
-    const API_URL = 'https://backend-production-6acc.up.railway.app';
+    const API_URL = baseURL;
 
     onMount(async () => {
         const token = localStorage.getItem('authToken');

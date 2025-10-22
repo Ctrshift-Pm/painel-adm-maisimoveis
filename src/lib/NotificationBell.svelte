@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
+  import { baseURL } from './api';
   import { authToken } from './store';
   import type { Notification } from './types';
 
-  const API_ENDPOINT = '/admin/notifications';
+  const API_ENDPOINT = `${baseURL}/admin/notifications`;
 
   let isOpen = false;
   let isLoading = false;

@@ -1,10 +1,11 @@
 ﻿<script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
+  import { baseURL } from './api';
   import { authToken } from './store';
   import type { Property, PropertyImage, PropertyStatus } from './types';
 
-  const API_BASE = '/admin';
+  const API_BASE = `${baseURL}/admin`;
 
   const STATUS_OPTIONS: { value: '' | PropertyStatus; label: string }[] = [
     { value: '', label: 'Todos os status' },

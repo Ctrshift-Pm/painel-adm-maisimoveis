@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { baseURL } from './api';
     import { authToken } from './store';
     import Logo from './Logo.svelte';
     
@@ -7,7 +8,7 @@
     let error = '';
     let isLoading = false;
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+    const API_URL = baseURL;
 
     async function handleLogin() {
         isLoading = true;

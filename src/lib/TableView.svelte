@@ -3,6 +3,7 @@
     import Pagination from './Pagination.svelte';
     import FilterControls from './FilterControls.svelte';
     import Modal from './Modal.svelte';
+    import { baseURL } from './api';
     import { authToken } from './store';
     import { onMount } from 'svelte';
     import type { Property, Broker, User, View } from './types';
@@ -23,7 +24,7 @@
     let currentPage = 1;
     let totalItems = 0;
 
-    const API_URL = 'http://localhost:3333';
+    const API_URL = baseURL;
 
     const viewConfig = {
         properties: { 

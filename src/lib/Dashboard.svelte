@@ -9,6 +9,7 @@
     import VerificationTable from './VerificationTable.svelte';
     import PropertyManagement from './PropertyManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
+    import { baseURL } from './api';
     import { authToken } from './store';
     import { onMount } from 'svelte';
     import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
@@ -51,7 +52,7 @@
     // Estado para dados de verificaÃ§Ã£o
     let pendingBrokers: Broker[] = [];
 
-    const API_URL = 'https://backend-production-6acc.up.railway.app';
+    const API_URL = baseURL;
 
     const viewConfig: Record<View, ViewConfig> = {
         dashboard: { 
