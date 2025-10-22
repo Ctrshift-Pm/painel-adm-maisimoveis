@@ -4,7 +4,7 @@
   import { authToken } from './store';
   import type { Property, PropertyImage, PropertyStatus } from './types';
 
-  const API_BASE = '/api/admin';
+  const API_BASE = '/admin';
 
   const STATUS_OPTIONS: { value: '' | PropertyStatus; label: string }[] = [
     { value: '', label: 'Todos os status' },

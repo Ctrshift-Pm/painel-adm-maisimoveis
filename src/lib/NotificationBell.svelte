@@ -4,7 +4,7 @@
   import { authToken } from './store';
   import type { Notification } from './types';
 
-  const API_ENDPOINT = '/api/admin/notifications';
+  const API_ENDPOINT = '/admin/notifications';
 
   let isOpen = false;
   let isLoading = false;

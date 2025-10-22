@@ -4,7 +4,7 @@
   import { authToken } from './store';
   import type { Broker, BrokerDocuments } from './types';
 
-  const API_BASE = '/api/admin';
+  const API_BASE = '/admin';
 
   let brokers: Broker[] = [];
   let isLoading = false;
