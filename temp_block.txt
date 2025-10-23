@@ -1,0 +1,71 @@
+        'error',
+        err instanceof Error
+          ? err.message
+          : 'Ocorreu um erro ao atualizar o status do corretor.'
+      );
+    } finally {
+      actionBrokerId = null;
+    }
+  }
+
+  function openDocumentModal(broker: Broker) {
+    const baseDocs = broker.documents ?? {
+      creci_front_url: (broker as unknown as Record<string, string | null>)?.creci_front_url ?? null,
+      creci_back_url: (broker as unknown as Record<string, string | null>)?.creci_back_url ?? null,
+      selfie_url: (broker as unknown as Record<string, string | null>)?.selfie_url ?? null
+    };
+
+    selectedBroker = broker;
+    selectedDocuments = {
+      creci_front_url: baseDocs.creci_front_url ?? null,
+      creci_back_url: baseDocs.creci_back_url ?? null,
+      selfie_url: baseDocs.selfie_url ?? null
+    };
+
+    const hasDocs =
+      Boolean(selectedDocuments.creci_front_url) ||
+      Boolean(selectedDocuments.creci_back_url) ||
+      Boolean(selectedDocuments.selfie_url);
+
+    docsError = hasDocs ? null : 'Documentos não disponíveis para este corretor.';
+    isDocumentsModalOpen = true;
+  }
+
+  async function openPropertiesModal(broker: Broker) {
+    const token = get(authToken);
+    if (!token) {
+      showFeedback('error', 'Sessão expirada. Faça login novamente.');
+      return;
+    }
+
+    propertiesModalTitle = broker.name;
+    isPropertiesModalOpen = true;
+    propertiesLoading = true;
+    propertiesError = null;
+    brokerProperties = [];
+
+    try {
+      const response = await fetch(${API_BASE}/brokers//properties, {
+        headers: {
+          Authorization: Bearer 
+        }
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? 'Não foi possível carregar os imóveis do corretor.');
+      }
+
+      const payload = await response.json();
+      brokerProperties = payload?.data ?? payload ?? [];
+    } catch (err) {
+      console.error('Erro ao carregar imóveis do corretor:', err);
+      propertiesError =
+        err instanceof Error
+          ? err.message
+          : 'Ocorreu um erro ao carregar os imóveis deste corretor.';
+    } finally {
+      propertiesLoading = false;
+    }
+  }
+

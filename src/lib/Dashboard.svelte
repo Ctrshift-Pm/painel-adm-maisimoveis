@@ -14,7 +14,7 @@
     import { onMount } from 'svelte';
     import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
     
-    let activeView: View = 'dashboard';
+    let activeView: keyof typeof viewConfig = 'dashboard';
     let allData: DataItem[] = [];
     let headers: string[] = [];
     let isLoading: boolean = true;
@@ -164,7 +164,7 @@
             sortOrder: sortOrder,
         });
 
-        if (activeView === 'properties' && statusFilter) {
+        if (activeView === 'clients' && statusFilter) {
             params.append('status', statusFilter);
         }
 

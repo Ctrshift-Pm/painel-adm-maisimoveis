@@ -256,29 +256,32 @@
     detailError = null;
 
     const payload: Record<string, unknown> = {};
+    const isApproved = selectedProperty.status === 'approved';
 
-    if (formData.status) {
+    if (formData.status !== undefined) {
       payload.status = formData.status;
     }
 
-    for (const field of TEXT_FIELDS) {
-      if (formData[field] !== undefined) {
-        payload[field as string] =
-          formData[field] === null || formData[field] === ''
-            ? null
-            : formData[field];
+    if (!isApproved) {
+      for (const field of TEXT_FIELDS) {
+        if (formData[field] !== undefined) {
+          payload[field as string] =
+            formData[field] === null || formData[field] === ''
+              ? null
+              : formData[field];
+        }
       }
-    }
 
-    for (const field of NUMERIC_FIELDS) {
-      if (formData[field] !== undefined) {
-        payload[field as string] = parseNumericValue(formData[field]);
+      for (const field of NUMERIC_FIELDS) {
+        if (formData[field] !== undefined) {
+          payload[field as string] = parseNumericValue(formData[field]);
+        }
       }
-    }
 
-    for (const field of BOOLEAN_FIELDS) {
-      if (formData[field] !== undefined) {
-        payload[field as string] = Boolean(formData[field]);
+      for (const field of BOOLEAN_FIELDS) {
+        if (formData[field] !== undefined) {
+          payload[field as string] = Boolean(formData[field]);
+        }
       }
     }
 
@@ -363,10 +366,16 @@
   }
 
   function handleInputChange(field: keyof Property, value: unknown) {
+    if (isFieldDisabled(field)) {
+      return;
+    }
     formData = { ...formData, [field]: value };
   }
 
   function handleBooleanChange(field: keyof Property, checked: boolean) {
+    if (isFieldDisabled(field)) {
+      return;
+    }
     formData = { ...formData, [field]: checked };
   }
 
