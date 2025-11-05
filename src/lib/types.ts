@@ -95,8 +95,9 @@ export interface User {
 export interface Notification {
   id: number;
   message: string;
-  related_entity_type: 'property' | 'broker';
+  related_entity_type: 'property' | 'broker' | 'other';
   related_entity_id: number | null;
+  recipient_id?: number | null;
   is_read: boolean | 0 | 1;
   created_at: string;
 }
@@ -106,7 +107,8 @@ export type View =
   | 'properties'
   | 'brokers'
   | 'clients'
-  | 'verification';
+  | 'verification'
+  | 'notifications';
 
 export type DataItem = Property | Broker | User;
 

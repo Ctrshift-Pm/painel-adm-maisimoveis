@@ -9,6 +9,7 @@
     import VerificationTable from './VerificationTable.svelte';
     import PropertyManagement from './PropertyManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
+    import SendNotification from './components/SendNotification.svelte';
     import { baseURL } from './api';
     import { authToken } from './store';
     import { onMount } from 'svelte';
@@ -78,6 +79,9 @@
             headers: ['ID', 'Nome', 'Email', 'Telefone', 'Criado em'],
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
+        },
+        notifications: {
+            title: 'Notificações'
         },
         verification: { 
             endpoint: '/admin/brokers/pending', 
@@ -153,7 +157,10 @@
         }
 
         const config = getViewConfig(activeView);
-        if (!config.endpoint) return;
+        if (!config.endpoint) {
+            isLoading = false;
+            return;
+        }
 
         const params = new URLSearchParams({
             page: String(currentPage),
@@ -423,6 +430,16 @@
                 <PropertyManagement />
             {:else if activeView === 'brokers'}
                 <BrokerManagement />
+            {:else if activeView === 'notifications'}
+                <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Centro de Notificações</h1>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuários específicos ou para todos os clientes da plataforma.</p>
+                    </div>
+                    <div class="p-6">
+                        <SendNotification />
+                    </div>
+                </div>
             {:else}
                 {@const config = getViewConfig(activeView)}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">

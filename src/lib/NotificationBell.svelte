@@ -37,13 +37,12 @@
     } catch {
       return value;
     }
+  }  function badgeLabel(type: Notification['related_entity_type']): string {
+    if (type === 'property') return 'Imóveis';
+    if (type === 'broker') return 'Corretor';
+    return 'Aviso';
   }
-
-  function badgeLabel(type: Notification['related_entity_type']): string {
-    return type === 'property' ? 'Imóvel' : 'Corretor';
-  }
-
-  async function fetchNotifications() {
+async function fetchNotifications() {
     const token = get(authToken);
     if (!token) {
       error = 'Sessão expirada. Faça login novamente.';
