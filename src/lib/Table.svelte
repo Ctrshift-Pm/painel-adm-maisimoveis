@@ -9,7 +9,19 @@
     export let editableItemData: Partial<DataItem> = {};
     export let isSaving = false;
 
-    const dispatch = createEventDispatcher();
+	const dispatch = createEventDispatcher();
+
+	function normalizeStatusLabel(status: unknown): string {
+		if (typeof status !== 'string') {
+			return '';
+		}
+		return status.trim().toLowerCase();
+	}
+
+	function isSoldStatus(status: unknown): boolean {
+		const normalized = normalizeStatusLabel(status);
+		return normalized === 'sold' || normalized === 'vendido';
+	}
 
     // Estados locais para a lÃ³gica de venda
     let commissionDisplayValue = '';
@@ -28,12 +40,12 @@
         
         dispatch('editStart', item);
         
-        if (view === 'properties') {
-            const prop = item as Property;
-            if (prop.status === 'Vendido') {
-                isEditingSaleDetails = prop.sale_value == null;
-                updateCommissionDisplay(prop.sale_value, prop.commission_rate);
-            }
+		if (view === 'properties') {
+			const prop = item as Property;
+			if (isSoldStatus(prop.status)) {
+				isEditingSaleDetails = prop.sale_value == null;
+				updateCommissionDisplay(prop.sale_value, prop.commission_rate);
+			}
         }
     }
     
@@ -106,9 +118,9 @@
     }
 
     $: if (view === 'properties' && editingId !== null) {
-        const prop = editableItemData as Partial<Property>;
-        const originalItem = data.find(d => d.id === editingId) as Property | undefined;
-        showSaleDeletionWarning = originalItem?.status === 'Vendido' && prop.status !== 'Vendido';
+		const prop = editableItemData as Partial<Property>;
+		const originalItem = data.find(d => d.id === editingId) as Property | undefined;
+		showSaleDeletionWarning = isSoldStatus(originalItem?.status) && !isSoldStatus(prop.status);
     }
 </script>
 
@@ -226,8 +238,8 @@
                     </tr>
                     
                     {#if isEditing && view === 'properties'}
-                        {@const prop = editableItemData as Partial<Property>}
-                        {#if prop.status === 'Vendido'}
+						{@const prop = editableItemData as Partial<Property>}
+						{#if isSoldStatus(prop.status)}
                             <tr class="bg-gray-50 dark:bg-gray-900">
                                 <td colspan={headers.length + 1} class="p-4">
                                     <div class="p-4 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">

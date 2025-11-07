@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { navigate } from 'svelte-routing';
-  import { Button } from '$lib/components/ui/button';
   import { exportToCsv } from '$lib/utils/exportUtils';
   import { baseURL } from './api';
   import { authToken } from './store';
@@ -172,7 +171,10 @@
         >
           Atualizar
         </button>
-        <Button variant="outline" size="sm" on:click={handleExport}>
+        <button
+          class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          on:click={handleExport}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="16"
@@ -191,7 +193,7 @@
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
           Exportar Imoveis (CSV)
-        </Button>
+        </button>
       </div>
     </div>
   </header>

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { Button } from '$lib/components/ui/button';
   import { exportToCsv } from '$lib/utils/exportUtils';
   import { baseURL } from './api';
   import { authToken } from './store';
@@ -25,6 +24,12 @@
   let propertiesLoading = false;
   let propertiesError: string | null = null;
   let propertiesModalTitle = '';
+
+  const DOCUMENT_TILES: ReadonlyArray<{ key: keyof BrokerDocuments; label: string }> = [
+    { key: 'creci_front_url', label: 'Frente do CRECI' },
+    { key: 'creci_back_url', label: 'Verso do CRECI' },
+    { key: 'selfie_url', label: 'Selfie com documento' },
+  ];
 
   function showFeedback(type: 'success' | 'error', text: string) {
     feedback = { type, text };
@@ -274,9 +279,12 @@
         </svg>
         Recarregar lista
       </button>
-      <Button variant="outline" size="sm" on:click={handleExport}>
+      <button
+        class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+        on:click={handleExport}
+      >
         Exportar Corretores (CSV)
-      </Button>
+      </button>
     </div>
   </header>
 
@@ -442,22 +450,19 @@
         </div>
       {:else}
         <div class="grid gap-6 md:grid-cols-3">
-          {#each [
-            { key: 'creci_front_url', label: 'Frente do CRECI' },
-            { key: 'creci_back_url', label: 'Verso do CRECI' },
-            { key: 'selfie_url', label: 'Selfie com documento' }
-          ] as doc}
+          {#each DOCUMENT_TILES as doc}
+            {@const docValue = selectedDocuments?.[doc.key] ?? null}
             <div class="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
               <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">{doc.label}</div>
-              {#if selectedDocuments[doc.key]}
+              {#if docValue}
                 <a
                   class="block overflow-hidden rounded-md border border-gray-200 transition-transform hover:scale-[1.02] dark:border-gray-700"
-                  href={selectedDocuments[doc.key] ?? undefined}
+                  href={docValue ?? undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <img
-                    src={selectedDocuments[doc.key] ?? ''}
+                    src={docValue ?? ''}
                     alt={`Documento - ${doc.label}`}
                     class="h-48 w-full object-cover"
                     loading="lazy"

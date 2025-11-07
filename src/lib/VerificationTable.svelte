@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Broker } from './types';
+    import type { Broker, BrokerDocuments } from './types';
     import { createEventDispatcher } from 'svelte';
 
     export let pendingBrokers: Broker[] = [];
@@ -31,7 +31,7 @@
     }
 
     // ✅ CORREÇÃO: Função simplificada para URLs
-    function getDocumentUrl(url: string | undefined): string {
+    function getDocumentUrl(url: string | null | undefined): string {
         if (!url) return '';
         
         // Se a URL já é completa (http/https) ou é do Cloudinary, retorna como está
@@ -50,9 +50,24 @@
     }
 
     // ✅ Nova função para verificar se a URL é válida e acessível
-    function isUrlAccessible(url: string | undefined): boolean {
+    function isUrlAccessible(url: string | null | undefined): boolean {
         if (!url) return false;
         return url.startsWith('http') || url.includes('cloudinary');
+    }
+
+    function resolveDocumentField(broker: Broker, field: keyof BrokerDocuments): string | null {
+        const fromDocuments = broker.documents?.[field];
+        if (typeof fromDocuments === 'string' && fromDocuments.trim().length > 0) {
+            return fromDocuments;
+        }
+
+        const legacySource = broker as unknown as Record<string, unknown>;
+        const legacyValue = legacySource[field as string];
+        if (typeof legacyValue === 'string' && legacyValue.trim().length > 0) {
+            return legacyValue;
+        }
+
+        return null;
     }
 </script>
 
@@ -81,6 +96,9 @@
                 </tr>
             {:else}
                 {#each pendingBrokers as broker}
+                    {@const creciFrontUrl = resolveDocumentField(broker, 'creci_front_url')}
+                    {@const creciBackUrl = resolveDocumentField(broker, 'creci_back_url')}
+                    {@const selfieUrl = resolveDocumentField(broker, 'selfie_url')}
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                             {broker.id}
@@ -99,8 +117,8 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex flex-col space-y-2 min-w-[200px]">
-                                {#if broker.creci_front_url && isUrlAccessible(broker.creci_front_url)}
-                                    <a href={getDocumentUrl(broker.creci_front_url)} target="_blank" 
+                                {#if creciFrontUrl && isUrlAccessible(creciFrontUrl)}
+                                    <a href={getDocumentUrl(creciFrontUrl)} target="_blank"
                                        class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -109,12 +127,12 @@
                                     </a>
                                 {:else}
                                     <span class="text-xs text-gray-400 italic">
-                                        {broker.creci_front_url ? 'URL não acessível' : 'Frente do CRECI não enviada'}
+                                        {creciFrontUrl ? 'URL nao acessivel' : 'Frente do CRECI nao enviada'}
                                     </span>
                                 {/if}
-                                
-                                {#if broker.creci_back_url && isUrlAccessible(broker.creci_back_url)}
-                                    <a href={getDocumentUrl(broker.creci_back_url)} target="_blank"
+
+                                {#if creciBackUrl && isUrlAccessible(creciBackUrl)}
+                                    <a href={getDocumentUrl(creciBackUrl)} target="_blank"
                                        class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -123,12 +141,12 @@
                                     </a>
                                 {:else}
                                     <span class="text-xs text-gray-400 italic">
-                                        {broker.creci_back_url ? 'URL não acessível' : 'Verso do CRECI não enviado'}
+                                        {creciBackUrl ? 'URL nao acessivel' : 'Verso do CRECI nao enviado'}
                                     </span>
                                 {/if}
-                                
-                                {#if broker.selfie_url && isUrlAccessible(broker.selfie_url)}
-                                    <a href={getDocumentUrl(broker.selfie_url)} target="_blank"
+
+                                {#if selfieUrl && isUrlAccessible(selfieUrl)}
+                                    <a href={getDocumentUrl(selfieUrl)} target="_blank"
                                        class="inline-flex items-center text-sm text-green-600 hover:text-green-900 dark:text-green-400 transition-colors">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -137,7 +155,7 @@
                                     </a>
                                 {:else}
                                     <span class="text-xs text-gray-400 italic">
-                                        {broker.selfie_url ? 'URL não acessível' : 'Selfie não enviada'}
+                                        {selfieUrl ? 'URL nao acessivel' : 'Selfie nao enviada'}
                                     </span>
                                 {/if}
                             </div>

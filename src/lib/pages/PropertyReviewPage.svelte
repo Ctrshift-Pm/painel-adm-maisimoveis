@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { useParams, navigate } from 'svelte-routing';
+  import { navigate } from 'svelte-routing';
   import { get } from 'svelte/store';
   import { authToken } from '$lib/store';
   import { baseURL } from '$lib/api';
@@ -25,9 +25,9 @@
     images: string[];
   }
 
-  const params = useParams<{ id: string }>();
   const API_BASE = baseURL;
   const ADMIN_BASE = `${baseURL}/admin`;
+  export let params: { id?: string } = {};
 
   let propertyId = '';
   let property: PropertyDetails | null = null;
@@ -37,8 +37,7 @@
   let actionError: string | null = null;
 
   onMount(async () => {
-    const current = get(params);
-    propertyId = current?.id ?? '';
+    propertyId = params?.id ?? '';
 
     if (!propertyId) {
       loadError = 'ID do imovel nao encontrado.';
@@ -48,6 +47,11 @@
 
     await fetchProperty(propertyId);
   });
+
+  $: if (params?.id && params.id !== propertyId) {
+    propertyId = params.id;
+    void fetchProperty(propertyId);
+  }
 
   async function fetchProperty(id: string) {
     isLoading = true;

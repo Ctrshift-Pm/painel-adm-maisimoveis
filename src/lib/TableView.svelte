@@ -23,6 +23,7 @@
     let itemsPerPage = 10;
     let currentPage = 1;
     let totalItems = 0;
+    let normalizedView: View = 'properties';
 
     const API_URL = baseURL;
 
@@ -61,7 +62,14 @@
         }
     };
 
-    let debounceTimer: number;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    type DeleteEventDetail = { id: number; type: string };
+
+    function handleDeleteRequest(event: CustomEvent<DeleteEventDetail>) {
+        showModal = true;
+        itemToDelete = event.detail;
+    }
     async function fetchData() {
         isLoading = true;
         const token = localStorage.getItem('authToken');
@@ -125,7 +133,9 @@
         if (initialLoad) {
             initialLoad = false;
         } else {
-            clearTimeout(debounceTimer);
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
             debounceTimer = setTimeout(() => {
                 if (searchTerm || itemsPerPage || searchColumn) {
                     currentPage = 1;
@@ -136,6 +146,7 @@
     }
     
     $: totalPages = Math.ceil(totalItems / itemsPerPage);
+    $: normalizedView = (view === 'users' ? 'clients' : view) as View;
 </script>
 
 <div>
@@ -152,8 +163,8 @@
         <Table 
             {headers} 
             data={paginatedData} 
-            {view}
-            onDelete={(detail) => {showModal = true; itemToDelete = detail;}} 
+            view={normalizedView}
+            on:delete={handleDeleteRequest} 
         />
 
         <Pagination 

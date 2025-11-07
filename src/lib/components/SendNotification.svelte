@@ -178,7 +178,7 @@
           rows={6}
           maxlength={2000}
           disabled={isSubmitting}
-        />
+        ></textarea>
         <p class="text-xs text-gray-400 dark:text-gray-500">
           A mensagem será entregue imediatamente aos destinatários selecionados.
         </p>
