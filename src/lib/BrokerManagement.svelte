@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
+  import { Button } from '$lib/components/ui/button';
+  import { exportToCsv } from '$lib/utils/exportUtils';
   import { baseURL } from './api';
   import { authToken } from './store';
   import type { Broker, BrokerDocuments, Property } from './types';
@@ -247,6 +249,10 @@
   onMount(() => {
     fetchBrokers();
   });
+
+  function handleExport() {
+    exportToCsv(brokers, 'corretores.csv');
+  }
 </script>
 
 <section class="space-y-6">
@@ -257,16 +263,21 @@
         Consulte os corretores cadastrados, aprove ou rejeite solicitações e visualize os documentos enviados.
       </p>
     </div>
-    <button
-      class="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60"
-      on:click={fetchBrokers}
-      disabled={isLoading}
-    >
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9M4 20v-5h.581m15.357-2A8.003 8.003 0 014.582 15" />
-      </svg>
-      Recarregar lista
-    </button>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <button
+        class="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60"
+        on:click={fetchBrokers}
+        disabled={isLoading}
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9M4 20v-5h.581m15.357-2A8.003 8.003 0 014.582 15" />
+        </svg>
+        Recarregar lista
+      </button>
+      <Button variant="outline" size="sm" on:click={handleExport}>
+        Exportar Corretores (CSV)
+      </Button>
+    </div>
   </header>
 
   {#if feedback}

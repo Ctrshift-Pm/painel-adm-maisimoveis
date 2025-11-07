@@ -1,13 +1,14 @@
 <script lang="ts">
+  import { Router, Route } from 'svelte-routing';
   import Login from './lib/Login.svelte';
   import Dashboard from './lib/Dashboard.svelte';
+  import PropertyReviewPage from './lib/pages/PropertyReviewPage.svelte';
   import { authToken, theme } from './lib/store';
-  import { onMount } from 'svelte';
 
   $: {
     if (typeof window !== 'undefined') {
-      const isDark = 
-        $theme === 'dark' || 
+      const isDark =
+        $theme === 'dark' ||
         ($theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       document.documentElement.classList.toggle('dark', isDark);
     }
@@ -16,7 +17,15 @@
 
 <main class="h-full">
   {#if $authToken}
-    <Dashboard />
+    <Router>
+      <Route path="/admin/imovel/:id" component={PropertyReviewPage} />
+      <Route path="/admin/properties">
+        <Dashboard initialView="properties" />
+      </Route>
+      <Route path="/">
+        <Dashboard />
+      </Route>
+    </Router>
   {:else}
     <Login />
   {/if}

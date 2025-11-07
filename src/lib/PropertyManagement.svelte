@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { navigate } from 'svelte-routing';
+  import { Button } from '$lib/components/ui/button';
+  import { exportToCsv } from '$lib/utils/exportUtils';
   import { baseURL } from './api';
   import { authToken } from './store';
   import type { PropertyStatus } from './types';
@@ -138,6 +140,10 @@
   function reviewProperty(propertyId: number) {
     navigate(`/admin/imovel/${propertyId}`);
   }
+
+  function handleExport() {
+    exportToCsv(properties, 'imoveis.csv');
+  }
 </script>
 
 <div class="space-y-4">
@@ -148,7 +154,7 @@
         Consulte os imóveis cadastrados e acesse a página dedicada para aprovar ou rejeitar cada solicitação.
       </p>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
       <select
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         bind:value={statusFilter}
@@ -158,13 +164,35 @@
           <option value={option.value}>{option.label}</option>
         {/each}
       </select>
-      <button
-        class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-        on:click={fetchProperties}
-        disabled={isLoading}
-      >
-        Atualizar
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          on:click={fetchProperties}
+          disabled={isLoading}
+        >
+          Atualizar
+        </button>
+        <Button variant="outline" size="sm" on:click={handleExport}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="mr-2 h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Exportar Imoveis (CSV)
+        </Button>
+      </div>
     </div>
   </header>
 

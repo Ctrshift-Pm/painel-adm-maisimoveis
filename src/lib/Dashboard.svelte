@@ -10,12 +10,16 @@
     import PropertyManagement from './PropertyManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
     import SendNotification from './components/SendNotification.svelte';
+    import { navigate } from 'svelte-routing';
     import { baseURL } from './api';
     import { authToken } from './store';
     import { onMount } from 'svelte';
     import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
     
-    let activeView: keyof typeof viewConfig = 'dashboard';
+    export let initialView: View = 'dashboard';
+
+    let activeView: View = 'dashboard';
+    let hasAppliedInitialView = false;
     let allData: DataItem[] = [];
     let headers: string[] = [];
     let isLoading: boolean = true;
@@ -99,6 +103,11 @@
     // FunÃ§Ã£o para verificar se a view Ã© vÃ¡lida
     function isValidView(view: string): view is View {
         return view in viewConfig;
+    }
+
+    $: if (!hasAppliedInitialView) {
+        activeView = isValidView(initialView) ? initialView : 'dashboard';
+        hasAppliedInitialView = true;
     }
 
     let debounceTimer: NodeJS.Timeout;
@@ -193,13 +202,22 @@
         }
     }
 
-    function changeView(newView: string) {
+    function changeView(newView: View) {
         if (!isValidView(newView)) {
-            console.error(`View invÃ¡lida: ${newView}`);
-            activeView = 'dashboard';
-        } else {
-            activeView = newView;
+            console.error('Invalid view: ' + newView);
+            newView = 'dashboard';
         }
+
+        activeView = newView;
+
+        if (typeof window !== 'undefined') {
+            if (newView === 'properties') {
+                navigate('/admin/properties', { replace: true });
+            } else if (window.location.pathname === '/admin/properties') {
+                navigate('/', { replace: true });
+            }
+        }
+
         isSidebarOpen = false;
         searchTerm = '';
         searchColumn = 'all';
