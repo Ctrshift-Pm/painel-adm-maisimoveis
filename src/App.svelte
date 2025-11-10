@@ -3,7 +3,7 @@
   import Login from './lib/Login.svelte';
   import Dashboard from './lib/Dashboard.svelte';
   import { Toaster } from '$lib/components/ui/sonner';
-  import 'svelte-sonner/style.css';
+  import 'svelte-sonner/dist/style.css';
   import { authToken, theme } from './lib/store';
 
   $: {
