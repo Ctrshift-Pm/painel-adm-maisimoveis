@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+ï»¿<script lang="ts">
     import Sidebar from './Sidebar.svelte';
     import Header from './Header.svelte';
     import Table from './Table.svelte';
@@ -9,6 +9,7 @@
     import VerificationTable from './VerificationTable.svelte';
     import PropertyManagement from './PropertyManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
+    import BrokerRequests from './components/BrokerRequests.svelte';
     import SendNotification from './components/SendNotification.svelte';
     import StatusPieChart from './components/charts/StatusPieChart.svelte';
     import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
@@ -36,7 +37,7 @@
     let totalItems = 0;
     let statusFilter = '';
     
-    // Estado para ediÃ§Ã£o
+    // Estado para ediÃƒÂ§ÃƒÂ£o
     let editingId: number | null = null;
     let editableItemData: Partial<DataItem> = {};
 
@@ -45,7 +46,7 @@
     let saveMessage = '';
     let saveMessageType: 'success' | 'error' = 'success';
 
-    // Estados para ordenaÃ§Ã£o
+    // Estados para ordenaÃƒÂ§ÃƒÂ£o
     let sortBy = 'id';
     let sortOrder = 'desc';
     
@@ -64,7 +65,7 @@
     let isChartLoading = false;
     let chartError: string | null = null;
 
-    // Estado para dados de verificaÃ§Ã£o
+    // Estado para dados de verificaÃƒÂ§ÃƒÂ£o
     let pendingBrokers: Broker[] = [];
 
     const API_URL = baseURL;
@@ -75,17 +76,20 @@
         },
         properties: { 
             endpoint: '/admin/properties-with-brokers', 
-            title: 'Gerenciamento de ImÃ³veis', 
-            headers: ['ID', 'CÃ³digo', 'TÃ­tulo', 'Tipo', 'Status', 'PreÃ§o', 'Cidade', 'Corretor'],
-            filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'CÃ³digo' }, { value: 'p.title', label: 'TÃ­tulo' } ],
+            title: 'Gerenciamento de ImÃƒÂ³veis', 
+            headers: ['ID', 'CÃƒÂ³digo', 'TÃƒÂ­tulo', 'Tipo', 'Status', 'PreÃƒÂ§o', 'Cidade', 'Corretor'],
+            filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'CÃƒÂ³digo' }, { value: 'p.title', label: 'TÃƒÂ­tulo' } ],
             sortColumn: 'p.title'
         },
         brokers: { 
             endpoint: '/admin/brokers', 
             title: 'Gerenciamento de Corretores', 
-            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de ImÃ³veis'],
+            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de ImÃƒÂ³veis'],
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
+        },
+        broker_requests: { 
+            title: 'Solicitações de Corretores'
         },
         clients: { 
             endpoint: '/admin/clients', 
@@ -95,22 +99,22 @@
             sortColumn: 'name'
         },
         notifications: {
-            title: 'Notificações'
+            title: 'NotificaÃ§Ãµes'
         },
         verification: { 
             endpoint: '/admin/brokers/pending', 
-            title: 'SolicitaÃ§Ãµes de VerificaÃ§Ã£o', 
-            headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'AÃ§Ãµes'],
+            title: 'SolicitaÃƒÂ§ÃƒÂµes de VerificaÃƒÂ§ÃƒÂ£o', 
+            headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'AÃƒÂ§ÃƒÂµes'],
             filterOptions: [] 
         }
     };
 
-    // FunÃ§Ã£o helper para obter configuraÃ§Ã£o da view com fallback seguro
+    // FunÃƒÂ§ÃƒÂ£o helper para obter configuraÃƒÂ§ÃƒÂ£o da view com fallback seguro
     function getViewConfig(view: View): ViewConfig {
         return viewConfig[view] || { title: 'Dashboard' };
     }
 
-    // FunÃ§Ã£o para verificar se a view Ã© vÃ¡lida
+    // FunÃƒÂ§ÃƒÂ£o para verificar se a view ÃƒÂ© vÃƒÂ¡lida
     function isValidView(view: string): view is View {
         return view in viewConfig;
     }
@@ -124,7 +128,7 @@
     async function fetchData() {
         isLoading = true;
 
-        if (activeView === 'properties' || activeView === 'brokers') {
+        if (activeView === 'properties' || activeView === 'brokers' || activeView === 'broker_requests') {
             headers = [];
             allData = [];
             totalItems = 0;
@@ -143,10 +147,10 @@
                 const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) throw new Error('Falha ao buscar estatÃ­sticas');
+                if (!response.ok) throw new Error('Falha ao buscar estatÃƒÂ­sticas');
                 stats = await response.json();
             } catch (error) {
-                console.error("Erro ao buscar estatÃ­sticas do dashboard:", error);
+                console.error("Erro ao buscar estatÃƒÂ­sticas do dashboard:", error);
                 stats = null;
             } finally {
                 isLoading = false;
@@ -161,13 +165,13 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (!response.ok) throw new Error('Falha ao buscar solicitaÃ§Ãµes pendentes');
+                if (!response.ok) throw new Error('Falha ao buscar solicitaÃƒÂ§ÃƒÂµes pendentes');
                 
                 const result = await response.json();
                 pendingBrokers = result.data || result;
                 
             } catch (error) {
-                console.error("Erro ao buscar solicitaÃ§Ãµes de verificaÃ§Ã£o:", error);
+                console.error("Erro ao buscar solicitaÃƒÂ§ÃƒÂµes de verificaÃƒÂ§ÃƒÂ£o:", error);
                 pendingBrokers = [];
             } finally {
                 isLoading = false;
@@ -198,7 +202,7 @@
             const response = await fetch(`${API_URL}${config.endpoint}?${params.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error('Falha na autenticaÃ§Ã£o');
+            if (!response.ok) throw new Error('Falha na autenticaÃƒÂ§ÃƒÂ£o');
             
             const result = await response.json();
             allData = result.data || result;
@@ -392,7 +396,7 @@
         editableItemData = {};
     }
 
-    // FunÃ§Ã£o para aprovar/rejeitar corretor
+    // FunÃƒÂ§ÃƒÂ£o para aprovar/rejeitar corretor
     async function handleVerification(event: CustomEvent<{ brokerId: number; status: 'approved' | 'rejected' }>) {
         const { brokerId, status } = event.detail;
         const token = localStorage.getItem('authToken');
@@ -406,7 +410,7 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (!response.ok) throw new Error('Falha na verificaÃ§Ã£o');
+            if (!response.ok) throw new Error('Falha na verificaÃƒÂ§ÃƒÂ£o');
             
             showSaveMessage(`Corretor ${status === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso!`, 'success');
             fetchData();
@@ -427,9 +431,9 @@
         fetchData();
     }
 
-    // âœ… Reatividade correta - separar os efeitos
+    // Ã¢Å“â€¦ Reatividade correta - separar os efeitos
     $: {
-        // Efeito para busca e ordenaÃ§Ã£o (com debounce)
+        // Efeito para busca e ordenaÃƒÂ§ÃƒÂ£o (com debounce)
         if (
             activeView !== 'properties' &&
             activeView !== 'brokers' &&
@@ -443,19 +447,19 @@
         }
     }
 
-    // âœ… Efeito separado para status filter (sem debounce)
+    // Ã¢Å“â€¦ Efeito separado para status filter (sem debounce)
     $: if (statusFilter !== '' && activeView !== 'properties' && activeView !== 'brokers') {
         currentPage = 1;
         fetchData();
     }
 
-    // âœ… Efeito separado para items per page
+    // Ã¢Å“â€¦ Efeito separado para items per page
     $: if (itemsPerPage !== 10 && activeView !== 'properties' && activeView !== 'brokers') {
         currentPage = 1;
         fetchData();
     }
 
-    // âœ… FunÃ§Ã£o especÃ­fica para status
+    // Ã¢Å“â€¦ FunÃƒÂ§ÃƒÂ£o especÃƒÂ­fica para status
     function setStatusFilter(status: string) {
         statusFilter = status;
         // Aplica imediatamente
@@ -479,47 +483,82 @@
                 <div class="flex justify-center items-center h-64">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
                 </div>
-            {:else if activeView === 'dashboard'}
-                <div class="space-y-6">
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        <KpiCard title="Total de Imoveis" value={stats?.totalProperties ?? 0} color="green" />
-                        <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
-                        <KpiCard title="Total de Clientes" value={stats?.totalUsers ?? 0} color="yellow" />
-                    </div>
-
-                    <section class="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                        <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-800">
-                            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Painel de desempenho</h2>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">
-                                Acompanhe a distribuicao por status e o volume de novos imoveis cadastrados.
-                            </p>
-                        </div>
-                        <div class="p-6">
-                            {#if isChartLoading}
-                                <div class="flex items-center gap-2 text-gray-500 dark:text-gray-300">
-                                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent dark:border-gray-600"></span>
-                                    Carregando graficos...
-                                </div>
-                            {:else if chartError}
-                                <p class="text-sm text-red-500">{chartError}</p>
-                            {:else if chartData}
-                                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                                    <StatusPieChart data={chartData.propertiesByStatus} />
-                                    <NewPropertiesLineChart data={chartData.newPropertiesOverTime} />
-                                </div>
-                            {:else}
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum dado de estatistica encontrado.</p>
-                            {/if}
-                        </div>
-                    </section>
-                </div>
-            
+            {:else if activeView === 'dashboard'}
+
+                <div class="space-y-6">
+
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+
+                        <KpiCard title="Total de Imoveis" value={stats?.totalProperties ?? 0} color="green" />
+
+                        <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
+
+                        <KpiCard title="Total de Clientes" value={stats?.totalUsers ?? 0} color="yellow" />
+
+                    </div>
+
+
+
+                    <section class="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+
+                        <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Painel de desempenho</h2>
+
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+
+                                Acompanhe a distribuicao por status e o volume de novos imoveis cadastrados.
+
+                            </p>
+
+                        </div>
+
+                        <div class="p-6">
+
+                            {#if isChartLoading}
+
+                                <div class="flex items-center gap-2 text-gray-500 dark:text-gray-300">
+
+                                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent dark:border-gray-600"></span>
+
+                                    Carregando graficos...
+
+                                </div>
+
+                            {:else if chartError}
+
+                                <p class="text-sm text-red-500">{chartError}</p>
+
+                            {:else if chartData}
+
+                                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+                                    <StatusPieChart data={chartData.propertiesByStatus} />
+
+                                    <NewPropertiesLineChart data={chartData.newPropertiesOverTime} />
+
+                                </div>
+
+                            {:else}
+
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum dado de estatistica encontrado.</p>
+
+                            {/if}
+
+                        </div>
+
+                    </section>
+
+                </div>
+
+            
+
 {:else if activeView === 'verification'}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">SolicitaÃ§Ãµes de VerificaÃ§Ã£o de Corretores</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">SolicitaÃƒÂ§ÃƒÂµes de VerificaÃƒÂ§ÃƒÂ£o de Corretores</h2>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {pendingBrokers.length} solicitaÃ§Ã£o(Ãµes) pendente(s)
+                            {pendingBrokers.length} solicitaÃƒÂ§ÃƒÂ£o(ÃƒÂµes) pendente(s)
                         </p>
                     </div>
                     
@@ -540,11 +579,13 @@
                 <PropertyManagement />
             {:else if activeView === 'brokers'}
                 <BrokerManagement />
+            {:else if activeView === 'broker_requests'}
+                <BrokerRequests />
             {:else if activeView === 'notifications'}
                 <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-                        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Centro de Notificações</h1>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuários específicos ou para todos os clientes da plataforma.</p>
+                        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Centro de NotificaÃ§Ãµes</h1>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuÃ¡rios especÃ­ficos ou para todos os clientes da plataforma.</p>
                     </div>
                     <div class="p-6">
                         <SendNotification />
@@ -569,7 +610,7 @@
                                     <span>Ordenar A-Z</span>
                                 {:else}
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/></svg>
-                                    <span>Ordem PadrÃ£o</span>
+                                    <span>Ordem PadrÃƒÂ£o</span>
                                 {/if}
                             </button>
                         </div>
@@ -611,9 +652,9 @@
 
 {#if showModal}
     <Modal onConfirm={handleDeleteConfirm} onCancel={() => showModal = false}>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar ExclusÃ£o</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar ExclusÃƒÂ£o</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 px-4 py-3">
-            VocÃª tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
+            VocÃƒÂª tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
         </p>
     </Modal>
 {/if}

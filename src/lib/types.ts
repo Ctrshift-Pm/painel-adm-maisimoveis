@@ -106,6 +106,7 @@ export type View =
   | 'dashboard'
   | 'properties'
   | 'brokers'
+  | 'broker_requests'
   | 'clients'
   | 'verification'
   | 'notifications';

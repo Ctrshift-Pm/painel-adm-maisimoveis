@@ -124,7 +124,11 @@
       }
 
       const payload = await response.json();
-      brokers = payload?.data ?? payload ?? [];
+      const data = payload?.data ?? payload ?? [];
+      brokers =
+        Array.isArray(data) ?
+          data.filter((broker) => (broker?.status ?? '').toLowerCase() !== 'pending_verification') :
+          [];
     } catch (err) {
       console.error('Erro ao buscar corretores:', err);
       error =

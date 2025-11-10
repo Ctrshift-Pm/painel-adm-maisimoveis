@@ -19,6 +19,18 @@
     broker_name?: string | null;
   }
 
+  function summaryFromProperty(property: Property | PropertySummary): PropertySummary {
+    return {
+      id: property.id,
+      title: property.title,
+      city: property.city ?? null,
+      state: property.state ?? null,
+      price: property.price ?? null,
+      status: property.status as PropertyStatus,
+      broker_name: property.broker_name ?? null,
+    };
+  }
+
   type SortConfig = {
     key: string;
     order: 'asc' | 'desc';
@@ -217,23 +229,27 @@
     };
   }
 
-  async function reviewProperty(propertySummary: PropertySummary) {
-    if (isFetchingDetails) {
-      return;
-    }
+  async function fetchFullPropertyDetails(propertyId: number) {
     isFetchingDetails = true;
-    pendingPropertyId = propertySummary.id;
+    pendingPropertyId = propertyId;
     try {
-      const details = await api.get<Property>(`/admin/properties/${propertySummary.id}`);
-      selectedProperty = buildPropertyDetails(details, propertySummary);
+      const details = await api.get<Property>(`/admin/properties/${propertyId}`);
+      if (selectedProperty && selectedProperty.id === propertyId) {
+        const fallback = summaryFromProperty(selectedProperty);
+        selectedProperty = buildPropertyDetails(details, fallback);
+      }
     } catch (err) {
-      console.error('Falha ao carregar detalhes do imovel:', err);
-      selectedProperty = buildPropertyDetails(null, propertySummary);
+      console.error('Falha ao buscar detalhes completos do imovel:', err);
     } finally {
       isFetchingDetails = false;
       pendingPropertyId = null;
-      drawerOpen = true;
     }
+  }
+
+  function reviewProperty(propertySummary: PropertySummary) {
+    selectedProperty = buildPropertyDetails(null, propertySummary);
+    drawerOpen = true;
+    fetchFullPropertyDetails(propertySummary.id);
   }
 
   function handleDrawerClose() {

@@ -12,7 +12,7 @@
 
     // Função para verificar se a view é válida
     function isValidView(view: string): view is View {
-        const validViews: View[] = ['dashboard', 'properties', 'brokers', 'clients', 'verification', 'notifications'];
+        const validViews: View[] = ['dashboard', 'properties', 'brokers', 'broker_requests', 'clients', 'verification', 'notifications'];
         return validViews.includes(view as View);
     }
 
@@ -52,6 +52,10 @@
         <button class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'brokers' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}" on:click={() => handleNavigation('brokers')}>
             <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
             Corretores
+        </button>
+        <button class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'broker_requests' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}" on:click={() => handleNavigation('broker_requests')}>
+            <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2h-1V3a1 1 0 00-1-1h-2a1 1 0 00-1 1v2H10V3a1 1 0 00-1-1H7a1 1 0 00-1 1v2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            Solicitações (Corretores)
         </button>
         <button class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'clients' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}" on:click={() => handleNavigation('clients')}>
             <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"></path></svg>
