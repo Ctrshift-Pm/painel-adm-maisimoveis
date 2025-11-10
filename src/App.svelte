@@ -2,7 +2,7 @@
   import { Router, Route } from 'svelte-routing';
   import Login from './lib/Login.svelte';
   import Dashboard from './lib/Dashboard.svelte';
-  import PropertyReviewPage from './lib/pages/PropertyReviewPage.svelte';
+  import { Toaster } from '$lib/components/ui/sonner';
   import { authToken, theme } from './lib/store';
 
   $: {
@@ -18,7 +18,6 @@
 <main class="h-full">
   {#if $authToken}
     <Router>
-      <Route path="/admin/imovel/:id" component={PropertyReviewPage} />
       <Route path="/admin/properties">
         <Dashboard initialView="properties" />
       </Route>
@@ -30,3 +29,5 @@
     <Login />
   {/if}
 </main>
+
+<Toaster />

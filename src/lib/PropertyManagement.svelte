@@ -1,11 +1,12 @@
 ﻿<script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { navigate } from 'svelte-routing';
   import { exportToCsv } from '$lib/utils/exportUtils';
+  import { api } from '$lib/apiClient';
+  import PropertyReviewDrawer from '$lib/components/PropertyReviewDrawer.svelte';
   import { baseURL } from './api';
   import { authToken } from './store';
-  import type { PropertyStatus } from './types';
+  import type { PropertyStatus, Property, PropertyImage } from './types';
 
   const API_BASE = `${baseURL}/admin`;
 
@@ -32,6 +33,10 @@
   let isLoading = false;
   let error: string | null = null;
   let statusFilter: '' | PropertyStatus = '';
+  let drawerOpen = false;
+  let selectedProperty: Property | null = null;
+  let isFetchingDetails = false;
+  let pendingPropertyId: number | null = null;
 
   onMount(() => {
     fetchProperties();
@@ -136,8 +141,97 @@
     );
   }
 
-  function reviewProperty(propertyId: number) {
-    navigate(`/admin/imovel/${propertyId}`);
+  function normalizeImages(images: unknown): PropertyImage[] {
+    if (!Array.isArray(images)) {
+      return [];
+    }
+
+    return images.map((image, index) => {
+      if (typeof image === 'string') {
+        return { id: index, url: image };
+      }
+      const maybe = image as Partial<PropertyImage>;
+      return {
+        id: Number(maybe?.id ?? index),
+        url: String(maybe?.url ?? ''),
+      };
+    });
+  }
+
+  function buildPropertyDetails(raw: Partial<Property> | null, fallback: PropertySummary): Property {
+    return {
+      id: Number(raw?.id ?? fallback.id),
+      title: String(raw?.title ?? fallback.title ?? 'Imovel'),
+      type: String(raw?.type ?? 'Nao informado'),
+      purpose: raw?.purpose ?? null,
+      status: (raw?.status as PropertyStatus) ?? fallback.status,
+      price: Number(
+        raw?.price ??
+          fallback.price ??
+          0
+      ),
+      description: raw?.description ?? null,
+      address: raw?.address ?? null,
+      quadra: raw?.quadra ?? null,
+      lote: raw?.lote ?? null,
+      numero: raw?.numero ?? null,
+      bairro: raw?.bairro ?? null,
+      complemento: raw?.complemento ?? null,
+      tipo_lote: raw?.tipo_lote ?? null,
+      city: raw?.city ?? fallback.city ?? null,
+      state: raw?.state ?? fallback.state ?? null,
+      bedrooms: raw?.bedrooms ?? null,
+      bathrooms: raw?.bathrooms ?? null,
+      area_construida: raw?.area_construida ?? null,
+      area_terreno: raw?.area_terreno ?? null,
+      garage_spots: raw?.garage_spots ?? null,
+      has_wifi: raw?.has_wifi ?? undefined,
+      tem_piscina: raw?.tem_piscina ?? undefined,
+      tem_energia_solar: raw?.tem_energia_solar ?? undefined,
+      tem_automacao: raw?.tem_automacao ?? undefined,
+      tem_ar_condicionado: raw?.tem_ar_condicionado ?? undefined,
+      eh_mobiliada: raw?.eh_mobiliada ?? undefined,
+      valor_condominio: raw?.valor_condominio ?? null,
+      valor_iptu: raw?.valor_iptu ?? null,
+      video_url: raw?.video_url ?? null,
+      sale_value: raw?.sale_value ?? null,
+      commission_value: raw?.commission_value ?? null,
+      commission_rate: raw?.commission_rate ?? null,
+      broker_id: raw?.broker_id ?? null,
+      broker_name: raw?.broker_name ?? fallback.broker_name ?? null,
+      broker_phone: raw?.broker_phone ?? null,
+      created_at: raw?.created_at ?? undefined,
+      updated_at: raw?.updated_at ?? undefined,
+      images: normalizeImages(raw?.images),
+    };
+  }
+
+  async function reviewProperty(propertySummary: PropertySummary) {
+    if (isFetchingDetails) {
+      return;
+    }
+    isFetchingDetails = true;
+    pendingPropertyId = propertySummary.id;
+    try {
+      const details = await api.get<Property>(`/admin/properties/${propertySummary.id}`);
+      selectedProperty = buildPropertyDetails(details, propertySummary);
+    } catch (err) {
+      console.error('Falha ao carregar detalhes do imovel:', err);
+      selectedProperty = buildPropertyDetails(null, propertySummary);
+    } finally {
+      isFetchingDetails = false;
+      pendingPropertyId = null;
+      drawerOpen = true;
+    }
+  }
+
+  function handleDrawerClose() {
+    drawerOpen = false;
+    selectedProperty = null;
+  }
+
+  async function handleDataUpdate() {
+    await fetchProperties();
   }
 
   function handleExport() {
@@ -229,7 +323,7 @@
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
           {#each properties as property}
-            <tr class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60" on:click={() => reviewProperty(property.id)}>
+            <tr class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60" on:click={() => reviewProperty(property)}>
               <td class="px-6 py-4">
                 <div class="font-semibold text-gray-900 dark:text-gray-100">{property.title}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">ID: {property.id}</div>
@@ -250,9 +344,13 @@
               </td>
               <td class="px-6 py-4">
                 <button
-                  class="inline-flex items-center justify-center gap-2 rounded-md border border-green-500 px-3 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-green-400 dark:text-green-200 dark:hover:bg-green-900/40"
-                  on:click|stopPropagation={() => reviewProperty(property.id)}
+                  class="inline-flex items-center justify-center gap-2 rounded-md border border-green-500 px-3 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-green-400 dark:text-green-200 dark:hover:bg-green-900/40"
+                  on:click|stopPropagation={() => reviewProperty(property)}
+                  disabled={isFetchingDetails && pendingPropertyId === property.id}
                 >
+                  {#if isFetchingDetails && pendingPropertyId === property.id}
+                    <span class="h-3 w-3 animate-spin rounded-full border border-green-500 border-t-transparent"></span>
+                  {/if}
                   Revisar
                 </button>
               </td>
@@ -263,3 +361,10 @@
     </div>
   {/if}
 </div>
+
+<PropertyReviewDrawer
+  bind:open={drawerOpen}
+  property={selectedProperty}
+  on:update={handleDataUpdate}
+  on:close={handleDrawerClose}
+/>

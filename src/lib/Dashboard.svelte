@@ -10,6 +10,8 @@
     import PropertyManagement from './PropertyManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
     import SendNotification from './components/SendNotification.svelte';
+    import StatusPieChart from './components/charts/StatusPieChart.svelte';
+    import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
     import { navigate } from 'svelte-routing';
     import { baseURL } from './api';
     import { authToken } from './store';
@@ -53,6 +55,14 @@
         totalUsers: number;
     }
     let stats: Stats | null = null;
+
+    interface DashboardChartData {
+        propertiesByStatus: { status: string; count: number }[];
+        newPropertiesOverTime: { date: string; count: number }[];
+    }
+    let chartData: DashboardChartData | null = null;
+    let isChartLoading = false;
+    let chartError: string | null = null;
 
     // Estado para dados de verificaÃ§Ã£o
     let pendingBrokers: Broker[] = [];
@@ -202,6 +212,55 @@
         }
     }
 
+    async function fetchChartData() {
+        isChartLoading = true;
+        chartError = null;
+
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            authToken.set(null);
+            isChartLoading = false;
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/admin/stats/dashboard`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Falha ao buscar estatisticas.');
+            }
+
+            const payload = await response.json();
+            const propertiesByStatus = Array.isArray(payload?.propertiesByStatus)
+                ? payload.propertiesByStatus.map((item: any) => ({
+                    status: String(item?.status ?? 'desconhecido'),
+                    count: Number(item?.count ?? 0),
+                }))
+                : [];
+
+            const newPropertiesOverTime = Array.isArray(payload?.newPropertiesOverTime)
+                ? payload.newPropertiesOverTime.map((item: any) => ({
+                    date: String(item?.date ?? ''),
+                    count: Number(item?.count ?? 0),
+                }))
+                : [];
+
+            chartData = {
+                propertiesByStatus,
+                newPropertiesOverTime,
+            };
+        } catch (error) {
+            console.error('Erro ao buscar estatisticas do dashboard:', error);
+            chartError = 'Nao foi possivel carregar os graficos.';
+            chartData = null;
+        } finally {
+            isChartLoading = false;
+        }
+    }
+
     function changeView(newView: View) {
         if (!isValidView(newView)) {
             console.error('Invalid view: ' + newView);
@@ -226,6 +285,9 @@
         sortBy = 'id';
         sortOrder = 'desc';
         fetchData();
+        if (newView === 'dashboard') {
+            fetchChartData();
+        }
     }
 
     function handleSortToggle() {
@@ -357,6 +419,7 @@
 
     onMount(() => {
         fetchData();
+        fetchChartData();
     });
 
     function applyFilters() {
@@ -416,13 +479,42 @@
                 <div class="flex justify-center items-center h-64">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
                 </div>
-            {:else if activeView === 'dashboard'}
-                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <KpiCard title="Total de ImÃ³veis" value={stats?.totalProperties ?? 0} color="green" />
-                    <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
-                    <KpiCard title="Total de Clientes" value={stats?.totalUsers ?? 0} color="yellow" />
-                </div>
-            {:else if activeView === 'verification'}
+            {:else if activeView === 'dashboard'}
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        <KpiCard title="Total de Imoveis" value={stats?.totalProperties ?? 0} color="green" />
+                        <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
+                        <KpiCard title="Total de Clientes" value={stats?.totalUsers ?? 0} color="yellow" />
+                    </div>
+
+                    <section class="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                        <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Painel de desempenho</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                Acompanhe a distribuicao por status e o volume de novos imoveis cadastrados.
+                            </p>
+                        </div>
+                        <div class="p-6">
+                            {#if isChartLoading}
+                                <div class="flex items-center gap-2 text-gray-500 dark:text-gray-300">
+                                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent dark:border-gray-600"></span>
+                                    Carregando graficos...
+                                </div>
+                            {:else if chartError}
+                                <p class="text-sm text-red-500">{chartError}</p>
+                            {:else if chartData}
+                                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                                    <StatusPieChart data={chartData.propertiesByStatus} />
+                                    <NewPropertiesLineChart data={chartData.newPropertiesOverTime} />
+                                </div>
+                            {:else}
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum dado de estatistica encontrado.</p>
+                            {/if}
+                        </div>
+                    </section>
+                </div>
+            
+{:else if activeView === 'verification'}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700">
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">SolicitaÃ§Ãµes de VerificaÃ§Ã£o de Corretores</h2>
