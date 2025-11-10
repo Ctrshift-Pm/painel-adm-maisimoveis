@@ -1,13 +1,15 @@
 ﻿<script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { navigate } from 'svelte-routing';
+  import { toast } from 'svelte-sonner';
+  import { Loader2 } from 'lucide-svelte';
+  import * as Dialog from '$lib/components/ui/dialog';
   import { exportToCsv } from '$lib/utils/exportUtils';
   import { api } from '$lib/apiClient';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
   import { authToken } from './store';
-  import type { PropertyStatus } from './types';
+  import type { PropertyStatus, PropertyImage as PropertyImageType } from './types';
 
   interface PropertySummary {
     id: number;
@@ -18,6 +20,22 @@
     status: PropertyStatus;
     broker_name?: string | null;
   }
+
+  type NormalizedImage = PropertyImageType;
+
+  type PropertyDetails = PropertySummary & {
+    description?: string | null;
+    purpose?: string | null;
+    address?: string | null;
+    quadra?: string | null;
+    lote?: string | null;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    area_construida?: number | null;
+    area_terreno?: number | null;
+    broker_phone?: string | null;
+    images?: Array<NormalizedImage | PropertyImageType | string> | null;
+  };
 
   type SortConfig = {
     key: string;
@@ -40,6 +58,10 @@
   let selectedStatus = 'all';
   let selectedCity = 'all';
   let sortConfig: SortConfig = { key: 'p.created_at', order: 'desc' };
+  let isModalOpen = false;
+  let selectedProperty: PropertyDetails | null = null;
+  let isDetailLoading = false;
+  let isProcessing = false;
 
   onMount(() => {
     fetchProperties();
@@ -122,6 +144,37 @@
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  function normalizeImages(
+    images?: Array<NormalizedImage | PropertyImageType | string> | null
+  ): NormalizedImage[] {
+    if (!images) return [];
+
+    return images
+      .map<NormalizedImage | null>((image, index) => {
+        if (typeof image === 'string') {
+          return { id: index, url: image };
+        }
+        if (image && typeof image === 'object' && 'url' in image && typeof image.url === 'string') {
+          const fallbackId = Number.isFinite(Number(index)) ? index : 0;
+          const rawId =
+            (image as PropertyImageType).id ??
+            (image as NormalizedImage).id ??
+            fallbackId;
+          const parsedId = Number(rawId);
+          return {
+            id: Number.isFinite(parsedId) ? parsedId : index,
+            url: image.url,
+          };
+        }
+        return null;
+      })
+      .filter((img): img is NormalizedImage => Boolean(img));
+  }
+
+  function selectedPropertyImages() {
+    return normalizeImages(selectedProperty?.images ?? null);
+  }
+
   function humanizeStatus(status: PropertyStatus): string {
     const map: Record<PropertyStatus, string> = {
       pending_approval: 'Pendente de aprovação',
@@ -148,9 +201,49 @@
     );
   }
 
-  function reviewProperty(propertyId: number, event?: Event) {
-    event?.stopPropagation();
-    navigate(`/admin/imovel/${propertyId}`);
+  async function reviewProperty(property: PropertySummary, event?: Event) {
+    event?.stopPropagation?.();
+    if (isDetailLoading && selectedProperty?.id === property.id) {
+      return;
+    }
+
+    isDetailLoading = true;
+    selectedProperty = property;
+
+    try {
+      const details = await api.get<PropertyDetails>(`/admin/properties/${property.id}`);
+      selectedProperty = { ...property, ...details };
+      isModalOpen = true;
+    } catch (err) {
+      console.error('Falha ao buscar detalhes do imóvel:', err);
+      toast.error('Não foi possível carregar os detalhes do imóvel.');
+    } finally {
+      isDetailLoading = false;
+    }
+  }
+
+  function closeModal() {
+    if (isProcessing) return;
+    isModalOpen = false;
+    selectedProperty = null;
+  }
+
+  async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
+    if (!selectedProperty) return;
+
+    isProcessing = true;
+    try {
+      await api.patch(`/admin/properties/${selectedProperty.id}/status`, { status: newStatus });
+      toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`);
+      isModalOpen = false;
+      selectedProperty = null;
+      await fetchProperties();
+    } catch (err) {
+      console.error('Falha ao atualizar status do imóvel:', err);
+      toast.error('Falha ao atualizar o status.');
+    } finally {
+      isProcessing = false;
+    }
   }
 
   function handleSort(column: string) {
@@ -301,7 +394,10 @@
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
           {#each properties as property}
-            <tr class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60" on:click={() => reviewProperty(property.id)}>
+            <tr
+              class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
+              on:click={(event) => reviewProperty(property, event)}
+            >
               <td class="px-6 py-4">
                 <div class="font-semibold text-gray-900 dark:text-gray-100">{property.title}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">ID: {property.id}</div>
@@ -325,9 +421,15 @@
                   variant="outline"
                   size="sm"
                   className="border-green-500 text-green-700 hover:bg-green-50 dark:border-green-400 dark:text-green-200 dark:hover:bg-green-900/40"
-                  on:click={(event) => reviewProperty(property.id, event)}
+                  on:click={(event) => reviewProperty(property, event)}
+                  disabled={isDetailLoading && selectedProperty?.id === property.id}
                 >
-                  Revisar
+                  {#if isDetailLoading && selectedProperty?.id === property.id}
+                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                    Carregando...
+                  {:else}
+                    Revisar
+                  {/if}
                 </Button>
               </td>
             </tr>
@@ -337,3 +439,91 @@
     </div>
   {/if}
 </div>
+
+<Dialog.Root bind:open={isModalOpen}>
+  <Dialog.Content className="max-h-[85vh] overflow-hidden">
+    {#if selectedProperty}
+      <Dialog.Header>
+        <Dialog.Title>{selectedProperty.title}</Dialog.Title>
+        <Dialog.Description>
+          Status:
+          <span class={`ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadgeClasses(selectedProperty.status)}`}>
+            {humanizeStatus(selectedProperty.status)}
+          </span>
+        </Dialog.Description>
+      </Dialog.Header>
+
+      <div class="space-y-4 overflow-y-auto px-6 py-4">
+        <p class="text-3xl font-bold text-green-600 dark:text-green-400">
+          {formatCurrency(selectedProperty.price)}
+        </p>
+
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
+          {#if selectedPropertyImages().length > 0}
+            <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
+              {#each selectedPropertyImages() as image (image.id)}
+                <img
+                  src={image.url}
+                  alt="Foto do imóvel"
+                  class="h-32 w-auto rounded-md object-cover shadow"
+                  loading="lazy"
+                />
+              {/each}
+            </div>
+          {:else}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
+          {/if}
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descrição</h3>
+          <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+            {selectedProperty.description ?? 'Sem descrição.'}
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Detalhes</h3>
+          <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
+            <li><strong>Finalidade:</strong> {selectedProperty.purpose ?? '-'}</li>
+            <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
+            <li><strong>Estado:</strong> {selectedProperty.state ?? '-'}</li>
+            <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
+            <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
+            <li><strong>Área construída:</strong> {selectedProperty.area_construida ?? '-'} m²</li>
+            <li><strong>Área terreno:</strong> {selectedProperty.area_terreno ?? '-'} m²</li>
+            <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
+            <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
+          </ul>
+        </div>
+      </div>
+
+      <Dialog.Footer>
+        <Button variant="outline" on:click={closeModal} disabled={isProcessing}>
+          Cancelar
+        </Button>
+        {#if selectedProperty.status !== 'rejected'}
+          <Button variant="destructive" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
+            {#if isProcessing}
+              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+            {/if}
+            Rejeitar
+          </Button>
+        {/if}
+        {#if selectedProperty.status !== 'approved'}
+          <Button
+            className="bg-green-600 text-white hover:bg-green-700"
+            on:click={() => handleStatusUpdate('approved')}
+            disabled={isProcessing}
+          >
+            {#if isProcessing}
+              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+            {/if}
+            Aprovar
+          </Button>
+        {/if}
+      </Dialog.Footer>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>
