@@ -4,11 +4,10 @@
   import { exportToCsv } from '$lib/utils/exportUtils';
   import { api } from '$lib/apiClient';
   import PropertyReviewDrawer from '$lib/components/PropertyReviewDrawer.svelte';
-  import { baseURL } from './api';
+  import { Button } from '$lib/components/ui/button';
+  import * as Select from '$lib/components/ui/select';
   import { authToken } from './store';
   import type { PropertyStatus, Property, PropertyImage } from './types';
-
-  const API_BASE = `${baseURL}/admin`;
 
   interface PropertySummary {
     id: number;
@@ -20,19 +19,27 @@
     broker_name?: string | null;
   }
 
-  const STATUS_OPTIONS: { value: '' | PropertyStatus; label: string }[] = [
-    { value: '', label: 'Todos os status' },
+  type SortConfig = {
+    key: string;
+    order: 'asc' | 'desc';
+  };
+
+  const STATUS_FILTERS: { value: string; label: string }[] = [
+    { value: 'all', label: 'Todos os status' },
     { value: 'pending_approval', label: 'Pendente de aprovação' },
     { value: 'approved', label: 'Aprovado' },
     { value: 'rejected', label: 'Rejeitado' },
     { value: 'rented', label: 'Alugado' },
-    { value: 'sold', label: 'Vendido' }
+    { value: 'sold', label: 'Vendido' },
   ];
 
   let properties: PropertySummary[] = [];
   let isLoading = false;
   let error: string | null = null;
-  let statusFilter: '' | PropertyStatus = '';
+  let cities: string[] = [];
+  let selectedStatus = 'all';
+  let selectedCity = 'all';
+  let sortConfig: SortConfig = { key: 'p.created_at', order: 'desc' };
   let drawerOpen = false;
   let selectedProperty: Property | null = null;
   let isFetchingDetails = false;
@@ -40,6 +47,7 @@
 
   onMount(() => {
     fetchProperties();
+    fetchCities();
   });
 
   async function fetchProperties() {
@@ -55,26 +63,21 @@
 
     try {
       const params = new URLSearchParams();
-      if (statusFilter) {
-        params.set('status', statusFilter);
+      if (selectedStatus !== 'all') {
+        params.set('status', selectedStatus);
       }
+      if (selectedCity !== 'all') {
+        params.set('city', selectedCity);
+      }
+      params.set('sortBy', sortConfig.key);
+      params.set('sortOrder', sortConfig.order);
 
-      const response = await fetch(
-        `${API_BASE}/properties-with-brokers${params.toString() ? `?${params.toString()}` : ''}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const query = params.toString();
+      const response = await api.get<{ data: Array<Record<string, unknown>> }>(
+        `/admin/properties-with-brokers${query ? `?${query}` : ''}`
       );
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error ?? 'Não foi possível carregar os imóveis.');
-      }
-
-      const payload = await response.json();
-      const raw = (payload?.data ?? payload ?? []) as Array<Record<string, unknown>>;
+      const raw = (response?.data ?? response ?? []) as Array<Record<string, unknown>>;
 
       properties = raw
         .map((item) => {
@@ -105,9 +108,17 @@
     }
   }
 
-  function handleFilterChange(event: Event) {
-    statusFilter = (event.target as HTMLSelectElement).value as '' | PropertyStatus;
-    fetchProperties();
+  async function fetchCities() {
+    try {
+      const response = await api.get<{ data?: string[] } | string[]>(`/properties/public/cities`, {
+        skipAuth: true,
+      });
+      const list = Array.isArray(response) ? response : response?.data;
+      cities = Array.isArray(list) ? list : [];
+    } catch (err) {
+      console.error('Erro ao buscar cidades:', err);
+      cities = [];
+    }
   }
 
   function formatCurrency(value?: number | null): string {
@@ -234,8 +245,37 @@
     await fetchProperties();
   }
 
+  function handleSort(column: string) {
+    if (sortConfig.key === column) {
+      sortConfig = {
+        ...sortConfig,
+        order: sortConfig.order === 'asc' ? 'desc' : 'asc',
+      };
+    } else {
+      sortConfig = { key: column, order: 'desc' };
+    }
+    fetchProperties();
+  }
+
+  function getSortIndicator(column: string) {
+    if (sortConfig.key !== column) {
+      return '';
+    }
+    return sortConfig.order === 'asc' ? '▲' : '▼';
+  }
+
+  function handleStatusChange(event: CustomEvent<string>) {
+    selectedStatus = event.detail;
+    fetchProperties();
+  }
+
+  function handleCityChange(event: CustomEvent<string>) {
+    selectedCity = event.detail;
+    fetchProperties();
+  }
+
   function handleExport() {
-    exportToCsv(properties, 'imoveis.csv');
+    exportToCsv(properties, `imoveis_${new Date().toISOString().split('T')[0]}.csv`);
   }
 </script>
 
@@ -244,54 +284,64 @@
     <div>
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Gerenciamento de Imóveis</h1>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        Consulte os imóveis cadastrados e acesse a página dedicada para aprovar ou rejeitar cada solicitação.
+        Consulte os imóveis cadastrados e utilize filtros rápidos para priorizar as análises.
       </p>
     </div>
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <select
-        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        bind:value={statusFilter}
-        on:change={handleFilterChange}
-      >
-        {#each STATUS_OPTIONS as option}
-          <option value={option.value}>{option.label}</option>
-        {/each}
-      </select>
-      <div class="flex items-center gap-2">
-        <button
-          class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-          on:click={fetchProperties}
-          disabled={isLoading}
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <Button variant="outline" on:click={fetchProperties} disabled={isLoading}>
+        Atualizar
+      </Button>
+      <Button variant="outline" on:click={handleExport}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="mr-2 h-4 w-4"
+          aria-hidden="true"
         >
-          Atualizar
-        </button>
-        <button
-          class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-          on:click={handleExport}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="mr-2 h-4 w-4"
-            aria-hidden="true"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Exportar Imoveis (CSV)
-        </button>
-      </div>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Exportar Imóveis (CSV)
+      </Button>
     </div>
   </header>
 
+  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div class="relative">
+      <Select.Root bind:value={selectedStatus} on:valueChange={handleStatusChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Filtrar por status" />
+        </Select.Trigger>
+        <Select.Content>
+          {#each STATUS_FILTERS as option}
+            <Select.Item value={option.value}>{option.label}</Select.Item>
+          {/each}
+        </Select.Content>
+      </Select.Root>
+    </div>
+
+    <div class="relative">
+      <Select.Root bind:value={selectedCity} on:valueChange={handleCityChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Filtrar por cidade" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="all">Todas as cidades</Select.Item>
+          {#each cities as city (city)}
+            <Select.Item value={city}>{city}</Select.Item>
+          {/each}
+        </Select.Content>
+      </Select.Root>
+    </div>
+  </div>
   {#if isLoading}
     <div class="flex h-48 items-center justify-center rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div class="flex items-center gap-3 text-gray-600 dark:text-gray-300">
@@ -313,10 +363,30 @@
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
         <thead class="bg-gray-50 dark:bg-gray-900/70">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Imóvel</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Localização</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Valor</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('p.title')}>
+                Imóvel
+                <span>{getSortIndicator('p.title')}</span>
+              </button>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('p.city')}>
+                Localização
+                <span>{getSortIndicator('p.city')}</span>
+              </button>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('p.price')}>
+                Valor
+                <span>{getSortIndicator('p.price')}</span>
+              </button>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('p.status')}>
+                Status
+                <span>{getSortIndicator('p.status')}</span>
+              </button>
+            </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Corretor</th>
             <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ações</th>
           </tr>
@@ -342,17 +412,22 @@
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                 {property.broker_name ?? '—'}
               </td>
-              <td class="px-6 py-4">
-                <button
-                  class="inline-flex items-center justify-center gap-2 rounded-md border border-green-500 px-3 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-green-400 dark:text-green-200 dark:hover:bg-green-900/40"
-                  on:click|stopPropagation={() => reviewProperty(property)}
+              <td class="px-6 py-4 text-right">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-green-500 text-green-700 hover:bg-green-50 dark:border-green-400 dark:text-green-200 dark:hover:bg-green-900/40"
+                  on:click={(event: Event) => {
+                    event.stopPropagation();
+                    reviewProperty(property);
+                  }}
                   disabled={isFetchingDetails && pendingPropertyId === property.id}
                 >
                   {#if isFetchingDetails && pendingPropertyId === property.id}
-                    <span class="h-3 w-3 animate-spin rounded-full border border-green-500 border-t-transparent"></span>
+                    <span class="mr-2 h-3 w-3 animate-spin rounded-full border border-green-500 border-t-transparent"></span>
                   {/if}
                   Revisar
-                </button>
+                </Button>
               </td>
             </tr>
           {/each}
