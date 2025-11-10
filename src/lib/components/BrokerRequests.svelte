@@ -13,7 +13,7 @@
   async function fetchRequests() {
     isLoading = true;
     try {
-      const response = await api.get<{ data?: Broker[] } | Broker[]>('/admin/brokers/pending');
+      const response = await api.get<{ data?: Broker[] } | Broker[]>(`/admin/brokers?status=pending_verification`);
       const list = Array.isArray(response) ? response : response?.data;
       requests = Array.isArray(list) ? list : [];
     } catch (error) {
@@ -27,12 +27,11 @@
 
   onMount(fetchRequests);
 
-  async function handleStatusUpdate(brokerId: number, action: 'approve' | 'reject') {
+  async function handleStatusUpdate(brokerId: number, newStatus: 'approved' | 'rejected') {
     processing = { ...processing, [brokerId]: true };
     try {
-      const endpoint = `/admin/brokers/${brokerId}/${action}`;
-      await api.patch(endpoint, {});
-      toast.success(`Corretor ${action === 'approve' ? 'aprovado' : 'rejeitado'} com sucesso.`);
+      await api.patch(`/admin/brokers/${brokerId}/status`, { status: newStatus });
+      toast.success(`Corretor ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso.`);
       requests = requests.filter((broker) => broker.id !== brokerId);
     } catch (error) {
       console.error('Erro ao atualizar status do corretor:', error);
@@ -105,7 +104,7 @@
                   <Button
                     variant="destructive"
                     size="sm"
-                    on:click={() => handleStatusUpdate(broker.id, 'reject')}
+                    on:click={() => handleStatusUpdate(broker.id, 'rejected')}
                     disabled={processing[broker.id]}
                   >
                     {#if processing[broker.id]}
@@ -117,7 +116,7 @@
                     variant="outline"
                     size="sm"
                     className="bg-green-600 text-white hover:bg-green-700"
-                    on:click={() => handleStatusUpdate(broker.id, 'approve')}
+                    on:click={() => handleStatusUpdate(broker.id, 'approved')}
                     disabled={processing[broker.id]}
                   >
                     {#if processing[broker.id]}

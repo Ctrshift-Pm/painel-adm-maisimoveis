@@ -2,11 +2,9 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { exportToCsv } from '$lib/utils/exportUtils';
-  import { baseURL } from './api';
+  import { api } from '$lib/apiClient';
   import { authToken } from './store';
   import type { Broker, BrokerDocuments, Property } from './types';
-
-  const API_BASE = `${baseURL}/admin`;
 
   let brokers: Broker[] = [];
   let isLoading = false;
@@ -112,23 +110,9 @@
     }
 
     try {
-      const response = await fetch(`${API_BASE}/brokers`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Não foi possível carregar os corretores.');
-      }
-
-      const payload = await response.json();
-      const data = payload?.data ?? payload ?? [];
-      brokers =
-        Array.isArray(data) ?
-          data.filter((broker) => (broker?.status ?? '').toLowerCase() !== 'pending_verification') :
-          [];
+      const response = await api.get<{ data?: Broker[] } | Broker[]>(`/admin/brokers?status=approved`);
+      const data = Array.isArray(response) ? response : response?.data;
+      brokers = Array.isArray(data) ? data : [];
     } catch (err) {
       console.error('Erro ao buscar corretores:', err);
       error =
@@ -141,8 +125,7 @@
   }
 
   async function updateBrokerStatus(broker: Broker, action: 'approve' | 'reject') {
-    const token = get(authToken);
-    if (!token) {
+    if (!get(authToken)) {
       showFeedback('error', 'Sessão expirada. Faça login novamente.');
       return;
     }
@@ -150,17 +133,9 @@
     actionBrokerId = broker.id;
 
     try {
-      const response = await fetch(`${API_BASE}/brokers/${broker.id}/${action}`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      await api.patch(`/admin/brokers/${broker.id}/status`, {
+        status: action === 'approve' ? 'approved' : 'rejected'
       });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Não foi possível atualizar o corretor.');
-      }
 
       showFeedback(
         'success',
@@ -204,8 +179,7 @@
   }
 
   async function openPropertiesModal(broker: Broker) {
-    const token = get(authToken);
-    if (!token) {
+    if (!get(authToken)) {
       showFeedback('error', 'Sessão expirada. Faça login novamente.');
       return;
     }
@@ -217,19 +191,11 @@
     brokerProperties = [];
 
     try {
-      const response = await fetch(`${API_BASE}/brokers/${broker.id}/properties`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Não foi possível carregar os imóveis do corretor.');
-      }
-
-      const payload = await response.json();
-      brokerProperties = payload?.data ?? payload ?? [];
+      const payload = await api.get<{ data?: Property[] } | Property[]>(
+        `/admin/brokers/${broker.id}/properties`
+      );
+      const data = Array.isArray(payload) ? payload : payload?.data;
+      brokerProperties = Array.isArray(data) ? data : [];
     } catch (err) {
       console.error('Erro ao carregar imóveis do corretor:', err);
       propertiesError =
