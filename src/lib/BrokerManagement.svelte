@@ -3,6 +3,7 @@
   import { get } from 'svelte/store';
   import { exportToCsv } from '$lib/utils/exportUtils';
   import { api } from '$lib/apiClient';
+  import { Input } from '$lib/components/ui/input';
   import { authToken } from './store';
   import type { Broker, BrokerDocuments, Property } from './types';
 
@@ -22,6 +23,8 @@
   let propertiesLoading = false;
   let propertiesError: string | null = null;
   let propertiesModalTitle = '';
+  let searchTerm = '';
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   const DOCUMENT_TILES: ReadonlyArray<{ key: keyof BrokerDocuments; label: string }> = [
     { key: 'creci_front_url', label: 'Frente do CRECI' },
@@ -110,7 +113,16 @@
     }
 
     try {
-      const response = await api.get<{ data?: Broker[] } | Broker[]>(`/admin/brokers?status=approved`);
+      const params = new URLSearchParams();
+      params.set('status', 'approved');
+      const trimmedSearch = searchTerm.trim();
+      if (trimmedSearch) {
+        params.set('search', trimmedSearch);
+      }
+
+      const response = await api.get<{ data?: Broker[] } | Broker[]>(
+        `/admin/brokers?${params.toString()}`
+      );
       const data = Array.isArray(response) ? response : response?.data;
       brokers = Array.isArray(data) ? data : [];
     } catch (err) {
@@ -225,13 +237,22 @@
     fetchBrokers();
   });
 
+  function handleSearchInput() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      fetchBrokers();
+    }, 500);
+  }
+
   function handleExport() {
     exportToCsv(brokers, 'corretores.csv');
   }
 </script>
 
 <section class="space-y-6">
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
       <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Gestão de Corretores</h2>
       <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -239,6 +260,13 @@
       </p>
     </div>
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <Input
+        className="w-full sm:w-64"
+        type="search"
+        placeholder="Buscar por nome, email ou CRECI..."
+        bind:value={searchTerm}
+        on:input={handleSearchInput}
+      />
       <button
         class="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60"
         on:click={fetchBrokers}

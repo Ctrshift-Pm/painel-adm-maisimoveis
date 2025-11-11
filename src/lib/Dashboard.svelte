@@ -8,7 +8,7 @@
     import KpiCard from './KpiCard.svelte';
     import VerificationTable from './VerificationTable.svelte';
     import PropertyManagement from './PropertyManagement.svelte';
-    import ClientManagement from './components/ClientManagement.svelte';
+    import ClientManagement from '../lib/components/ClientManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
     import BrokerRequests from './components/BrokerRequests.svelte';
     import PropertyRequests from './components/PropertyRequests.svelte';

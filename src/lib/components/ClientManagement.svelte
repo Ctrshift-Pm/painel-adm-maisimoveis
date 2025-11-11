@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
   import { api } from '$lib/apiClient';
   import { exportToCsv } from '$lib/utils/exportUtils';
 
@@ -15,13 +16,23 @@
   let clients: Client[] = [];
   let isLoading = true;
   let error = '';
+  let searchTerm = '';
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function fetchClients() {
     isLoading = true;
     error = '';
 
     try {
-      const response = await api.get<{ data?: Client[] } | Client[]>('/admin/users');
+      const params = new URLSearchParams();
+      const trimmedSearch = searchTerm.trim();
+      if (trimmedSearch) {
+        params.set('search', trimmedSearch);
+      }
+
+      const response = await api.get<{ data?: Client[] } | Client[]>(
+        params.size > 0 ? `/admin/users?${params.toString()}` : '/admin/users'
+      );
       const list = Array.isArray(response) ? response : response?.data;
       clients = Array.isArray(list) ? list : [];
     } catch (err) {
@@ -38,20 +49,12 @@
   function formatDate(value?: string) {
     if (!value) return '-';
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
   function handleExport() {
-    if (!clients.length) {
-      return;
-    }
+    if (!clients.length) return;
 
     const dataToExport = clients.map((client) => ({
       id: client.id,
@@ -63,36 +66,54 @@
 
     exportToCsv(dataToExport, 'clientes.csv');
   }
+
+  function handleSearchInput() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      fetchClients();
+    }, 500);
+  }
 </script>
 
 <section class="space-y-4">
-  <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
       <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Gestão de Clientes</h2>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        Consulte e exporte os clientes cadastrados na plataforma.
+        Consulte, filtre e exporte os clientes cadastrados na plataforma.
       </p>
     </div>
-    <Button variant="outline" on:click={handleExport} disabled={clients.length === 0 || isLoading}>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="mr-2 h-4 w-4"
-        aria-hidden="true"
-      >
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="7 10 12 15 17 10" />
-        <line x1="12" y1="15" x2="12" y2="3" />
-      </svg>
-      Exportar Clientes (CSV)
-    </Button>
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <Input
+        className="w-full sm:w-64"
+        type="search"
+        placeholder="Buscar por nome ou email..."
+        bind:value={searchTerm}
+        on:input={handleSearchInput}
+      />
+      <Button variant="outline" on:click={handleExport} disabled={clients.length === 0 || isLoading}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="mr-2 h-4 w-4"
+          aria-hidden="true"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Exportar Clientes (CSV)
+      </Button>
+    </div>
   </header>
 
   {#if isLoading}
