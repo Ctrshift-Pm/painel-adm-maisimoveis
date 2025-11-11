@@ -116,7 +116,6 @@
 
     try {
       const params = new URLSearchParams();
-      params.set('status', 'approved');
       const trimmedSearch = searchTerm.trim();
       if (trimmedSearch) {
         params.set('search', trimmedSearch);
@@ -340,17 +339,15 @@
               </td>
               <td class="px-6 py-4">
                 <div class="flex flex-col items-end gap-2 sm:flex-row">
-                  {#if broker.status === 'pending_verification'}
-                    <button
-                      class="inline-flex items-center justify-center gap-2 rounded-md border border-yellow-500 px-3 py-1.5 text-xs font-medium text-yellow-700 transition-colors hover:bg-yellow-50 dark:border-yellow-400 dark:text-yellow-200 dark:hover:bg-yellow-900/40"
-                      on:click={(event) => reviewBroker(broker, event)}
-                    >
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Revisar
-                    </button>
-                  {/if}
+                  <button
+                    class="inline-flex items-center justify-center gap-2 rounded-md border border-yellow-500 px-3 py-1.5 text-xs font-medium text-yellow-700 transition-colors hover:bg-yellow-50 dark:border-yellow-400 dark:text-yellow-200 dark:hover:bg-yellow-900/40"
+                    on:click={(event) => reviewBroker(broker, event)}
+                  >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Revisar
+                  </button>
                   <button
                     class="inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
                     on:click={() => openDocumentModal(broker)}
