@@ -8,6 +8,7 @@
     import KpiCard from './KpiCard.svelte';
     import VerificationTable from './VerificationTable.svelte';
     import PropertyManagement from './PropertyManagement.svelte';
+    import ClientManagement from './components/ClientManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
     import BrokerRequests from './components/BrokerRequests.svelte';
     import PropertyRequests from './components/PropertyRequests.svelte';
@@ -587,6 +588,8 @@
                 <BrokerManagement />
             {:else if activeView === 'broker_requests'}
                 <BrokerRequests />
+            {:else if activeView === 'clients'}
+                <ClientManagement />
             {:else if activeView === 'notifications'}
                 <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">

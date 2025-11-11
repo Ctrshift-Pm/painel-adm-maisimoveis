@@ -4,11 +4,13 @@
   import { Loader2 } from 'lucide-svelte';
   import { api } from '$lib/apiClient';
   import { Button } from '$lib/components/ui/button';
+  import BrokerReviewModal from '$lib/components/BrokerReviewModal.svelte';
   import type { Broker } from '$lib/types';
 
   let requests: Broker[] = [];
   let isLoading = true;
-  let processing: Record<number, boolean> = {};
+  let isModalOpen = false;
+  let selectedBroker: Broker | null = null;
 
   async function fetchRequests() {
     isLoading = true;
@@ -27,18 +29,9 @@
 
   onMount(fetchRequests);
 
-  async function handleStatusUpdate(brokerId: number, newStatus: 'approved' | 'rejected') {
-    processing = { ...processing, [brokerId]: true };
-    try {
-      await api.patch(`/admin/brokers/${brokerId}/status`, { status: newStatus });
-      toast.success(`Corretor ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso.`);
-      requests = requests.filter((broker) => broker.id !== brokerId);
-    } catch (error) {
-      console.error('Erro ao atualizar status do corretor:', error);
-      toast.error('Falha ao atualizar o status. Tente novamente.');
-    } finally {
-      processing = { ...processing, [brokerId]: false };
-    }
+  function reviewBroker(broker: Broker) {
+    selectedBroker = broker;
+    isModalOpen = true;
   }
 </script>
 
@@ -101,28 +94,8 @@
               </td>
               <td class="px-6 py-4">
                 <div class="flex justify-end gap-2">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    on:click={() => handleStatusUpdate(broker.id, 'rejected')}
-                    disabled={processing[broker.id]}
-                  >
-                    {#if processing[broker.id]}
-                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                    {/if}
-                    Rejeitar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-green-600 text-white hover:bg-green-700"
-                    on:click={() => handleStatusUpdate(broker.id, 'approved')}
-                    disabled={processing[broker.id]}
-                  >
-                    {#if processing[broker.id]}
-                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                    {/if}
-                    Aprovar
+                  <Button variant="outline" size="sm" on:click={() => reviewBroker(broker)}>
+                    Revisar
                   </Button>
                 </div>
               </td>
@@ -133,3 +106,10 @@
     </table>
   </div>
 </div>
+
+<BrokerReviewModal
+  bind:open={isModalOpen}
+  broker={selectedBroker}
+  on:update={fetchRequests}
+  on:close={() => (selectedBroker = null)}
+/>
