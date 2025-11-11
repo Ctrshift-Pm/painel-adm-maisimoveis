@@ -27,7 +27,7 @@
       toast.success(`Corretor ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}.`);
 
       dispatch('update');
-      open = false;
+      close();
     } catch (error) {
       console.error('Erro ao atualizar status do corretor:', error);
       toast.error('Falha ao atualizar status.');

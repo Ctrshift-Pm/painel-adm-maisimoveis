@@ -25,14 +25,15 @@
 
     try {
       const params = new URLSearchParams();
+      params.set('page', '1');
+      params.set('limit', '1000');
       const trimmedSearch = searchTerm.trim();
       if (trimmedSearch) {
         params.set('search', trimmedSearch);
       }
 
-      const response = await api.get<{ data?: Client[] } | Client[]>(
-        params.size > 0 ? `/admin/users?${params.toString()}` : '/admin/users'
-      );
+      const query = params.toString();
+      const response = await api.get<{ data?: Client[] } | Client[]>(`/admin/users?${query}`);
       const list = Array.isArray(response) ? response : response?.data;
       clients = Array.isArray(list) ? list : [];
     } catch (err) {
