@@ -225,8 +225,16 @@
     fetchBrokers();
   });
 
-  function handleExport() {
-    exportToCsv(brokers, 'corretores.csv');
+  function handleExportClients() {
+    const dataToExport = brokers.map((broker) => ({
+      id: broker.id,
+      nome: broker.name,
+      email: broker.email,
+      telefone: broker.phone ?? '',
+      creci: broker.creci ?? '',
+    }));
+
+    exportToCsv(dataToExport, 'corretores_aprovados.csv');
   }
 </script>
 
@@ -251,7 +259,7 @@
       </button>
       <button
         class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-        on:click={handleExport}
+        on:click={handleExportClients}
       >
         Exportar Corretores (CSV)
       </button>

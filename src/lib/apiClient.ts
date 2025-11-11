@@ -6,9 +6,56 @@ interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
-async function request<T>(method: HttpMethod, path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
-  const isAbsolute = /^https?:\/\//i.test(path);
-  const url = isAbsolute ? path : `${baseURL}${path}`;
+const PROD_BASE_URL = 'https://backend-production-6acc.up.railway.app';
+const DEV_BASE_URL = baseURL ?? '';
+const API_BASE_URL = import.meta.env.PROD ? PROD_BASE_URL : DEV_BASE_URL;
+
+const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
+
+function resolveUrl(path: string) {
+  if (ABSOLUTE_URL_REGEX.test(path)) {
+    return path;
+  }
+  return `${API_BASE_URL}${path}`;
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    try {
+      const errorPayload = await response.json();
+      throw new Error(
+        errorPayload?.message ??
+          errorPayload?.error ??
+          `Ocorreu um erro inesperado: ${response.statusText} (${response.status})`
+      );
+    } catch {
+      throw new Error(`Ocorreu um erro inesperado: ${response.statusText} (${response.status})`);
+    }
+  }
+
+  if (response.status === 204) {
+    return null as T;
+  }
+
+  const text = await response.text();
+  if (!text) {
+    return null as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error('Resposta inválida do servidor.');
+  }
+}
+
+async function request<T>(
+  method: HttpMethod,
+  path: string,
+  body?: unknown,
+  options: RequestOptions = {}
+): Promise<T> {
+  const url = resolveUrl(path);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -22,22 +69,18 @@ async function request<T>(method: HttpMethod, path: string, body?: unknown, opti
     }
   }
 
-  const response = await fetch(url, {
+  const fetchOptions: RequestInit = {
     method,
-    body: body != null ? JSON.stringify(body) : undefined,
     ...options,
     headers,
-  });
+  };
 
-  const text = await response.text();
-  const data = text ? (JSON.parse(text) as T) : (null as T);
-
-  if (!response.ok) {
-    const message = (data as unknown as { error?: string })?.error ?? response.statusText ?? 'Erro na requisicao.';
-    throw new Error(message);
+  if (body != null) {
+    fetchOptions.body = JSON.stringify(body);
   }
 
-  return data;
+  const response = await fetch(url, fetchOptions);
+  return parseResponse<T>(response);
 }
 
 export const api = {

@@ -105,6 +105,7 @@ export interface Notification {
 export type View =
   | 'dashboard'
   | 'properties'
+  | 'property_requests'
   | 'brokers'
   | 'broker_requests'
   | 'clients'

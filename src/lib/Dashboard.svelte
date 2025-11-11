@@ -10,6 +10,7 @@
     import PropertyManagement from './PropertyManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
     import BrokerRequests from './components/BrokerRequests.svelte';
+    import PropertyRequests from './components/PropertyRequests.svelte';
     import SendNotification from './components/SendNotification.svelte';
     import StatusPieChart from './components/charts/StatusPieChart.svelte';
     import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
@@ -81,6 +82,9 @@
             filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'CÃƒÂ³digo' }, { value: 'p.title', label: 'TÃƒÂ­tulo' } ],
             sortColumn: 'p.title'
         },
+        property_requests: {
+            title: 'Solicitações de Imóveis'
+        },
         brokers: { 
             endpoint: '/admin/brokers', 
             title: 'Gerenciamento de Corretores', 
@@ -128,7 +132,7 @@
     async function fetchData() {
         isLoading = true;
 
-        if (activeView === 'properties' || activeView === 'brokers' || activeView === 'broker_requests') {
+        if (activeView === 'properties' || activeView === 'property_requests' || activeView === 'brokers' || activeView === 'broker_requests') {
             headers = [];
             allData = [];
             totalItems = 0;
@@ -577,6 +581,8 @@
                 </div>
             {:else if activeView === 'properties'}
                 <PropertyManagement />
+            {:else if activeView === 'property_requests'}
+                <PropertyRequests />
             {:else if activeView === 'brokers'}
                 <BrokerManagement />
             {:else if activeView === 'broker_requests'}
