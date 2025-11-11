@@ -4,6 +4,7 @@
   import { exportToCsv } from '$lib/utils/exportUtils';
   import { api } from '$lib/apiClient';
   import { Input } from '$lib/components/ui/input';
+  import BrokerReviewModal from '$lib/components/BrokerReviewModal.svelte';
   import { authToken } from './store';
   import type { Broker, BrokerDocuments, Property } from './types';
 
@@ -11,7 +12,6 @@
   let isLoading = false;
   let error: string | null = null;
   let feedback: { type: 'success' | 'error'; text: string } | null = null;
-  let actionBrokerId: number | null = null;
 
   let isDocumentsModalOpen = false;
   let selectedBroker: Broker | null = null;
@@ -25,6 +25,8 @@
   let propertiesModalTitle = '';
   let searchTerm = '';
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let isReviewModalOpen = false;
+  let brokerUnderReview: Broker | null = null;
 
   const DOCUMENT_TILES: ReadonlyArray<{ key: keyof BrokerDocuments; label: string }> = [
     { key: 'creci_front_url', label: 'Frente do CRECI' },
@@ -136,37 +138,6 @@
     }
   }
 
-  async function updateBrokerStatus(broker: Broker, action: 'approve' | 'reject') {
-    if (!get(authToken)) {
-      showFeedback('error', 'Sessão expirada. Faça login novamente.');
-      return;
-    }
-
-    actionBrokerId = broker.id;
-
-    try {
-      await api.patch(`/admin/brokers/${broker.id}/status`, {
-        status: action === 'approve' ? 'approved' : 'rejected'
-      });
-
-      showFeedback(
-        'success',
-        `Corretor ${action === 'approve' ? 'aprovado' : 'rejeitado'} com sucesso.`
-      );
-      await fetchBrokers();
-    } catch (err) {
-      console.error('Erro ao atualizar corretor:', err);
-      showFeedback(
-        'error',
-        err instanceof Error
-          ? err.message
-          : 'Ocorreu um erro ao atualizar o status do corretor.'
-      );
-    } finally {
-      actionBrokerId = null;
-    }
-  }
-
   function openDocumentModal(broker: Broker) {
     const baseDocs = broker.documents ?? {
       creci_front_url: (broker as unknown as Record<string, string | null>)?.creci_front_url ?? null,
@@ -244,6 +215,12 @@
     debounceTimer = setTimeout(() => {
       fetchBrokers();
     }, 500);
+  }
+
+  function reviewBroker(broker: Broker, event?: Event) {
+    event?.stopPropagation();
+    brokerUnderReview = broker;
+    isReviewModalOpen = true;
   }
 
   function handleExport() {
@@ -363,26 +340,17 @@
               </td>
               <td class="px-6 py-4">
                 <div class="flex flex-col items-end gap-2 sm:flex-row">
-                  <button
-                    class="inline-flex items-center justify-center gap-2 rounded-md border border-green-500 px-3 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-50 dark:border-green-400 dark:text-green-200 dark:hover:bg-green-900/40"
-                    on:click={() => updateBrokerStatus(broker, 'approve')}
-                    disabled={actionBrokerId === broker.id}
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Aprovar
-                  </button>
-                  <button
-                    class="inline-flex items-center justify-center gap-2 rounded-md border border-red-500 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-400 dark:text-red-300 dark:hover:bg-red-900/40"
-                    on:click={() => updateBrokerStatus(broker, 'reject')}
-                    disabled={actionBrokerId === broker.id}
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Rejeitar
-                  </button>
+                  {#if broker.status === 'pending_verification'}
+                    <button
+                      class="inline-flex items-center justify-center gap-2 rounded-md border border-yellow-500 px-3 py-1.5 text-xs font-medium text-yellow-700 transition-colors hover:bg-yellow-50 dark:border-yellow-400 dark:text-yellow-200 dark:hover:bg-yellow-900/40"
+                      on:click={(event) => reviewBroker(broker, event)}
+                    >
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Revisar
+                    </button>
+                  {/if}
                   <button
                     class="inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
                     on:click={() => openDocumentModal(broker)}
@@ -410,6 +378,13 @@
     </div>
   {/if}
 </section>
+
+<BrokerReviewModal
+  bind:open={isReviewModalOpen}
+  broker={brokerUnderReview}
+  on:update={fetchBrokers}
+  on:close={() => (brokerUnderReview = null)}
+/>
 
 {#if isDocumentsModalOpen}
   <div
