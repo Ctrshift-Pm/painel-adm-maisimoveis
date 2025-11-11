@@ -8,6 +8,7 @@
   import { api } from '$lib/apiClient';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
+  import { Input } from '$lib/components/ui/input';
   import { authToken } from './store';
   import type { PropertyStatus, PropertyImage as PropertyImageType } from './types';
 
@@ -58,6 +59,8 @@
   let selectedStatus = 'all';
   let selectedCity = 'all';
   let sortConfig: SortConfig = { key: 'p.created_at', order: 'desc' };
+  let searchTerm = '';
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let isModalOpen = false;
   let selectedProperty: PropertyDetails | null = null;
   let isDetailLoading = false;
@@ -89,6 +92,10 @@
       }
       params.set('sortBy', sortConfig.key);
       params.set('sortOrder', sortConfig.order);
+      const trimmedSearch = searchTerm.trim();
+      if (trimmedSearch) {
+        params.set('search', trimmedSearch);
+      }
 
       const query = params.toString();
       const response = await api.get<{ data: Array<Record<string, unknown>> }>(
@@ -278,6 +285,15 @@
   function handleExport() {
     exportToCsv(properties, `imoveis_${new Date().toISOString().split('T')[0]}.csv`);
   }
+
+  function handleSearchInput() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      fetchProperties();
+    }, 500);
+  }
 </script>
 
 <div class="space-y-4">
@@ -314,6 +330,16 @@
       </Button>
     </div>
   </header>
+
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <Input
+      className="w-full md:w-80"
+      type="search"
+      placeholder="Buscar por título, cidade, ID..."
+      bind:value={searchTerm}
+      on:input={handleSearchInput}
+    />
+  </div>
 
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     <div class="relative">
