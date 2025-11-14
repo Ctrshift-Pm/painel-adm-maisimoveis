@@ -4,8 +4,6 @@
   import { Input } from '$lib/components/ui/input';
   import { api } from '$lib/apiClient';
   import { exportToCsv } from '$lib/utils/exportUtils';
-  import { Loader2 } from 'lucide-svelte';
-  import { toast } from 'svelte-sonner';
 
   type Client = {
     id: number;
@@ -20,14 +18,23 @@
   let error = '';
   let searchTerm = '';
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let isExporting = false;
 
   async function fetchClients() {
     isLoading = true;
     error = '';
 
     try {
-      clients = await fetchClientPage();
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      params.set('limit', '1000');
+      const trimmedSearch = searchTerm.trim();
+      if (trimmedSearch) {
+        params.set('search', trimmedSearch);
+      }
+
+      const response = await api.get<{ data?: Client[] } | Client[]>(`/admin/users?${params.toString()}`);
+      const list = Array.isArray(response) ? response : response?.data;
+      clients = Array.isArray(list) ? list : [];
     } catch (err) {
       console.error('Erro ao buscar clientes:', err);
       error = err instanceof Error ? err.message : 'Não foi possível carregar os clientes.';
@@ -35,20 +42,6 @@
     } finally {
       isLoading = false;
     }
-  }
-
-  async function fetchClientPage(page = 1, limit = 50) {
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    params.set('limit', String(limit));
-    const trimmedSearch = searchTerm.trim();
-    if (trimmedSearch) {
-      params.set('search', trimmedSearch);
-    }
-
-    const response = await api.get<{ data?: Client[] } | Client[]>(`/admin/users?${params.toString()}`);
-    const list = Array.isArray(response) ? response : response?.data;
-    return Array.isArray(list) ? list : [];
   }
 
   onMount(fetchClients);
@@ -60,62 +53,18 @@
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
-  async function handleExport() {
-    if (isExporting) return;
+  function handleExport() {
+    if (!clients.length) return;
 
-    isExporting = true;
-    try {
-      const aggregated: Client[] = [];
-      const pageSize = 100;
-      let page = 1;
-      let hasMore = true;
+    const dataToExport = clients.map((client) => ({
+      id: client.id,
+      nome: client.name,
+      email: client.email,
+      telefone: client.phone ?? 'N/A',
+      data_cadastro: client.created_at ?? '',
+    }));
 
-      while (hasMore) {
-        const params = new URLSearchParams();
-        params.set('page', String(page));
-        params.set('limit', String(pageSize));
-        const trimmedSearch = searchTerm.trim();
-        if (trimmedSearch) {
-          params.set('search', trimmedSearch);
-        }
-
-        const response = await api.get<{ data?: Client[]; total?: number } | Client[]>(
-          `/admin/users?${params.toString()}`
-        );
-
-        const list = Array.isArray(response) ? response : response?.data;
-        const current = Array.isArray(list) ? list : [];
-        aggregated.push(...current);
-
-        const total = !Array.isArray(response) && typeof response?.total === 'number'
-          ? response.total
-          : aggregated.length;
-
-        hasMore = aggregated.length < total && current.length === pageSize;
-        page += 1;
-      }
-
-      if (!aggregated.length) {
-        toast.warning('Nenhum cliente disponível para exportar.');
-        return;
-      }
-
-      const dataToExport = aggregated.map((client) => ({
-        id: client.id,
-        nome: client.name,
-        email: client.email,
-        telefone: client.phone ?? 'N/A',
-        data_cadastro: client.created_at ?? '',
-      }));
-
-      exportToCsv(dataToExport, `clientes_${new Date().toISOString().split('T')[0]}.csv`);
-      toast.success('Arquivo CSV gerado com sucesso.');
-    } catch (error) {
-      console.error('Erro ao exportar clientes:', error);
-      toast.error('Erro ao gerar o CSV. Tente novamente.');
-    } finally {
-      isExporting = false;
-    }
+    exportToCsv(dataToExport, `clientes_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
   function handleSearchInput() {
@@ -145,14 +94,9 @@
         on:input={handleSearchInput}
       />
       <Button variant="outline" on:click={fetchClients} disabled={isLoading}>
-        {#if isLoading}
-          <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-        {:else}
-          🔄
-        {/if}
         Recarregar
       </Button>
-      <Button variant="outline" on:click={handleExport} disabled={isExporting}>
+      <Button variant="outline" on:click={handleExport} disabled={clients.length === 0 || isLoading}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -170,11 +114,7 @@
           <polyline points="7 10 12 15 17 10" />
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
-        {#if isExporting}
-          Gerando CSV...
-        {:else}
-          Exportar Clientes (CSV)
-        {/if}
+        Exportar Clientes (CSV)
       </Button>
     </div>
   </header>
@@ -182,7 +122,6 @@
   {#if isLoading}
     <div class="flex h-48 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-900">
       <div class="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-        <Loader2 class="h-4 w-4 animate-spin" />
         Carregando clientes...
       </div>
     </div>
