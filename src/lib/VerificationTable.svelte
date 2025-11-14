@@ -1,13 +1,13 @@
 <script lang="ts">
-    import type { Broker, BrokerDocuments } from './types';
     import { createEventDispatcher } from 'svelte';
+    import { Button } from '$lib/components/ui/button';
+    import BrokerReviewModal from '$lib/components/BrokerReviewModal.svelte';
+    import type { Broker, BrokerDocuments } from './types';
 
     export let pendingBrokers: Broker[] = [];
     const dispatch = createEventDispatcher();
-
-    function handleVerification(brokerId: number, status: 'approved' | 'rejected') {
-        dispatch('verify', { brokerId, status });
-    }
+    let isModalOpen = false;
+    let selectedBroker: Broker | null = null;
 
     // Função para obter texto do status
     function getStatusText(status: string) {
@@ -68,6 +68,15 @@
         }
 
         return null;
+    }
+
+    function reviewBroker(broker: Broker) {
+        selectedBroker = broker;
+        isModalOpen = true;
+    }
+
+    function handleModalUpdate() {
+        dispatch('refresh');
     }
 </script>
 
@@ -161,25 +170,10 @@
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex flex-col space-y-2">
-                                <button 
-                                    on:click={() => handleVerification(broker.id, 'approved')}
-                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                                >
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Aprovar
-                                </button>
-                                <button 
-                                    on:click={() => handleVerification(broker.id, 'rejected')}
-                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                                >
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                    Rejeitar
-                                </button>
+                            <div class="flex justify-end">
+                                <Button variant="outline" size="sm" on:click={() => reviewBroker(broker)}>
+                                    Revisar
+                                </Button>
                             </div>
                         </td>
                     </tr>
@@ -188,3 +182,10 @@
         </tbody>
     </table>
 </div>
+
+<BrokerReviewModal
+    bind:open={isModalOpen}
+    broker={selectedBroker}
+    on:update={handleModalUpdate}
+    on:close={() => (selectedBroker = null)}
+/>

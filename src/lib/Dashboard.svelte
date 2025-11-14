@@ -401,31 +401,6 @@
         editableItemData = {};
     }
 
-    // FunÃƒÂ§ÃƒÂ£o para aprovar/rejeitar corretor
-    async function handleVerification(event: CustomEvent<{ brokerId: number; status: 'approved' | 'rejected' }>) {
-        const { brokerId, status } = event.detail;
-        const token = localStorage.getItem('authToken');
-        const endpoint = status === 'approved' 
-            ? `/admin/brokers/${brokerId}/approve`
-            : `/admin/brokers/${brokerId}/reject`;
-
-        try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (!response.ok) throw new Error('Falha na verificaÃƒÂ§ÃƒÂ£o');
-            
-            showSaveMessage(`Corretor ${status === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso!`, 'success');
-            fetchData();
-            
-        } catch (error) {
-            console.error(`Erro ao ${status} corretor:`, error);
-            showSaveMessage(`Erro ao ${status === 'approved' ? 'aprovar' : 'rejeitar'} corretor.`, 'error');
-        }
-    }
-
     onMount(() => {
         fetchData();
         fetchChartData();
@@ -577,7 +552,7 @@
                     
                     <VerificationTable 
                         {pendingBrokers}
-                        on:verify={handleVerification}
+                        on:refresh={fetchData}
                     />
                 </div>
             {:else if activeView === 'properties'}

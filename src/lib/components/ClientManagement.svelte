@@ -13,11 +13,21 @@
     created_at?: string;
   };
 
+  type SortConfig = {
+    key: string;
+    order: 'asc' | 'desc';
+  };
+
+  type ClientFilters = {
+    search: string;
+  };
+
   let clients: Client[] = [];
   let isLoading = true;
   let error = '';
-  let searchTerm = '';
+  let filters: ClientFilters = { search: '' };
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let sortConfig: SortConfig = { key: 'created_at', order: 'desc' };
 
   async function fetchClients() {
     isLoading = true;
@@ -27,10 +37,12 @@
       const params = new URLSearchParams();
       params.set('page', '1');
       params.set('limit', '1000');
-      const trimmedSearch = searchTerm.trim();
+      const trimmedSearch = filters.search.trim();
       if (trimmedSearch) {
-        params.set('search', trimmedSearch);
+        params.append('search', trimmedSearch);
       }
+      params.append('sortBy', sortConfig.key);
+      params.append('sortOrder', sortConfig.order);
 
       const response = await api.get<{ data?: Client[] } | Client[]>(`/admin/users?${params.toString()}`);
       const list = Array.isArray(response) ? response : response?.data;
@@ -45,6 +57,17 @@
   }
 
   onMount(fetchClients);
+
+  function handleRefresh() {
+    fetchClients();
+  }
+
+  function handleKeydown(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
+    const key = event instanceof CustomEvent ? event.detail?.key : event.key;
+    if (key === 'Enter') {
+      fetchClients();
+    }
+  }
 
   function formatDate(value?: string) {
     if (!value) return '-';
@@ -67,13 +90,32 @@
     exportToCsv(dataToExport, `clientes_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
-  function handleSearchInput() {
+  function onSearchInput() {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
     debounceTimer = setTimeout(() => {
       fetchClients();
     }, 500);
+  }
+
+  function handleSort(newKey: string) {
+    if (sortConfig.key === newKey) {
+      sortConfig = {
+        ...sortConfig,
+        order: sortConfig.order === 'asc' ? 'desc' : 'asc',
+      };
+    } else {
+      sortConfig = { key: newKey, order: 'desc' };
+    }
+    fetchClients();
+  }
+
+  function getSortIndicator(column: string) {
+    if (sortConfig.key !== column) {
+      return '';
+    }
+    return sortConfig.order === 'asc' ? '▲' : '▼';
   }
 </script>
 
@@ -90,10 +132,11 @@
         className="w-full sm:w-64"
         type="search"
         placeholder="Buscar por nome ou email..."
-        bind:value={searchTerm}
-        on:input={handleSearchInput}
+        bind:value={filters.search}
+        on:input={onSearchInput}
+        on:keydown={handleKeydown}
       />
-      <Button variant="outline" on:click={fetchClients} disabled={isLoading}>
+      <Button variant="outline" on:click={handleRefresh} disabled={isLoading}>
         Recarregar
       </Button>
       <Button variant="outline" on:click={handleExport} disabled={clients.length === 0 || isLoading}>
@@ -139,16 +182,25 @@
         <thead class="bg-gray-50 dark:bg-gray-900/70">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Cliente
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('name')}>
+                Cliente
+                <span aria-hidden="true">{getSortIndicator('name')}</span>
+              </button>
             </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Email
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('email')}>
+                Email
+                <span aria-hidden="true">{getSortIndicator('email')}</span>
+              </button>
             </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Telefone
             </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Cadastrado em
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('created_at')}>
+                Cadastrado em
+                <span aria-hidden="true">{getSortIndicator('created_at')}</span>
+              </button>
             </th>
           </tr>
         </thead>

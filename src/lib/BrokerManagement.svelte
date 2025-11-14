@@ -4,9 +4,21 @@
   import { exportToCsv } from '$lib/utils/exportUtils';
   import { api } from '$lib/apiClient';
   import { Input } from '$lib/components/ui/input';
+  import { Button } from '$lib/components/ui/button';
+  import { Loader2 } from 'lucide-svelte';
   import BrokerReviewModal from '$lib/components/BrokerReviewModal.svelte';
   import { authToken } from './store';
   import type { Broker, BrokerDocuments, Property } from './types';
+
+  type SortConfig = {
+    key: string;
+    order: 'asc' | 'desc';
+  };
+
+  type BrokerFilters = {
+    status: 'all' | Broker['status'];
+    search: string;
+  };
 
   let brokers: Broker[] = [];
   let isLoading = false;
@@ -23,10 +35,14 @@
   let propertiesLoading = false;
   let propertiesError: string | null = null;
   let propertiesModalTitle = '';
-  let searchTerm = '';
+  let filters: BrokerFilters = {
+    status: 'all',
+    search: '',
+  };
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let isReviewModalOpen = false;
   let brokerUnderReview: Broker | null = null;
+  let sortConfig: SortConfig = { key: 'created_at', order: 'desc' };
 
   const DOCUMENT_TILES: ReadonlyArray<{ key: keyof BrokerDocuments; label: string }> = [
     { key: 'creci_front_url', label: 'Frente do CRECI' },
@@ -116,10 +132,15 @@
 
     try {
       const params = new URLSearchParams();
-      const trimmedSearch = searchTerm.trim();
-      if (trimmedSearch) {
-        params.set('search', trimmedSearch);
+      if (filters.status !== 'all') {
+        params.append('status', filters.status);
       }
+      const trimmedSearch = filters.search.trim();
+      if (trimmedSearch) {
+        params.append('search', trimmedSearch);
+      }
+      params.append('sortBy', sortConfig.key);
+      params.append('sortOrder', sortConfig.order);
 
       const response = await api.get<{ data?: Broker[] } | Broker[]>(
         `/admin/brokers?${params.toString()}`
@@ -207,13 +228,43 @@
     fetchBrokers();
   });
 
-  function handleSearchInput() {
+  function handleRefresh() {
+    fetchBrokers();
+  }
+
+  function handleKeydown(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
+    const key = event instanceof CustomEvent ? event.detail?.key : event.key;
+    if (key === 'Enter') {
+      fetchBrokers();
+    }
+  }
+
+  function onSearchInput() {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
     debounceTimer = setTimeout(() => {
       fetchBrokers();
     }, 500);
+  }
+
+  function handleSort(newKey: string) {
+    if (sortConfig.key === newKey) {
+      sortConfig = {
+        ...sortConfig,
+        order: sortConfig.order === 'asc' ? 'desc' : 'asc',
+      };
+    } else {
+      sortConfig = { key: newKey, order: 'desc' };
+    }
+    fetchBrokers();
+  }
+
+  function getSortIndicator(column: string) {
+    if (sortConfig.key !== column) {
+      return '';
+    }
+    return sortConfig.order === 'asc' ? '▲' : '▼';
   }
 
   function reviewBroker(broker: Broker, event?: Event) {
@@ -240,25 +291,30 @@
         className="w-full sm:w-64"
         type="search"
         placeholder="Buscar por nome, email ou CRECI..."
-        bind:value={searchTerm}
-        on:input={handleSearchInput}
+        bind:value={filters.search}
+        on:input={onSearchInput}
+        on:keydown={handleKeydown}
       />
-      <button
-        class="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60"
-        on:click={fetchBrokers}
+      <Button
+        variant="outline"
+        className="flex items-center gap-2"
+        on:click={handleRefresh}
         disabled={isLoading}
       >
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9M4 20v-5h.581m15.357-2A8.003 8.003 0 014.582 15" />
-        </svg>
+        {#if isLoading}
+          <Loader2 class="h-4 w-4 animate-spin" />
+        {:else}
+          <span aria-hidden="true">🔄</span>
+        {/if}
         Recarregar lista
-      </button>
-      <button
-        class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+      </Button>
+      <Button
+        variant="outline"
         on:click={handleExport}
+        disabled={brokers.length === 0 || isLoading}
       >
         Exportar Corretores (CSV)
-      </button>
+      </Button>
     </div>
   </header>
 
@@ -293,13 +349,38 @@
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-900/60">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Corretor</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('name')}>
+                Corretor
+                <span aria-hidden="true">{getSortIndicator('name')}</span>
+              </button>
+            </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Telefone</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">CRECI</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('creci')}>
+                CRECI
+                <span aria-hidden="true">{getSortIndicator('creci')}</span>
+              </button>
+            </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Imobiliária</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Qtd. Imóveis</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Criado em</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('property_count')}>
+                Qtd. Imóveis
+                <span aria-hidden="true">{getSortIndicator('property_count')}</span>
+              </button>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('status')}>
+                Status
+                <span aria-hidden="true">{getSortIndicator('status')}</span>
+              </button>
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('created_at')}>
+                Criado em
+                <span aria-hidden="true">{getSortIndicator('created_at')}</span>
+              </button>
+            </th>
             <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ações</th>
           </tr>
         </thead>

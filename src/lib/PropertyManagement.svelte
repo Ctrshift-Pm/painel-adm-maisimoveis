@@ -43,6 +43,12 @@
     order: 'asc' | 'desc';
   };
 
+  type PropertyFilters = {
+    status: PropertyStatus | 'all';
+    city: string;
+    search: string;
+  };
+
   const STATUS_FILTERS: { value: string; label: string }[] = [
     { value: 'all', label: 'Todos os status' },
     { value: 'pending_approval', label: 'Pendente de aprovação' },
@@ -56,10 +62,12 @@
   let isLoading = false;
   let error: string | null = null;
   let cities: string[] = [];
-  let selectedStatus = 'all';
-  let selectedCity = 'all';
+  let filters: PropertyFilters = {
+    status: 'approved',
+    city: 'all',
+    search: '',
+  };
   let sortConfig: SortConfig = { key: 'p.created_at', order: 'desc' };
-  let searchTerm = '';
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let isModalOpen = false;
   let selectedProperty: PropertyDetails | null = null;
@@ -84,17 +92,17 @@
 
     try {
       const params = new URLSearchParams();
-      if (selectedStatus !== 'all') {
-        params.set('status', selectedStatus);
+      if (filters.status !== 'all') {
+        params.append('status', filters.status);
       }
-      if (selectedCity !== 'all') {
-        params.set('city', selectedCity);
+      if (filters.city !== 'all') {
+        params.append('city', filters.city);
       }
-      params.set('sortBy', sortConfig.key);
-      params.set('sortOrder', sortConfig.order);
-      const trimmedSearch = searchTerm.trim();
+      params.append('sortBy', sortConfig.key);
+      params.append('sortOrder', sortConfig.order);
+      const trimmedSearch = filters.search.trim();
       if (trimmedSearch) {
-        params.set('search', trimmedSearch);
+        params.append('search', trimmedSearch);
       }
 
       const query = params.toString();
@@ -272,13 +280,18 @@
     return sortConfig.order === 'asc' ? '▲' : '▼';
   }
 
-  function handleStatusChange(event: CustomEvent<string>) {
-    selectedStatus = event.detail;
+  function handleRefresh() {
     fetchProperties();
   }
 
-  function handleCityChange(event: CustomEvent<string>) {
-    selectedCity = event.detail;
+  function handleKeydown(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
+    const key = event instanceof CustomEvent ? event.detail?.key : event.key;
+    if (key === 'Enter') {
+      fetchProperties();
+    }
+  }
+
+  function onFilterChange() {
     fetchProperties();
   }
 
@@ -286,7 +299,7 @@
     exportToCsv(properties, `imoveis_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
-  function handleSearchInput() {
+  function onSearchInput() {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
@@ -305,8 +318,18 @@
       </p>
     </div>
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <Button variant="outline" on:click={fetchProperties} disabled={isLoading}>
-        Atualizar
+      <Button
+        variant="outline"
+        className="flex items-center gap-2"
+        on:click={handleRefresh}
+        disabled={isLoading}
+      >
+        {#if isLoading}
+          <Loader2 class="h-4 w-4 animate-spin" />
+        {:else}
+          <span aria-hidden="true">🔄</span>
+        {/if}
+        Recarregar
       </Button>
       <Button variant="outline" on:click={handleExport}>
         <svg
@@ -336,14 +359,15 @@
       className="w-full md:w-80"
       type="search"
       placeholder="Buscar por título, cidade, ID..."
-      bind:value={searchTerm}
-      on:input={handleSearchInput}
+      bind:value={filters.search}
+      on:input={onSearchInput}
+      on:keydown={handleKeydown}
     />
   </div>
 
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     <div class="relative">
-      <Select.Root bind:value={selectedStatus} on:valueChange={handleStatusChange}>
+      <Select.Root bind:value={filters.status} on:valueChange={onFilterChange}>
         <Select.Trigger>
           <Select.Value placeholder="Filtrar por status" />
         </Select.Trigger>
@@ -356,7 +380,7 @@
     </div>
 
     <div class="relative">
-      <Select.Root bind:value={selectedCity} on:valueChange={handleCityChange}>
+      <Select.Root bind:value={filters.city} on:valueChange={onFilterChange}>
         <Select.Trigger>
           <Select.Value placeholder="Filtrar por cidade" />
         </Select.Trigger>
