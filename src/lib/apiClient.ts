@@ -1,104 +1,107 @@
-import { baseURL } from './api';
+import { get } from 'svelte/store';
+import { authToken } from './store';
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-
-interface RequestOptions extends RequestInit {
-  skipAuth?: boolean;
-}
-
+// URL base do backend em producao
 const PROD_BASE_URL = 'https://backend-production-6acc.up.railway.app';
-const DEV_BASE_URL = baseURL ?? '';
-const API_BASE_URL = import.meta.env.PROD ? PROD_BASE_URL : DEV_BASE_URL;
 
-const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
+// Em ambiente de desenvolvimento o Vite proxia as requisicoes para o mesmo host
+const API_BASE_URL = import.meta.env.PROD ? PROD_BASE_URL : '';
 
-function resolveUrl(path: string) {
-  if (ABSOLUTE_URL_REGEX.test(path)) {
-    return path;
+type RequestOptions = {
+  token?: string | null;
+  skipAuth?: boolean;
+  headers?: HeadersInit;
+  signal?: AbortSignal;
+};
+
+type TokenOrOptions = string | null | RequestOptions | undefined;
+
+function normalizeOptions(tokenOrOptions?: TokenOrOptions): RequestOptions {
+  if (
+    tokenOrOptions === undefined ||
+    tokenOrOptions === null ||
+    typeof tokenOrOptions === 'string'
+  ) {
+    return tokenOrOptions === undefined ? {} : { token: tokenOrOptions };
   }
-  return `${API_BASE_URL}${path}`;
+  return tokenOrOptions;
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    try {
-      const errorPayload = await response.json();
-      throw new Error(
-        errorPayload?.message ??
-          errorPayload?.error ??
-          `Ocorreu um erro inesperado: ${response.statusText} (${response.status})`
-      );
-    } catch {
-      throw new Error(`Ocorreu um erro inesperado: ${response.statusText} (${response.status})`);
-    }
-  }
-
+async function parseResponse(response: Response) {
   if (response.status === 204) {
-    return null as T;
+    return null;
   }
 
-  const text = await response.text();
-  if (!text) {
-    return null as T;
-  }
-
+  let data: unknown;
   try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error('Resposta inválida do servidor.');
+    data = await response.json();
+  } catch (error) {
+    const errorText = await response.text();
+    if (errorText.includes('<!DOCTYPE html>')) {
+      throw new Error('Erro: rota nao encontrada (404). O Vercel tentou chamar a si mesmo.');
+    }
+    const message =
+      error instanceof Error ? error.message : typeof error === 'string' ? error : 'Erro desconhecido';
+    throw new Error(`Falha ao analisar a resposta da API: ${message}`);
   }
+
+  if (!response.ok) {
+    const fallback =
+      typeof data === 'object' && data !== null && 'message' in data
+        ? (data as { message?: string }).message
+        : undefined;
+    throw new Error(fallback || `Ocorreu um erro inesperado: (${response.status})`);
+  }
+
+  return data;
 }
 
-async function request<T>(
-  method: HttpMethod,
-  path: string,
+async function request<TResponse>(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  endpoint: string,
   body?: unknown,
-  options: RequestOptions = {}
-): Promise<T> {
-  const url = resolveUrl(path);
+  tokenOrOptions?: TokenOrOptions
+) {
+  const options = normalizeOptions(tokenOrOptions);
+  const shouldSkipAuth = options.skipAuth ?? false;
+  const resolvedToken = shouldSkipAuth ? null : options.token ?? get(authToken);
 
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> | undefined),
-  };
+  });
 
-  if (!options.skipAuth) {
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null;
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+  if (options.headers) {
+    const extra = new Headers(options.headers);
+    extra.forEach((value, key) => headers.set(key, value));
   }
 
-  const fetchOptions: RequestInit = {
+  if (resolvedToken) {
+    headers.set('Authorization', `Bearer ${resolvedToken}`);
+  } else {
+    headers.delete('Authorization');
+  }
+
+  const response = await fetch(API_BASE_URL + endpoint, {
     method,
-    ...options,
     headers,
-  };
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: options.signal,
+  });
 
-  if (body != null) {
-    fetchOptions.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, fetchOptions);
-  return parseResponse<T>(response);
+  return parseResponse(response) as Promise<TResponse>;
 }
 
 export const api = {
-  get<T>(path: string, options?: RequestOptions) {
-    return request<T>('GET', path, undefined, options);
+  get: async <T = unknown>(endpoint: string, tokenOrOptions?: TokenOrOptions) => {
+    return request<T>('GET', endpoint, undefined, tokenOrOptions);
   },
-  post<T>(path: string, body?: unknown, options?: RequestOptions) {
-    return request<T>('POST', path, body, options);
+  post: async <T = unknown>(endpoint: string, body: unknown, tokenOrOptions?: TokenOrOptions) => {
+    return request<T>('POST', endpoint, body, tokenOrOptions);
   },
-  patch<T>(path: string, body?: unknown, options?: RequestOptions) {
-    return request<T>('PATCH', path, body, options);
+  patch: async <T = unknown>(endpoint: string, body: unknown, tokenOrOptions?: TokenOrOptions) => {
+    return request<T>('PATCH', endpoint, body, tokenOrOptions);
   },
-  put<T>(path: string, body?: unknown, options?: RequestOptions) {
-    return request<T>('PUT', path, body, options);
-  },
-  delete<T>(path: string, options?: RequestOptions) {
-    return request<T>('DELETE', path, undefined, options);
+  delete: async <T = unknown>(endpoint: string, tokenOrOptions?: TokenOrOptions) => {
+    return request<T>('DELETE', endpoint, undefined, tokenOrOptions);
   },
 };
-
-export type ApiClient = typeof api;
