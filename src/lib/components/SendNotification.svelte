@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { baseURL } from '../api';
+  import { toast } from 'svelte-sonner';
+  import { api } from '$lib/apiClient';
   import { authToken } from '../store';
 
   interface Client {
@@ -10,7 +11,6 @@
     email?: string | null;
   }
 
-  const API_BASE = `${baseURL}/admin`;
   const RECIPIENT_FIELD_ID = 'recipient';
 
   let clients: Client[] = [];
@@ -28,43 +28,28 @@
     clientsLoading = true;
     clientsError = null;
 
-    const token = get(authToken);
-    if (!token) {
-      clientsError = 'Sessão expirada. Faça login novamente.';
-      clientsLoading = false;
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/users`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await api.get<{ data?: Client[] } | Client[]>('/admin/users');
+      const raw = Array.isArray(response) ? response : response?.data ?? [];
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Não foi possível carregar os clientes.');
+      if (Array.isArray(raw)) {
+        const normalized = raw
+          .map((item: any): Client => ({
+            id: Number(item?.id),
+            name: typeof item?.name === 'string' ? item.name : null,
+            email: typeof item?.email === 'string' ? item.email : null
+          }))
+          .filter((client) => Number.isFinite(client.id));
+        clients = normalized;
+      } else {
+        clients = [];
       }
-
-      const payload = await response.json();
-      const raw = payload?.data ?? payload ?? [];
-
-      clients = Array.isArray(raw)
-        ? raw
-            .map((item: Record<string, unknown>) => ({
-              id: Number(item.id),
-              name: typeof item.name === 'string' ? item.name : null,
-              email: typeof item.email === 'string' ? item.email : null
-            }))
-            .filter((client) => Number.isFinite(client.id))
-        : [];
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
       clientsError =
         error instanceof Error
           ? error.message
-          : 'Ocorreu um erro inesperado ao carregar os clientes.';
+          : 'Falha ao carregar clientes.';
     } finally {
       clientsLoading = false;
     }
@@ -77,45 +62,27 @@
       return;
     }
 
-    const token = get(authToken);
-    if (!token) {
-      feedback = { type: 'error', text: 'Sessão expirada. Faça login novamente.' };
-      return;
-    }
-
     isSubmitting = true;
     try {
+      const token = get(authToken);
+      if (!token) {
+        feedback = { type: 'error', text: 'Sessão expirada. Faça login novamente.' };
+        isSubmitting = false;
+        return;
+      }
+
       const payload = {
         message: message.trim(),
         recipientId: selectedRecipient === 'all' ? null : Number(selectedRecipient)
       };
 
-      const response = await fetch(`${API_BASE}/notifications/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error ?? 'Não foi possível enviar a notificação.');
-      }
-
+      await api.post('/admin/notifications/send', payload);
+      toast.success('Notificação enviada com sucesso!');
       feedback = { type: 'success', text: 'Notificação enviada com sucesso!' };
       message = '';
       selectedRecipient = 'all';
     } catch (error) {
       console.error('Erro ao enviar notificação:', error);
-      feedback = {
-        type: 'error',
-        text:
-          error instanceof Error
-            ? error.message
-            : 'Ocorreu um erro ao enviar a notificação.'
-      };
     } finally {
       isSubmitting = false;
     }

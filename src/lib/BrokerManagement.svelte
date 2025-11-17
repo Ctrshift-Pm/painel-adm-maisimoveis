@@ -8,6 +8,7 @@
   import { Loader2 } from 'lucide-svelte';
   import BrokerReviewModal from '$lib/components/BrokerReviewModal.svelte';
   import { authToken } from './store';
+  import { toast } from 'svelte-sonner';
   import type { Broker, BrokerDocuments, Property } from './types';
 
   type SortConfig = {
@@ -149,10 +150,16 @@
       brokers = Array.isArray(data) ? data : [];
     } catch (err) {
       console.error('Erro ao buscar corretores:', err);
-      error =
-        err instanceof Error
-          ? err.message
-          : 'Ocorreu um erro inesperado ao carregar os corretores.';
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+        error = 'Sessão expirada. Faça login novamente.';
+      } else {
+        error =
+          err instanceof Error
+            ? err.message
+            : 'Ocorreu um erro inesperado ao carregar os corretores.';
+      }
     } finally {
       isLoading = false;
     }
@@ -201,10 +208,16 @@
       brokerProperties = Array.isArray(data) ? data : [];
     } catch (err) {
       console.error('Erro ao carregar imóveis do corretor:', err);
-      propertiesError =
-        err instanceof Error
-          ? err.message
-          : 'Ocorreu um erro ao carregar os imóveis deste corretor.';
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+        propertiesError = 'Sessão expirada. Faça login novamente.';
+      } else {
+        propertiesError =
+          err instanceof Error
+            ? err.message
+            : 'Ocorreu um erro ao carregar os imóveis deste corretor.';
+      }
     } finally {
       propertiesLoading = false;
     }

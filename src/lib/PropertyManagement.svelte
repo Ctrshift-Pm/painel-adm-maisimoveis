@@ -135,7 +135,13 @@
         .filter((item): item is PropertySummary => item !== null);
     } catch (err) {
       console.error('Erro ao carregar imóveis:', err);
-      error = err instanceof Error ? err.message : 'Erro inesperado ao carregar imóveis.';
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+        error = 'Sessão expirada. Faça login novamente.';
+      } else {
+        error = err instanceof Error ? err.message : 'Erro inesperado ao carregar imóveis.';
+      }
       properties = [];
     } finally {
       isLoading = false;
@@ -144,7 +150,7 @@
 
   async function fetchCities() {
     try {
-      const response = await fetch(`${baseURL}/properties/public/cities`);
+      const response = await fetch(`${baseURL}/properties/cities`);
       if (!response.ok) {
         const errorMsg = await response.text();
         toast.error('Erro ao buscar cidades.', {
@@ -243,7 +249,12 @@
       isModalOpen = true;
     } catch (err) {
       console.error('Falha ao buscar detalhes do imóvel:', err);
-      toast.error('Não foi possível carregar os detalhes do imóvel.');
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+      } else {
+        toast.error('Não foi possível carregar os detalhes do imóvel.');
+      }
     } finally {
       isDetailLoading = false;
     }
@@ -267,7 +278,12 @@
       await fetchProperties();
     } catch (err) {
       console.error('Falha ao atualizar status do imóvel:', err);
-      toast.error('Falha ao atualizar o status.');
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+      } else {
+        toast.error('Falha ao atualizar o status.');
+      }
     } finally {
       isProcessing = false;
     }

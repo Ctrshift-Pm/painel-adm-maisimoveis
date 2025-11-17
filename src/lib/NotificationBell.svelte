@@ -1,11 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { baseURL } from './api';
+  import { api } from '$lib/apiClient';
   import { authToken } from './store';
   import type { Notification } from './types';
-
-  const API_ENDPOINT = `${baseURL}/admin/notifications`;
 
   let isOpen = false;
   let isLoading = false;
@@ -42,7 +40,7 @@
     if (type === 'broker') return 'Corretor';
     return 'Aviso';
   }
-async function fetchNotifications() {
+  async function fetchNotifications() {
     const token = get(authToken);
     if (!token) {
       error = 'Sessão expirada. Faça login novamente.';
@@ -53,19 +51,16 @@ async function fetchNotifications() {
     error = null;
 
     try {
-      const response = await fetch(API_ENDPOINT, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? 'Não foi possível carregar as notificações.');
+      const payload = await api.get<{ data?: Notification[] } | { notifications?: Notification[] } | Notification[]>('/admin/notifications');
+      if (Array.isArray(payload)) {
+        notifications = payload;
+      } else if (payload && 'data' in payload && Array.isArray(payload.data)) {
+        notifications = payload.data;
+      } else if (payload && 'notifications' in payload && Array.isArray(payload.notifications)) {
+        notifications = payload.notifications;
+      } else {
+        notifications = Array.isArray(payload) ? payload : [];
       }
-
-      const payload = await response.json();
-      notifications = payload.data ?? payload.notifications ?? payload ?? [];
       hasFetched = true;
     } catch (err) {
       console.error('Erro ao carregar notificações:', err);
