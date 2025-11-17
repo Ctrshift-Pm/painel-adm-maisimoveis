@@ -11,6 +11,7 @@
   }
 
   const API_BASE = `${baseURL}/admin`;
+  const RECIPIENT_FIELD_ID = 'recipient';
 
   let clients: Client[] = [];
   let clientsLoading = false;
@@ -134,7 +135,7 @@
 
     <form class="px-6 py-6 space-y-5" on:submit|preventDefault={handleSubmit}>
       <div class="space-y-2">
-        <label for="recipient" class="text-sm font-medium text-gray-700 dark:text-gray-200">
+        <label for={RECIPIENT_FIELD_ID} class="text-sm font-medium text-gray-700 dark:text-gray-200">
           Destinatário
         </label>
 
@@ -146,7 +147,7 @@
           </div>
         {:else}
           <select
-            id="recipient"
+            id={RECIPIENT_FIELD_ID}
             class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={selectedRecipient}
             disabled={isSubmitting}

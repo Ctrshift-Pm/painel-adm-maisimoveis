@@ -9,6 +9,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
   import { Input } from '$lib/components/ui/input';
+  import { baseURL } from './api';
   import { authToken } from './store';
   import type { PropertyStatus, PropertyImage as PropertyImageType } from './types';
 
@@ -143,13 +144,24 @@
 
   async function fetchCities() {
     try {
-      const response = await api.get<{ data?: string[] } | string[]>(`/properties/public/cities`, {
-        skipAuth: true,
-      });
-      const list = Array.isArray(response) ? response : response?.data;
+      const response = await fetch(`${baseURL}/properties/public/cities`);
+      if (!response.ok) {
+        const errorMsg = await response.text();
+        toast.error('Erro ao buscar cidades.', {
+          description: errorMsg || 'A solicitação retornou erro.',
+        });
+        cities = [];
+        return;
+      }
+
+      const payload = await response.json();
+      const list = Array.isArray(payload) ? payload : payload?.data;
       cities = Array.isArray(list) ? list : [];
     } catch (err) {
       console.error('Erro ao buscar cidades:', err);
+      toast.error('Erro ao buscar cidades.', {
+        description: err instanceof Error ? err.message : 'Falha inesperada.',
+      });
       cities = [];
     }
   }
