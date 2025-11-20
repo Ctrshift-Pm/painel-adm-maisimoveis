@@ -240,7 +240,6 @@
       return;
     }
 
-    console.log('Abrindo modal para:', property);
     isDetailLoading = true;
     selectedProperty = property;
 
@@ -269,11 +268,9 @@
 
   async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
     if (!selectedProperty) {
-      toast.error('Erro: Nenhuma propriedade selecionada');
+      toast.error('Erro de estado: O imóvel selecionado é nulo. Tente fechar e reabrir o modal.');
       return;
     }
-
-    console.log('Clicou em atualizar status:', { selectedProperty, newStatus });
     isProcessing = true;
     try {
       await api.patch(`/admin/properties/${selectedProperty.id}/status`, { status: newStatus });
