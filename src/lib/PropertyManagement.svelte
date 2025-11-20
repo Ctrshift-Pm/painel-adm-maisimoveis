@@ -240,6 +240,7 @@
       return;
     }
 
+    console.log('Abrindo modal para:', property);
     isDetailLoading = true;
     selectedProperty = property;
 
@@ -267,8 +268,12 @@
   }
 
   async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
-    if (!selectedProperty) return;
+    if (!selectedProperty) {
+      toast.error('Erro: Nenhuma propriedade selecionada');
+      return;
+    }
 
+    console.log('Clicou em atualizar status:', { selectedProperty, newStatus });
     isProcessing = true;
     try {
       await api.patch(`/admin/properties/${selectedProperty.id}/status`, { status: newStatus });
