@@ -35,6 +35,7 @@
     className
   )}
   {disabled}
+  on:click
 >
   <slot />
 </button>
