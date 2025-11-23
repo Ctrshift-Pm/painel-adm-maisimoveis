@@ -31,11 +31,24 @@
     address?: string | null;
     quadra?: string | null;
     lote?: string | null;
+    numero?: string | null;
+    bairro?: string | null;
+    complemento?: string | null;
+    tipo_lote?: string | null;
     bedrooms?: number | null;
     bathrooms?: number | null;
     area_construida?: number | null;
     area_terreno?: number | null;
     broker_phone?: string | null;
+    valor_condominio?: number | null;
+    valor_iptu?: number | null;
+    video_url?: string | null;
+    has_wifi?: boolean | null;
+    tem_piscina?: boolean | null;
+    tem_energia_solar?: boolean | null;
+    tem_automacao?: boolean | null;
+    tem_ar_condicionado?: boolean | null;
+    eh_mobiliada?: boolean | null;
     images?: Array<NormalizedImage | PropertyImageType | string> | null;
   };
 
@@ -50,16 +63,7 @@
     search: string;
   };
 
-  const STATUS_FILTERS: { value: string; label: string }[] = [
-    { value: 'all', label: 'Todos os status' },
-    { value: 'pending_approval', label: 'Pendente de aprovação' },
-    { value: 'approved', label: 'Aprovado' },
-    { value: 'rejected', label: 'Rejeitado' },
-    { value: 'rented', label: 'Alugado' },
-    { value: 'sold', label: 'Vendido' },
-  ];
-
-  let properties: PropertySummary[] = [];
+    let properties: PropertySummary[] = [];
   let isLoading = false;
   let error: string | null = null;
   let cities: string[] = [];
@@ -394,21 +398,7 @@
       on:keydown={handleKeydown}
     />
   </div>
-
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    <div class="relative">
-      <Select.Root bind:value={filters.status} on:valueChange={onFilterChange}>
-        <Select.Trigger>
-          <Select.Value placeholder="Filtrar por status" />
-        </Select.Trigger>
-        <Select.Content>
-          {#each STATUS_FILTERS as option}
-            <Select.Item value={option.value}>{option.label}</Select.Item>
-          {/each}
-        </Select.Content>
-      </Select.Root>
-    </div>
-
     <div class="relative">
       <Select.Root bind:value={filters.city} on:valueChange={onFilterChange}>
         <Select.Trigger>
@@ -533,53 +523,107 @@
         </Dialog.Description>
       </Dialog.Header>
 
-      <div class="space-y-4 overflow-y-auto px-6 py-4">
-        <p class="text-3xl font-bold text-green-600 dark:text-green-400">
-          {formatCurrency(selectedProperty.price)}
-        </p>
+      <div class="space-y-6 overflow-y-auto px-6 py-4">
+          <div class="space-y-1">
+            <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Finalidade</p>
+            <p class="text-base text-gray-800 dark:text-gray-200">{selectedProperty.purpose ?? '-'}</p>
+            <p class="text-3xl font-bold text-green-600 dark:text-green-400">
+              {formatCurrency(selectedProperty.price)}
+            </p>
+            <div class="flex flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
+              {#if selectedProperty.valor_condominio != null}
+                <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+                  Condominio: {formatCurrency(selectedProperty.valor_condominio ?? undefined)}
+                </span>
+              {/if}
+              {#if selectedProperty.valor_iptu != null}
+                <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+                  IPTU: {formatCurrency(selectedProperty.valor_iptu ?? undefined)}
+                </span>
+              {/if}
+            </div>
+          </div>
 
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
-          {#if selectedPropertyImages().length > 0}
-            <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
-              {#each selectedPropertyImages() as image (image.id)}
-                <img
-                  src={image.url}
-                  alt="Foto do imóvel"
-                  class="h-32 w-auto rounded-md object-cover shadow"
-                  loading="lazy"
-                />
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
+            {#if selectedPropertyImages().length > 0}
+              <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
+                {#each selectedPropertyImages() as image (image.id)}
+                  <img
+                    src={image.url}
+                    alt="Foto do imovel"
+                    class="h-32 w-auto rounded-md object-cover shadow"
+                    loading="lazy"
+                  />
+                {/each}
+              </div>
+            {:else}
+              <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
+            {/if}
+          </div>
+
+          {#if selectedProperty.video_url}
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Video</h3>
+              <div class="mt-2 overflow-hidden rounded-lg bg-black/10 dark:bg-gray-800">
+                <video
+                  class="h-64 w-full rounded-lg object-cover"
+                  src={selectedProperty.video_url}
+                  controls
+                  preload="metadata"
+                >
+                  <track kind="captions" srclang="pt" label="Portugues" />
+                </video>
+              </div>
+            </div>
+          {/if}
+
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descricao</h3>
+            <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+              {selectedProperty.description ?? 'Sem descricao.'}
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Localizacao e atributos</h3>
+            <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
+              <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
+              <li><strong>Estado:</strong> {selectedProperty.state ?? '-'}</li>
+              <li><strong>Bairro:</strong> {selectedProperty.bairro ?? '-'}</li>
+              <li><strong>Endereco:</strong> {selectedProperty.address ?? '-'}</li>
+              <li><strong>Numero:</strong> {selectedProperty.numero ?? '-'}</li>
+              <li><strong>Complemento:</strong> {selectedProperty.complemento ?? '-'}</li>
+              <li><strong>Quadra:</strong> {selectedProperty.quadra ?? '-'}</li>
+              <li><strong>Lote:</strong> {selectedProperty.lote ?? '-'}</li>
+              <li><strong>Tipo do lote:</strong> {selectedProperty.tipo_lote ?? '-'}</li>
+              <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
+              <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
+              <li><strong>Area construida:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
+              <li><strong>Area terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
+              <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
+              <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Comodidades</h3>
+            <div class="mt-2 flex flex-wrap gap-2 text-sm">
+              {#each [
+                { label: 'Wi-Fi', value: selectedProperty.has_wifi },
+                { label: 'Piscina', value: selectedProperty.tem_piscina },
+                { label: 'Energia solar', value: selectedProperty.tem_energia_solar },
+                { label: 'Automacao', value: selectedProperty.tem_automacao },
+                { label: 'Ar condicionado', value: selectedProperty.tem_ar_condicionado },
+                { label: 'Mobiliada', value: selectedProperty.eh_mobiliada }
+              ] as amenity}
+                <span class={`rounded-full px-3 py-1 ${amenity.value ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}`}>
+                  {amenity.label}: {amenity.value ? 'Sim' : 'Nao'}
+                </span>
               {/each}
             </div>
-          {:else}
-            <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
-          {/if}
-        </div>
-
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descrição</h3>
-          <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-            {selectedProperty.description ?? 'Sem descrição.'}
-          </p>
-        </div>
-
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Detalhes</h3>
-          <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
-            <li><strong>Finalidade:</strong> {selectedProperty.purpose ?? '-'}</li>
-            <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
-            <li><strong>Estado:</strong> {selectedProperty.state ?? '-'}</li>
-            <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
-            <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
-            <li><strong>Área construída:</strong> {selectedProperty.area_construida ?? '-'} m²</li>
-            <li><strong>Área terreno:</strong> {selectedProperty.area_terreno ?? '-'} m²</li>
-            <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
-            <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
-          </ul>
-        </div>
-      </div>
-
-      <Dialog.Footer>
+          </div>
+        </div><Dialog.Footer>
         <Button variant="outline" on:click={closeModal} disabled={isProcessing}>
           Cancelar
         </Button>

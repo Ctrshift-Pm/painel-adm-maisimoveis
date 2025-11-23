@@ -1,10 +1,8 @@
 import axios, { AxiosHeaders, type AxiosRequestConfig } from 'axios';
 import { toast } from 'svelte-sonner';
 import { get } from 'svelte/store';
+import { baseURL } from './api';
 import { authToken } from './store';
-
-const PROD_BASE_URL = 'https://backend-production-6acc.up.railway.app';
-const API_BASE_URL = import.meta.env.PROD ? PROD_BASE_URL : '';
 
 type RequestOptions = {
   token?: string | null;
@@ -45,7 +43,7 @@ function buildConfig(tokenOrOptions?: TokenOrOptions): ExtendedAxiosConfig {
 }
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL,
 });
 
 apiClient.interceptors.request.use((config) => {

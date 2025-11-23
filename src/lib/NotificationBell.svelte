@@ -11,6 +11,7 @@
   let error: string | null = null;
   let hasFetched = false;
   let container: HTMLDivElement | null = null;
+  let pollingId: ReturnType<typeof setInterval> | null = null;
 
   function toggle() {
     isOpen = !isOpen;
@@ -82,7 +83,17 @@
 
   onMount(() => {
     document.addEventListener('click', handleClickOutside, true);
-    return () => document.removeEventListener('click', handleClickOutside, true);
+    pollingId = setInterval(() => {
+      if (isOpen) {
+        fetchNotifications();
+      }
+    }, 60000);
+    return () => {
+      document.removeEventListener('click', handleClickOutside, true);
+      if (pollingId) {
+        clearInterval(pollingId);
+      }
+    };
   });
 </script>
 

@@ -11,22 +11,59 @@
 
 	const dispatch = createEventDispatcher();
 
-	function normalizeStatusLabel(status: unknown): string {
-		if (typeof status !== 'string') {
-			return '';
-		}
-		return status.trim().toLowerCase();
-	}
+    const PROPERTY_STATUS_OPTIONS: Array<{ value: Property['status']; label: string }> = [
+        { value: 'pending_approval', label: 'Pendente de aprovacao' },
+        { value: 'approved', label: 'Aprovado' },
+        { value: 'rejected', label: 'Rejeitado' },
+        { value: 'rented', label: 'Alugado' },
+        { value: 'sold', label: 'Vendido' }
+    ];
 
-	function isSoldStatus(status: unknown): boolean {
-		const normalized = normalizeStatusLabel(status);
-		return normalized === 'sold' || normalized === 'vendido';
-	}
+    function normalizeStatusKey(status: unknown): string {
+        if (typeof status !== 'string') return '';
+
+        const normalized = status.trim().toLowerCase();
+        const dictionary: Record<string, string> = {
+            'pendente de aprovacao': 'pending_approval',
+            'pendente': 'pending_approval',
+            'pending approval': 'pending_approval',
+            'aprovado': 'approved',
+            'approved': 'approved',
+            'rejeitado': 'rejected',
+            'rejected': 'rejected',
+            'vendido': 'sold',
+            'sold': 'sold',
+            'alugado': 'rented',
+            'rented': 'rented',
+            'pending verification': 'pending_verification',
+            'pendente de verificacao': 'pending_verification'
+        };
+
+        return dictionary[normalized] ?? normalized;
+    }
+
+    function humanizeStatus(status: string | undefined): string {
+        const key = normalizeStatusKey(status);
+        const labels: Record<string, string> = {
+            pending_approval: 'Pendente de aprovacao',
+            approved: 'Aprovado',
+            rejected: 'Rejeitado',
+            rented: 'Alugado',
+            sold: 'Vendido',
+            pending_verification: 'Pendente de verificacao'
+        };
+        return labels[key] ?? (status ?? '');
+    }
+
+    function isSoldStatus(status: unknown): boolean {
+        return normalizeStatusKey(status) === 'sold';
+    }
 
     // Estados locais para a lÃ³gica de venda
     let commissionDisplayValue = '';
     let isEditingSaleDetails = false;
     let showSaleDeletionWarning = false;
+    let isApprovedReadOnly = false;
 
     function getSingularType(plural: View): string {
         if (plural === 'properties') return 'property';
@@ -38,7 +75,12 @@
     function handleEditStart(item: DataItem) {
         if (item.id === undefined) return;
         
-        dispatch('editStart', item);
+        const payload =
+            view === 'properties'
+                ? ({ ...(item as Property), status: normalizeStatusKey((item as Property).status) } as Property)
+                : item;
+
+        dispatch('editStart', payload);
         
 		if (view === 'properties') {
 			const prop = item as Property;
@@ -51,7 +93,17 @@
     
     function handleSave() {
         if (editingId !== null) {
-            dispatch('save', { id: editingId, data: editableItemData, type: getSingularType(view) });
+            const originalItem = data.find(d => d.id === editingId);
+            const isApprovedProperty =
+                view === 'properties' &&
+                normalizeStatusKey((originalItem as Property | undefined)?.status) === 'approved';
+
+            const payload =
+                view === 'properties' && isApprovedProperty
+                    ? { status: (editableItemData as Partial<Property>).status }
+                    : editableItemData;
+
+            dispatch('save', { id: editingId, data: payload, type: getSingularType(view) });
         }
     }
 
@@ -66,36 +118,48 @@
 
     // Cores mais fortes para as bolinhas de status
     function getStatusDotClasses(status: string | undefined) {
-        switch (status) {
-            case 'Dispon��vel': return 'bg-green-500';
-            case 'Negociando': return 'bg-orange-500';
-            case 'Vendido': return 'bg-red-500';
-            case 'Alugado': return 'bg-blue-500';
-            case 'pending_approval': return 'bg-yellow-500';
-            case 'rented': return 'bg-blue-500';
-            case 'sold': return 'bg-purple-500';
-            case 'approved': return 'bg-green-500';
-            case 'rejected': return 'bg-red-500';
-            case 'pending_verification': return 'bg-yellow-500';
-            default: return 'bg-gray-400';
-        }
+        const key = normalizeStatusKey(status);
+
+        const propertyStatusDots: Record<string, string> = {
+            pending_approval: 'bg-yellow-500',
+            approved: 'bg-green-500',
+            rejected: 'bg-red-500',
+            rented: 'bg-blue-500',
+            sold: 'bg-purple-500'
+        };
+
+        const brokerStatusDots: Record<string, string> = {
+            pending_verification: 'bg-yellow-500',
+            approved: 'bg-green-500',
+            rejected: 'bg-red-500'
+        };
+
+        return propertyStatusDots[key] ?? brokerStatusDots[key] ?? 'bg-gray-400';
     }
 
     // Cores para o fundo do texto (badge)
     function getStatusBadgeClasses(status: string | undefined) {
-        switch (status) {
-            case 'Dispon��vel': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-            case 'Negociando': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-            case 'Vendido': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-            case 'Alugado': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-            case 'pending_approval': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-            case 'rented': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-            case 'sold': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-            case 'approved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-            case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-            case 'pending_verification': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-        }
+        const key = normalizeStatusKey(status);
+
+        const propertyStatusBadges: Record<string, string> = {
+            pending_approval: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+            approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+            rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+            rented: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            sold: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+        };
+
+        const brokerStatusBadges: Record<string, string> = {
+            pending_verification: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+            approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+            rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+        };
+
+        return (
+            propertyStatusBadges[key] ??
+            brokerStatusBadges[key] ??
+            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+        );
     }
 	
     function updateCommissionDisplay(saleValue?: number | null, commissionRate?: number | null) {
@@ -115,12 +179,14 @@
         commissionDisplayValue = '';
         isEditingSaleDetails = false;
         showSaleDeletionWarning = false;
+        isApprovedReadOnly = false;
     }
 
     $: if (view === 'properties' && editingId !== null) {
 		const prop = editableItemData as Partial<Property>;
 		const originalItem = data.find(d => d.id === editingId) as Property | undefined;
 		showSaleDeletionWarning = isSoldStatus(originalItem?.status) && !isSoldStatus(prop.status);
+        isApprovedReadOnly = normalizeStatusKey(originalItem?.status) === 'approved';
     }
 </script>
 
@@ -147,18 +213,17 @@
                                 {@const prop = editableItemData as Partial<Property>}
                                 <td class="px-6 py-4 whitespace-nowrap"><span class="font-mono text-gray-500 dark:text-gray-400">{prop.id}</span></td>
                                 <td class="px-2 py-2 whitespace-nowrap"><input type="text" value={prop.code || ''} class="w-24 p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm font-mono" disabled></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={prop.title} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={prop.type} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input type="text" bind:value={prop.title} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
+                                <td class="px-2 py-2"><input type="text" bind:value={prop.type} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
                                 <td class="px-2 py-2">
                                     <select bind:value={prop.status} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white">
-                                        <option value="DisponÃ­vel">DisponÃ­vel</option>
-                                        <option value="Negociando">Negociando</option>
-                                        <option value="Vendido">Vendido</option>
-                                        <option value="Alugado">Alugado</option>
+                                        {#each PROPERTY_STATUS_OPTIONS as option}
+                                            <option value={option.value}>{option.label}</option>
+                                        {/each}
                                     </select>
                                 </td>
-                                <td class="px-2 py-2"><input type="number" step="1" bind:value={prop.price} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={prop.city} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input type="number" step="1" bind:value={prop.price} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
+                                <td class="px-2 py-2"><input type="text" bind:value={prop.city} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
                                 <td class="px-2 py-2"><input type="text" value={prop.broker_name || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
                             
                             {:else if view === 'brokers'}
@@ -193,7 +258,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap font-mono text-gray-500 dark:text-gray-400">{prop.code || 'N/A'}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">{prop.title}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{prop.type}</td>
-                                <td class="px-6 py-4 whitespace-nowrap"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {getStatusBadgeClasses(prop.status)}">{prop.status}</span></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {getStatusBadgeClasses(prop.status)}">{humanizeStatus(prop.status)}</span></td>
                                 <td class="px-6 py-4 whitespace-nowrap">{prop.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{prop.city}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{prop.broker_name || 'N/A'}</td>
@@ -205,7 +270,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap">{broker.creci}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {getStatusBadgeClasses(broker.status)}">
-                                        {broker.status === 'approved' ? 'Aprovado' : broker.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
+                                        {humanizeStatus(broker.status)}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">{broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''}</td>
