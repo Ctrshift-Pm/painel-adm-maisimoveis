@@ -278,7 +278,7 @@
     if (sortConfig.key !== column) {
       return '';
     }
-    return sortConfig.order === 'asc' ? '↑' : '↓';
+    return sortConfig.order === 'asc' ? '^' : 'v';
   }
 
   function reviewBroker(broker: Broker, event?: Event) {
