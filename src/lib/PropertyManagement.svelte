@@ -5,7 +5,7 @@
   import { Loader2 } from 'lucide-svelte';
   import * as Dialog from '$lib/components/ui/dialog';
   import { exportToCsv } from '$lib/utils/exportUtils';
-  import { api } from '$lib/apiClient';
+  import { api, apiClient } from '$lib/apiClient';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
   import { Input } from '$lib/components/ui/input';
@@ -78,6 +78,16 @@
   let selectedProperty: PropertyDetails | null = null;
   let isDetailLoading = false;
   let isProcessing = false;
+  let isEditMode = false;
+  let editableProperty: PropertyDetails | null = null;
+  let isSavingEdit = false;
+  let editError: string | null = null;
+  let imageUploading = false;
+  let imageUploadError: string | null = null;
+  let imageDeleteError: string | null = null;
+  let videoDeleting = false;
+  let videoDeleteError: string | null = null;
+  let videoInputEl: HTMLInputElement | null = null;
 
   onMount(() => {
     fetchProperties();
@@ -246,10 +256,12 @@
 
     isDetailLoading = true;
     selectedProperty = property;
+    editableProperty = { ...property } as PropertyDetails;
 
     try {
       const details = await api.get<PropertyDetails>(`/admin/properties/${property.id}`);
       selectedProperty = { ...property, ...details };
+      editableProperty = { ...property, ...details };
       isModalOpen = true;
     } catch (err) {
       console.error('Falha ao buscar detalhes do imóvel:', err);
@@ -268,6 +280,9 @@
     if (isProcessing) return;
     isModalOpen = false;
     selectedProperty = null;
+    editableProperty = null;
+    isEditMode = false;
+    editError = null;
   }
 
   async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
@@ -319,6 +334,16 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
     fetchProperties();
   }
 
+  function sortAlphabetical() {
+    sortConfig = { key: 'p.title', order: 'asc' };
+    fetchProperties();
+  }
+
+  function sortByCreatedDesc() {
+    sortConfig = { key: 'p.created_at', order: 'desc' };
+    fetchProperties();
+  }
+
   function getSortIndicator(column: string) {
     if (sortConfig.key !== column) {
       return '';
@@ -343,6 +368,132 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
 
   function handleExport() {
     exportToCsv(properties, `imoveis_${new Date().toISOString().split('T')[0]}.csv`);
+  }
+
+  async function saveEdits() {
+    if (!selectedProperty || !editableProperty) return;
+
+    if (selectedProperty.status === 'approved') {
+      editError = 'Imoveis aprovados so permitem atualizar o status.';
+      return;
+    }
+
+    isSavingEdit = true;
+    editError = null;
+
+    try {
+      const payload = {
+        title: editableProperty.title,
+        description: editableProperty.description,
+        purpose: editableProperty.purpose,
+        price: editableProperty.price,
+        address: editableProperty.address,
+        city: editableProperty.city,
+        state: editableProperty.state,
+        bairro: editableProperty.bairro,
+        numero: editableProperty.numero,
+        complemento: editableProperty.complemento,
+        quadra: editableProperty.quadra,
+        lote: editableProperty.lote,
+        tipo_lote: editableProperty.tipo_lote,
+        bedrooms: editableProperty.bedrooms,
+        bathrooms: editableProperty.bathrooms,
+        area_construida: editableProperty.area_construida,
+        area_terreno: editableProperty.area_terreno,
+        valor_condominio: editableProperty.valor_condominio,
+        valor_iptu: editableProperty.valor_iptu,
+        has_wifi: editableProperty.has_wifi,
+        tem_piscina: editableProperty.tem_piscina,
+        tem_energia_solar: editableProperty.tem_energia_solar,
+        tem_automacao: editableProperty.tem_automacao,
+        tem_ar_condicionado: editableProperty.tem_ar_condicionado,
+        eh_mobiliada: editableProperty.eh_mobiliada,
+        video_url: editableProperty.video_url,
+      };
+
+      await api.patch(`/admin/properties/${selectedProperty.id}`, payload);
+      toast.success('Imovel atualizado com sucesso.');
+      isEditMode = false;
+      await fetchProperties();
+      await reviewProperty({ ...selectedProperty } as PropertySummary);
+    } catch (err: any) {
+      console.error('Erro ao salvar imovel:', err);
+      editError =
+        err?.response?.data?.error ||
+        (err instanceof Error ? err.message : 'Nao foi possivel salvar o imovel.');
+    } finally {
+      isSavingEdit = false;
+    }
+  }
+
+  async function handleImageUpload(event: Event) {
+    if (!selectedProperty) return;
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    imageUploading = true;
+    imageUploadError = null;
+
+    try {
+      const form = new FormData();
+      Array.from(files).forEach((file) => form.append('images', file));
+
+      await apiClient.post(`/admin/properties/${selectedProperty.id}/images`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      toast.success('Imagens enviadas com sucesso.');
+      await reviewProperty(selectedProperty as PropertySummary);
+    } catch (err: any) {
+      console.error('Erro ao enviar imagens:', err);
+      imageUploadError =
+        err?.response?.data?.error ||
+        (err instanceof Error ? err.message : 'Falha ao enviar imagens.');
+    } finally {
+      imageUploading = false;
+      if (input) {
+        input.value = '';
+      }
+    }
+  }
+
+  async function handleImageDelete(imageId: number) {
+    if (!selectedProperty) return;
+    imageDeleteError = null;
+    try {
+      await api.delete(`/admin/properties/${selectedProperty.id}/images/${imageId}`);
+      toast.success('Imagem removida com sucesso.');
+      await reviewProperty(selectedProperty as PropertySummary);
+    } catch (err: any) {
+      console.error('Erro ao remover imagem:', err);
+      imageDeleteError =
+        err?.response?.data?.error ||
+        (err instanceof Error ? err.message : 'Falha ao remover imagem.');
+    }
+  }
+
+  async function handleVideoDelete() {
+    if (!selectedProperty) return;
+    videoDeleting = true;
+    videoDeleteError = null;
+    try {
+      await api.delete(`/admin/properties/${selectedProperty.id}/video`);
+      toast.success('Video removido com sucesso.');
+      await reviewProperty(selectedProperty as PropertySummary);
+      if (videoInputEl) {
+        videoInputEl.value = '';
+      }
+    } catch (err: any) {
+      console.error('Erro ao remover video:', err);
+      videoDeleteError =
+        err?.response?.data?.error ||
+        (err instanceof Error ? err.message : 'Falha ao remover video.');
+    } finally {
+      videoDeleting = false;
+    }
   }
 
   function onSearchInput() {
@@ -372,12 +523,17 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
       >
         {#if isLoading}
           <Loader2 class="h-4 w-4 animate-spin" />
-        {:else}
-          <span aria-hidden="true">🔄</span>
         {/if}
         Recarregar
       </Button>
+      <Button variant="outline" on:click={sortAlphabetical} disabled={isLoading}>
+        Ordenar A-Z
+      </Button>
+      <Button variant="outline" on:click={sortByCreatedDesc} disabled={isLoading}>
+        Mais recentes
+      </Button>
       <Button variant="outline" on:click={handleExport}>
+
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -523,7 +679,7 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
 </div>
 
 <Dialog.Root bind:open={isModalOpen}>
-  <Dialog.Content className="max-h-[85vh] overflow-hidden">
+  <Dialog.Content className="max-h-[85vh] overflow-y-auto">
     {#if selectedProperty}
       <Dialog.Header>
         <Dialog.Title>{selectedProperty.title}</Dialog.Title>
@@ -536,43 +692,112 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
       </Dialog.Header>
 
       <div class="space-y-6 overflow-y-auto px-6 py-4">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div class="space-y-1">
             <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Finalidade</p>
-            <p class="text-base text-gray-800 dark:text-gray-200">{selectedProperty.purpose ?? '-'}</p>
-            <p class="text-3xl font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(selectedProperty.price)}
-            </p>
+            {#if isEditMode && editableProperty}
+              <input
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                bind:value={editableProperty.purpose}
+                placeholder="Finalidade"
+              />
+              <input
+                class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
+                type="number"
+                step="0.01"
+                bind:value={editableProperty.price}
+                placeholder="Preco"
+              />
+            {:else}
+              <p class="text-base text-gray-800 dark:text-gray-200">{selectedProperty.purpose ?? '-'} </p>
+              <p class="text-3xl font-bold text-green-600 dark:text-green-400">
+                {formatCurrency(selectedProperty.price)}
+              </p>
+            {/if}
             <div class="flex flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
-              {#if selectedProperty.valor_condominio != null}
-                <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
-                  Condominio: {formatCurrency(selectedProperty.valor_condominio ?? undefined)}
-                </span>
-              {/if}
-              {#if selectedProperty.valor_iptu != null}
-                <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
-                  IPTU: {formatCurrency(selectedProperty.valor_iptu ?? undefined)}
-                </span>
+              {#if isEditMode && editableProperty}
+                <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                  Condominio:
+                  <input class="w-24 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
+                    type="number" step="0.01" bind:value={editableProperty.valor_condominio} />
+                </label>
+                <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                  IPTU:
+                  <input class="w-24 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
+                    type="number" step="0.01" bind:value={editableProperty.valor_iptu} />
+                </label>
+              {:else}
+                {#if selectedProperty.valor_condominio != null}
+                  <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+                    Condominio: {formatCurrency(selectedProperty.valor_condominio ?? undefined)}
+                  </span>
+                {/if}
+                {#if selectedProperty.valor_iptu != null}
+                  <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+                    IPTU: {formatCurrency(selectedProperty.valor_iptu ?? undefined)}
+                  </span>
+                {/if}
               {/if}
             </div>
           </div>
 
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
-            {#if selectedPropertyImages().length > 0}
-              <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
-                {#each selectedPropertyImages() as image (image.id)}
+          <div class="flex items-center gap-2">
+            <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={selectedProperty.status === 'approved' || isSavingEdit}>
+              {isEditMode ? 'Cancelar edicao' : 'Editar dados'}
+            </Button>
+            {#if isEditMode}
+              <Button on:click={saveEdits} disabled={isSavingEdit}>
+                {#if isSavingEdit}
+                  <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                {/if}
+                Salvar
+              </Button>
+            {/if}
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
+          {#if selectedPropertyImages().length > 0}
+            <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
+              {#each selectedPropertyImages() as image (image.id)}
+                <div class="relative flex flex-col gap-2 items-center">
                   <img
                     src={image.url}
                     alt="Foto do imovel"
                     class="h-32 w-auto rounded-md object-cover shadow"
                     loading="lazy"
                   />
-                {/each}
-              </div>
-            {:else}
-              <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
-            {/if}
-          </div>
+                  {#if image.id != null}
+                    <Button variant="destructive" size="sm" on:click={() => handleImageDelete(image.id!)}>
+                      Remover
+                    </Button>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {:else}
+            <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
+          {/if}
+        </div>
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
+          <input
+            id="upload-images-input"
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            type="file"
+            accept="image/*"
+            multiple
+            on:change={handleImageUpload}
+            disabled={imageUploading}
+          />
+          {#if imageUploading}
+            <p class="text-xs text-gray-500 dark:text-gray-400">Enviando imagens...</p>
+          {/if}
+          {#if imageUploadError}
+            <p class="text-xs text-red-500 dark:text-red-400">{imageUploadError}</p>
+          {/if}
+        </div>
 
           {#if selectedProperty.video_url}
             <div>
@@ -587,40 +812,180 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
                   <track kind="captions" srclang="pt" label="Portugues" />
                 </video>
               </div>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
+                  {#if videoDeleting}
+                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                  {/if}
+                  Remover vídeo
+                </Button>
+                {#if videoDeleteError}
+                  <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
+                {/if}
+              </div>
+            </div>
+          {:else if isEditMode}
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-video-input">Enviar vídeo</label>
+              <input
+                id="upload-video-input"
+                bind:this={videoInputEl}
+                class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                type="file"
+                accept="video/*"
+                on:change={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  if (!target.files || target.files.length === 0 || !selectedProperty) return;
+                  const form = new FormData();
+                  form.append('video', target.files[0]);
+                  apiClient
+                    .post(`/admin/properties/${selectedProperty.id}/images`, form, {
+                      headers: { 'Content-Type': 'multipart/form-data' },
+                    })
+                    .then(() => {
+                      toast.success('Vídeo enviado com sucesso.');
+                      return reviewProperty(selectedProperty as PropertySummary);
+                    })
+                    .catch((err) => {
+                      console.error('Erro ao enviar vídeo:', err);
+                      videoDeleteError =
+                        err?.response?.data?.error ||
+                        (err instanceof Error ? err.message : 'Falha ao enviar vídeo.');
+                    })
+                    .finally(() => {
+                      if (videoInputEl) videoInputEl.value = '';
+                    });
+                }}
+              />
             </div>
           {/if}
 
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descricao</h3>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descricao</h3>
+          {#if isEditMode && editableProperty}
+            <textarea
+              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              rows="3"
+              bind:value={editableProperty.description}
+              placeholder="Descricao do imovel"
+            ></textarea>
+          {:else}
             <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
               {selectedProperty.description ?? 'Sem descricao.'}
             </p>
-          </div>
+          {/if}
+        </div>
 
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Localizacao e atributos</h3>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Localizacao e atributos</h3>
+          {#if isEditMode && editableProperty}
+            <div class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
+              <label class="flex flex-col gap-1">
+                <strong>Cidade:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.city} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Estado:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.state} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Bairro:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bairro} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Endereco:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.address} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Numero:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.numero} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Complemento:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.complemento} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Quadra:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.quadra} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Lote:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.lote} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Tipo do lote:</strong>
+                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.tipo_lote} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Quartos:</strong>
+                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bedrooms} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Banheiros:</strong>
+                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bathrooms} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Area construida:</strong>
+                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_construida} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Area terreno:</strong>
+                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_terreno} />
+              </label>
+              <p><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</p>
+              <p><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</p>
+            </div>
+          {:else}
             <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
               <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
               <li><strong>Estado:</strong> {selectedProperty.state ?? '-'}</li>
               <li><strong>Bairro:</strong> {selectedProperty.bairro ?? '-'}</li>
               <li><strong>Endereco:</strong> {selectedProperty.address ?? '-'}</li>
-              <li><strong>Número:</strong> {selectedProperty.numero ?? '-'}</li>
+              <li><strong>Numero:</strong> {selectedProperty.numero ?? '-'}</li>
               <li><strong>Complemento:</strong> {selectedProperty.complemento ?? '-'}</li>
               <li><strong>Quadra:</strong> {selectedProperty.quadra ?? '-'}</li>
               <li><strong>Lote:</strong> {selectedProperty.lote ?? '-'}</li>
               <li><strong>Tipo do lote:</strong> {selectedProperty.tipo_lote ?? '-'}</li>
               <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
               <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
-              <li><strong>Area construída:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
+              <li><strong>Area construida:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
               <li><strong>Area terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
               <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
               <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
             </ul>
-          </div>
+          {/if}
+        </div>
 
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Comodidades</h3>
-            <div class="mt-2 flex flex-wrap gap-2 text-sm">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Comodidades</h3>
+"
+          <div class="mt-2 flex flex-wrap gap-2 text-sm">
+            {#if isEditMode && editableProperty}
+              <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                <input type="checkbox" bind:checked={editableProperty.has_wifi} />
+                Wi-Fi
+              </label>
+              <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                <input type="checkbox" bind:checked={editableProperty.tem_piscina} />
+                Piscina
+              </label>
+              <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                <input type="checkbox" bind:checked={editableProperty.tem_energia_solar} />
+                Energia solar
+              </label>
+              <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                <input type="checkbox" bind:checked={editableProperty.tem_automacao} />
+                Automacao
+              </label>
+              <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                <input type="checkbox" bind:checked={editableProperty.tem_ar_condicionado} />
+                Ar condicionado
+              </label>
+              <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
+                <input type="checkbox" bind:checked={editableProperty.eh_mobiliada} />
+                Mobiliada
+              </label>
+            {:else}
               {#each [
                 { label: 'Wi-Fi', value: selectedProperty.has_wifi },
                 { label: 'Piscina', value: selectedProperty.tem_piscina },
@@ -633,9 +998,23 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
                   {amenity.label}: {amenity.value ? 'Sim' : 'Nao'}
                 </span>
               {/each}
-            </div>
+            {/if}
           </div>
-        </div><Dialog.Footer>
+        </div>
+
+        {#if editError}
+          <div class="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            {editError}
+          </div>
+        {/if}
+        {#if imageDeleteError}
+          <div class="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            {imageDeleteError}
+          </div>
+        {/if}
+      </div>
+
+      <Dialog.Footer>
         <Button variant="outline" on:click={closeModal} disabled={isProcessing}>
           Cancelar
         </Button>
@@ -663,3 +1042,4 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
     {/if}
   </Dialog.Content>
 </Dialog.Root>
+

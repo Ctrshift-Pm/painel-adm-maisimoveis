@@ -280,6 +280,16 @@
     return sortConfig.order === 'asc' ? '▲' : '▼';
   }
 
+  function sortAlphabetical() {
+    sortConfig = { key: 'name', order: 'asc' };
+    fetchBrokers();
+  }
+
+  function sortByPropertyCount() {
+    sortConfig = { key: 'property_count', order: 'desc' };
+    fetchBrokers();
+  }
+
   function reviewBroker(broker: Broker, event?: Event) {
     event?.stopPropagation();
     brokerUnderReview = broker;

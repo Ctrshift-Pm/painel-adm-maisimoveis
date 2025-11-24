@@ -139,7 +139,11 @@
       <Button variant="outline" on:click={handleRefresh} disabled={isLoading}>
         Recarregar
       </Button>
+      <Button variant="outline" on:click={() => handleSort('name')} disabled={isLoading}>
+        Ordenar A-Z
+      </Button>
       <Button variant="outline" on:click={handleExport} disabled={clients.length === 0 || isLoading}>
+
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
