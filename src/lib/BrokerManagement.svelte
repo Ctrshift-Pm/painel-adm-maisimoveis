@@ -261,14 +261,15 @@
     }, 500);
   }
 
-  function handleSort(newKey: string) {
-    if (sortConfig.key === newKey) {
+  function handleSort(key: string) {
+    if (sortConfig.key === key) {
       sortConfig = {
-        ...sortConfig,
-        order: sortConfig.order === 'asc' ? 'desc' : 'asc',
+        key,
+        order: sortConfig.order === 'asc' ? 'desc' : 'asc'
       };
     } else {
-      sortConfig = { key: newKey, order: 'desc' };
+      const defaultOrder = key === 'property_count' ? 'desc' : 'asc';
+      sortConfig = { key, order: defaultOrder };
     }
     fetchBrokers();
   }
@@ -277,17 +278,7 @@
     if (sortConfig.key !== column) {
       return '';
     }
-    return sortConfig.order === 'asc' ? '▲' : '▼';
-  }
-
-  function sortAlphabetical() {
-    sortConfig = { key: 'name', order: 'asc' };
-    fetchBrokers();
-  }
-
-  function sortByPropertyCount() {
-    sortConfig = { key: 'property_count', order: 'desc' };
-    fetchBrokers();
+    return sortConfig.order === 'asc' ? '↑' : '↓';
   }
 
   function reviewBroker(broker: Broker, event?: Event) {
@@ -338,11 +329,11 @@
       >
         Exportar Corretores (CSV)
       </Button>
-      <Button variant="outline" on:click={sortAlphabetical} disabled={isLoading}>
-        Ordenar A-Z
+      <Button variant="outline" on:click={() => handleSort('name')} disabled={isLoading}>
+        Nome <span aria-hidden="true">{getSortIndicator('name')}</span>
       </Button>
-      <Button variant="outline" on:click={sortByPropertyCount} disabled={isLoading}>
-        Mais imoveis primeiro
+      <Button variant="outline" on:click={() => handleSort('property_count')} disabled={isLoading}>
+        Mais imoveis <span aria-hidden="true">{getSortIndicator('property_count')}</span>
       </Button>
     </div>
   </header>
