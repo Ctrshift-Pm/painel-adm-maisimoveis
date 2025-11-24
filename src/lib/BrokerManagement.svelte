@@ -328,6 +328,12 @@
       >
         Exportar Corretores (CSV)
       </Button>
+      <Button variant="outline" on:click={sortAlphabetical} disabled={isLoading}>
+        Ordenar A-Z
+      </Button>
+      <Button variant="outline" on:click={sortByPropertyCount} disabled={isLoading}>
+        Mais imoveis primeiro
+      </Button>
     </div>
   </header>
 

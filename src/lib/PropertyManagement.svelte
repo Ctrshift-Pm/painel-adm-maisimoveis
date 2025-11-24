@@ -278,7 +278,19 @@
     isProcessing = true;
     try {
       await api.patch(`/admin/properties/${selectedProperty.id}/status`, { status: newStatus });
-      toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`);
+      await api.post('/admin/notifications/send', {
+        message: `Status do imovel #${selectedProperty.id} alterado para ${newStatus}.`,
+        related_entity_type: 'property',
+        related_entity_id: selectedProperty.id,
+        recipientId: null,
+      });
+
+      
+      await api.post('/admin/notifications/send', {
+        message: `Status do imovel #${selectedProperty.id} alterado para ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}.`,
+        recipientId: null
+      });
+toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`);
       isModalOpen = false;
       selectedProperty = null;
       await fetchProperties();
@@ -592,14 +604,14 @@
               <li><strong>Estado:</strong> {selectedProperty.state ?? '-'}</li>
               <li><strong>Bairro:</strong> {selectedProperty.bairro ?? '-'}</li>
               <li><strong>Endereco:</strong> {selectedProperty.address ?? '-'}</li>
-              <li><strong>Numero:</strong> {selectedProperty.numero ?? '-'}</li>
+              <li><strong>Número:</strong> {selectedProperty.numero ?? '-'}</li>
               <li><strong>Complemento:</strong> {selectedProperty.complemento ?? '-'}</li>
               <li><strong>Quadra:</strong> {selectedProperty.quadra ?? '-'}</li>
               <li><strong>Lote:</strong> {selectedProperty.lote ?? '-'}</li>
               <li><strong>Tipo do lote:</strong> {selectedProperty.tipo_lote ?? '-'}</li>
               <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
               <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
-              <li><strong>Area construida:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
+              <li><strong>Area construída:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
               <li><strong>Area terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
               <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
               <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
