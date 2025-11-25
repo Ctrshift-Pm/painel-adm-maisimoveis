@@ -413,7 +413,7 @@
     editError = null;
 
     try {
-      const payload = {
+      const rawPayload = {
         title: editableProperty.title,
         description: editableProperty.description,
         purpose: editableProperty.purpose,
@@ -440,19 +440,47 @@
         tem_ar_condicionado: editableProperty.tem_ar_condicionado,
         eh_mobiliada: editableProperty.eh_mobiliada,
         video_url: editableProperty.video_url,
+        status: editableProperty.status ?? selectedProperty.status,
       };
 
+      // Remove chaves undefined para evitar rejeição por payload inválido
+      const payload = Object.fromEntries(
+        Object.entries(rawPayload).filter(([, value]) => value !== undefined)
+      );
+
       const endpoint = `/admin/properties/${selectedProperty.id}`;
+      const altEndpoint = `/admin/properties/update/${selectedProperty.id}`;
+
+      const trySave = async (url: string, method: 'patch' | 'put') => {
+        if (method === 'patch') return api.patch(url, payload);
+        return apiClient.put(url, payload);
+      };
+
       try {
-        await api.patch(endpoint, payload);
+        await trySave(endpoint, 'patch');
       } catch (err: any) {
-        // Alguns backends podem não aceitar PATCH; tenta PUT como fallback
-        if (err?.response?.status === 404 || err?.response?.status === 405) {
-          await apiClient.put(endpoint, payload);
-        } else if (err?.response?.status === 401) {
+        const status = err?.response?.status;
+        if (status === 401) {
           toast.error('Sua sessao expirou. Por favor, faca login novamente.');
           authToken.set(null);
           throw err;
+        }
+        if (status === 404 || status === 405) {
+          try {
+            await trySave(endpoint, 'put');
+          } catch (err2: any) {
+            const status2 = err2?.response?.status;
+            if (status2 === 401) {
+              toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+              authToken.set(null);
+              throw err2;
+            }
+            if (status2 === 404 || status2 === 405) {
+              await trySave(altEndpoint, 'put');
+            } else {
+              throw err2;
+            }
+          }
         } else {
           throw err;
         }
