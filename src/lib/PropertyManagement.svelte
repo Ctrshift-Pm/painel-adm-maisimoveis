@@ -493,13 +493,6 @@
       const fieldsBesidesStatus = Object.keys(payload).filter((k) => k !== 'status');
       const onlyStatusChanged =
         statusChanged && fieldsBesidesStatus.every((k) => (payload as any)[k] === (original as any)[k]);
-      const isApproved = original.status === 'approved';
-
-      if (isApproved && !onlyStatusChanged) {
-        editError = 'Imoveis aprovados so permitem atualizar o status.';
-        isSavingEdit = false;
-        return;
-      }
 
       if (onlyStatusChanged) {
         await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
