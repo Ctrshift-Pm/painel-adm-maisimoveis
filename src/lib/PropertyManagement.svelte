@@ -193,26 +193,38 @@
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  function normalizeImageUrl(rawUrl: unknown): string | null {
+    if (typeof rawUrl !== 'string' || rawUrl.trim().length === 0) return null;
+    const cleaned = rawUrl.trim();
+    if (/^https?:\/\//i.test(cleaned)) return cleaned;
+    // fallback: assume relative path from API
+    return `${baseURL.replace(/\/+$/, '')}/${cleaned.replace(/^\/+/, '')}`;
+  }
+
   function normalizeImages(
-    images?: Array<NormalizedImage | PropertyImageType | string> | null
+    images?: Array<NormalizedImage | PropertyImageType | Record<string, unknown> | string> | null
   ): NormalizedImage[] {
     if (!images) return [];
 
     return images
       .map<NormalizedImage | null>((image, index) => {
         if (typeof image === 'string') {
-          return { id: index, url: image };
+          const url = normalizeImageUrl(image);
+          if (!url) return null;
+          return { id: index, url };
         }
-        if (image && typeof image === 'object' && 'url' in image && typeof image.url === 'string') {
+        if (image && typeof image === 'object') {
+          const anyImg = image as Record<string, unknown>;
+          const candidateUrl =
+            normalizeImageUrl((anyImg.url as string | undefined) ?? null) ||
+            normalizeImageUrl((anyImg.image_url as string | undefined) ?? null);
+          if (!candidateUrl) return null;
           const fallbackId = Number.isFinite(Number(index)) ? index : 0;
-          const rawId =
-            (image as PropertyImageType).id ??
-            (image as NormalizedImage).id ??
-            fallbackId;
+          const rawId = (anyImg.id as number | undefined) ?? fallbackId;
           const parsedId = Number(rawId);
           return {
             id: Number.isFinite(parsedId) ? parsedId : index,
-            url: image.url,
+            url: candidateUrl,
           };
         }
         return null;
