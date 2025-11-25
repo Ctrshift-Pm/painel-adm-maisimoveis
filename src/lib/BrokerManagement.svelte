@@ -86,14 +86,14 @@
   function formatCurrency(value: unknown): string {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) {
-      return '—';
+      return '-';
     }
     return numeric.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
   function formatPropertyStatus(status?: string | null): string {
     if (!status) {
-      return '—';
+      return '-';
     }
     const map: Record<string, string> = {
       pending_approval: 'Pendente',
@@ -126,7 +126,8 @@
 
     const token = get(authToken);
     if (!token) {
-      error = 'Sessão expirada. Faça login novamente.';
+      error = 'Sessao expirada. Faca login novamente.';
+      authToken.set(null);
       isLoading = false;
       return;
     }
@@ -152,8 +153,9 @@
       console.error('Erro ao buscar corretores:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
-        error = 'Sessão expirada. Faça login novamente.';
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        error = 'Sessao expirada. Faca login novamente.';
+        authToken.set(null);
       } else {
         error =
           err instanceof Error
@@ -184,13 +186,14 @@
       Boolean(selectedDocuments?.creci_back_url) ||
       Boolean(selectedDocuments?.selfie_url);
 
-    docsError = hasDocs ? null : 'Documentos não disponíveis para este corretor.';
+    docsError = hasDocs ? null : 'Documentos nao disponiveis para este corretor.';
     isDocumentsModalOpen = true;
   }
 
   async function openPropertiesModal(broker: Broker) {
     if (!get(authToken)) {
-      showFeedback('error', 'Sessão expirada. Faça login novamente.');
+      showFeedback('error', 'Sessao expirada. Faca login novamente.');
+      authToken.set(null);
       return;
     }
 
@@ -210,8 +213,9 @@
       console.error('Erro ao carregar imóveis do corretor:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
-        propertiesError = 'Sessão expirada. Faça login novamente.';
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        propertiesError = 'Sessao expirada. Faca login novamente.';
+        authToken.set(null);
       } else {
         propertiesError =
           err instanceof Error
@@ -318,7 +322,22 @@
         {#if isLoading}
           <Loader2 class="h-4 w-4 animate-spin" />
         {:else}
-          <span aria-hidden="true">🔄</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4.5 4.5h5v-3m0 3-2.5 2.5M19.5 19.5h-5v3m0-3 2.5-2.5M4 13a8 8 0 0 1 7-7.93M20 11a8 8 0 0 1-7 7.93"
+            />
+          </svg>
         {/if}
         Recarregar lista
       </Button>
@@ -411,7 +430,7 @@
                 <div class="font-semibold text-gray-900 dark:text-white">{broker.name}</div>
                 <div class="text-sm text-gray-500 dark:text-gray-400">{broker.email}</div>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{broker.phone ?? '—'}</td>
+              <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{broker.phone ?? '-'}</td>
               <td class="px-6 py-4 text-sm font-semibold text-gray-800 dark:text-gray-200">{broker.creci}</td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                 {#if broker.agency?.name}
@@ -426,7 +445,7 @@
                     <div class="text-xs text-gray-500 dark:text-gray-400">{broker.agency.phone}</div>
                   {/if}
                 {:else}
-                  <span class="text-gray-400">—</span>
+                  <span class="text-gray-400">-</span>
                 {/if}
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{broker.property_count ?? 0}</td>
@@ -436,7 +455,7 @@
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                {broker.created_at ? formatDate(broker.created_at) : '—'}
+                {broker.created_at ? formatDate(broker.created_at) : '-'}
               </td>
               <td class="px-6 py-4">
                 <div class="flex flex-col items-end gap-2 sm:flex-row">
@@ -597,9 +616,9 @@
             <li class="rounded-lg border border-gray-200 p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-700/60">
               <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p class="text-sm font-semibold text-gray-900 dark:text-white">{property.title ?? `Imóvel #${property.id}`}</p>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">{property.title ?? `Imovel #${property.id}`}</p>
                   <p class="text-xs text-gray-500 dark:text-gray-400">
-                    {property.city ?? '—'}{#if property.state} / {property.state}{/if}
+                    {property.city ?? '-'}{#if property.state} / {property.state}{/if}
                   </p>
                 </div>
                 <div class="flex items-center gap-3 text-sm">

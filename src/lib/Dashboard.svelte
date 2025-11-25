@@ -67,7 +67,7 @@
     let isChartLoading = false;
     let chartError: string | null = null;
 
-    // Estado para dados de verificaÃƒÂ§ÃƒÂ£o
+    // Estado para dados de verificacao
     let pendingBrokers: Broker[] = [];
 
     const API_URL = baseURL;
@@ -78,23 +78,23 @@
         },
         properties: { 
             endpoint: '/admin/properties-with-brokers', 
-            title: 'Gerenciamento de ImÃƒÂ³veis', 
-            headers: ['ID', 'CÃƒÂ³digo', 'TÃƒÂ­tulo', 'Tipo', 'Status', 'PreÃƒÂ§o', 'Cidade', 'Corretor'],
-            filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'CÃƒÂ³digo' }, { value: 'p.title', label: 'TÃƒÂ­tulo' } ],
+            title: 'Gerenciamento de Imoveis', 
+            headers: ['ID', 'Codigo', 'Titulo', 'Tipo', 'Status', 'Preco', 'Cidade', 'Corretor'],
+            filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'Codigo' }, { value: 'p.title', label: 'Titulo' } ],
             sortColumn: 'p.title'
         },
         property_requests: {
-            title: 'Solicitações de Imóveis'
+            title: 'Solicitacoes de Imoveis'
         },
         brokers: { 
             endpoint: '/admin/brokers', 
             title: 'Gerenciamento de Corretores', 
-            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de ImÃƒÂ³veis'],
+            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de Imoveis'],
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
         },
         broker_requests: { 
-            title: 'Solicitações de Corretores'
+            title: 'Solicitacoes de Corretores'
         },
         clients: { 
             endpoint: '/admin/clients', 
@@ -104,17 +104,17 @@
             sortColumn: 'name'
         },
         notifications: {
-            title: 'NotificaÃ§Ãµes'
+            title: 'Notificacoes'
         },
         verification: { 
             endpoint: '/admin/brokers/pending', 
-            title: 'SolicitaÃƒÂ§ÃƒÂµes de VerificaÃƒÂ§ÃƒÂ£o', 
-            headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'AÃƒÂ§ÃƒÂµes'],
+            title: 'Solicitacoes de Verificacao', 
+            headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'Acoes'],
             filterOptions: [] 
         }
     };
 
-    // FunÃƒÂ§ÃƒÂ£o helper para obter configuraÃƒÂ§ÃƒÂ£o da view com fallback seguro
+    // Funcao helper para obter configuracao da view com fallback seguro
     function getViewConfig(view: View): ViewConfig {
         return viewConfig[view] || { title: 'Dashboard' };
     }
@@ -636,9 +636,9 @@
 
 {#if showModal}
     <Modal onConfirm={handleDeleteConfirm} onCancel={() => showModal = false}>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar ExclusÃƒÂ£o</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar Exclusao</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 px-4 py-3">
-            VocÃƒÂª tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
+            Voce tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
         </p>
     </Modal>
 {/if}

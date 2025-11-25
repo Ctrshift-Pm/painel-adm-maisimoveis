@@ -100,7 +100,8 @@
 
     const token = get(authToken);
     if (!token) {
-      error = 'Sessão expirada. Faça login novamente.';
+      error = 'Sessao expirada. Faca login novamente.';
+      authToken.set(null);
       isLoading = false;
       return;
     }
@@ -138,7 +139,7 @@
 
           return {
             id,
-            title: String(record['title'] ?? 'Imóvel sem título'),
+            title: String(record['title'] ?? 'Imovel sem titulo'),
             city: (record['city'] as string | null | undefined) ?? null,
             state: (record['state'] as string | null | undefined) ?? null,
             price: priceValue != null ? Number(priceValue) : null,
@@ -151,8 +152,9 @@
       console.error('Erro ao carregar imóveis:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
-        error = 'Sessão expirada. Faça login novamente.';
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        error = 'Sessao expirada. Faca login novamente.';
+        authToken.set(null);
       } else {
         error = err instanceof Error ? err.message : 'Erro inesperado ao carregar imóveis.';
       }
@@ -267,9 +269,10 @@
       console.error('Falha ao buscar detalhes do imóvel:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        authToken.set(null);
       } else {
-        toast.error('Não foi possível carregar os detalhes do imóvel.');
+        toast.error('Nao foi possivel carregar os detalhes do imovel.');
       }
     } finally {
       isDetailLoading = false;
@@ -287,7 +290,7 @@
 
   async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
     if (!selectedProperty) {
-      toast.error('Erro de estado: O imóvel selecionado é nulo. Tente fechar e reabrir o modal.');
+      toast.error('Erro de estado: o imovel selecionado esta nulo. Tente fechar e reabrir o modal.');
       return;
     }
     isProcessing = true;
@@ -300,12 +303,7 @@
         recipientId: null,
       });
 
-      
-      await api.post('/admin/notifications/send', {
-        message: `Status do imovel #${selectedProperty.id} alterado para ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}.`,
-        recipientId: null
-      });
-toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`);
+      toast.success(`Imovel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`);
       isModalOpen = false;
       selectedProperty = null;
       await fetchProperties();
@@ -313,7 +311,8 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
       console.error('Falha ao atualizar status do imóvel:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessão expirou. Por favor, faça login novamente.');
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        authToken.set(null);
       } else {
         toast.error('Falha ao atualizar o status.');
       }
@@ -449,6 +448,11 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
       await reviewProperty(selectedProperty as PropertySummary);
     } catch (err: any) {
       console.error('Erro ao enviar imagens:', err);
+      const status = err?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        authToken.set(null);
+      }
       imageUploadError =
         err?.response?.data?.error ||
         (err instanceof Error ? err.message : 'Falha ao enviar imagens.');
@@ -469,6 +473,11 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
       await reviewProperty(selectedProperty as PropertySummary);
     } catch (err: any) {
       console.error('Erro ao remover imagem:', err);
+      const status = err?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        authToken.set(null);
+      }
       imageDeleteError =
         err?.response?.data?.error ||
         (err instanceof Error ? err.message : 'Falha ao remover imagem.');
@@ -488,6 +497,11 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
       }
     } catch (err: any) {
       console.error('Erro ao remover video:', err);
+      const status = err?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        authToken.set(null);
+      }
       videoDeleteError =
         err?.response?.data?.error ||
         (err instanceof Error ? err.message : 'Falha ao remover video.');
@@ -652,7 +666,7 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                {property.broker_name ?? '—'}
+                {property.broker_name ?? '-'}
               </td>
               <td class="px-6 py-4 text-right">
                 <Button
@@ -842,18 +856,18 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
                   const form = new FormData();
                   form.append('video', target.files[0]);
                   apiClient
-                    .post(`/admin/properties/${selectedProperty.id}/images`, form, {
+                    .post(`/admin/properties/${selectedProperty.id}/video`, form, {
                       headers: { 'Content-Type': 'multipart/form-data' },
                     })
                     .then(() => {
-                      toast.success('Vídeo enviado com sucesso.');
+                      toast.success('Video enviado com sucesso.');
                       return reviewProperty(selectedProperty as PropertySummary);
                     })
                     .catch((err) => {
-                      console.error('Erro ao enviar vídeo:', err);
+                      console.error('Erro ao enviar video:', err);
                       videoDeleteError =
                         err?.response?.data?.error ||
-                        (err instanceof Error ? err.message : 'Falha ao enviar vídeo.');
+                        (err instanceof Error ? err.message : 'Falha ao enviar video.');
                     })
                     .finally(() => {
                       if (videoInputEl) videoInputEl.value = '';
@@ -961,7 +975,6 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
 
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Comodidades</h3>
-"
           <div class="mt-2 flex flex-wrap gap-2 text-sm">
             {#if isEditMode && editableProperty}
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
