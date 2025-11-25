@@ -459,51 +459,55 @@
       const onlyStatusChanged =
         statusChanged && fieldsBesidesStatus.every((k) => (payload as any)[k] === (original as any)[k]);
 
-      // Se apenas o status mudou, use o endpoint dedicado de status
       if (onlyStatusChanged) {
-        await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
-          status: (payload as any).status,
-        });
-        toast.success('Status do imovel atualizado.');
-        isEditMode = false;
-        await fetchProperties();
-        await reviewProperty({ ...selectedProperty } as PropertySummary);
-        return;
+        // tenta endpoint dedicado de status e, se falhar, cai na rotina normal
+        try {
+          await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
+            status: (payload as any).status,
+          });
+          toast.success('Status do imovel atualizado.');
+          isEditMode = false;
+          await fetchProperties();
+          await reviewProperty({ ...selectedProperty } as PropertySummary);
+          return;
+        } catch (err: any) {
+          // continua para tentar outros endpoints
+        }
       }
 
-      const trySave = async (url: string, method: 'patch' | 'put') => {
-        if (method === 'patch') return api.patch(url, payload);
-        return apiClient.put(url, payload);
-      };
+      const attempts: Array<{ url: string; method: 'patch' | 'put' }> = [
+        { url: altEndpoint, method: 'put' },
+        { url: endpoint, method: 'patch' },
+        { url: endpoint, method: 'put' },
+      ];
 
-      try {
-        await trySave(endpoint, 'patch');
-      } catch (err: any) {
-        const status = err?.response?.status;
-        if (status === 401) {
-          toast.error('Sua sessao expirou. Por favor, faca login novamente.');
-          authToken.set(null);
-          throw err;
-        }
-        if (status === 404 || status === 405) {
-          try {
-            await trySave(endpoint, 'put');
-          } catch (err2: any) {
-            const status2 = err2?.response?.status;
-            if (status2 === 401) {
-              toast.error('Sua sessao expirou. Por favor, faca login novamente.');
-              authToken.set(null);
-              throw err2;
-            }
-            if (status2 === 404 || status2 === 405) {
-              await trySave(altEndpoint, 'put');
-            } else {
-              throw err2;
-            }
+      let lastError: any = null;
+
+      for (const attempt of attempts) {
+        try {
+          if (attempt.method === 'patch') {
+            await api.patch(attempt.url, payload);
+          } else {
+            await apiClient.put(attempt.url, payload);
           }
-        } else {
-          throw err;
+          lastError = null;
+          break;
+        } catch (err: any) {
+          const status = err?.response?.status;
+          if (status === 401) {
+            toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+            authToken.set(null);
+            throw err;
+          }
+          lastError = err;
+          if (status !== 404 && status !== 405 && status !== 403) {
+            break;
+          }
         }
+      }
+
+      if (lastError) {
+        throw lastError;
       }
       toast.success('Imovel atualizado com sucesso.');
       isEditMode = false;
