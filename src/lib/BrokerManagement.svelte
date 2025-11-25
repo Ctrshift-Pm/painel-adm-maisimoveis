@@ -42,6 +42,7 @@
   let isReviewModalOpen = false;
   let brokerUnderReview: Broker | null = null;
   let sortConfig: SortConfig = { key: 'created_at', order: 'desc' };
+  let docErrorMessage = '';
 
   const DOCUMENT_TILES: ReadonlyArray<{ key: keyof BrokerDocuments; label: string }> = [
     { key: 'creci_front_url', label: 'Frente do CRECI' },
@@ -158,6 +159,7 @@
       creci_back_url: baseDocs.creci_back_url ?? null,
       selfie_url: baseDocs.selfie_url ?? null
     };
+    docErrorMessage = '';
 
     const hasDocs =
       Boolean(selectedDocuments?.creci_front_url) ||
@@ -166,6 +168,10 @@
 
     docsError = hasDocs ? null : 'Documentos nao disponiveis para este corretor.';
     isDocumentsModalOpen = true;
+  }
+
+  function markDocMissing(label: string) {
+    docErrorMessage = `Documento "${label}" não disponível ou removido.`;
   }
 
   async function openPropertiesModal(broker: Broker) {
@@ -523,6 +529,11 @@
           Nenhum documento disponível para este corretor.
         </div>
       {:else}
+        {#if docErrorMessage}
+          <div class="mb-4 rounded-md bg-yellow-100 px-4 py-2 text-sm text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+            {docErrorMessage}
+          </div>
+        {/if}
         <div class="grid gap-6 md:grid-cols-3">
           {#each DOCUMENT_TILES as doc}
             {@const docValue = selectedDocuments?.[doc.key] ?? null}
@@ -540,6 +551,7 @@
                     alt={`Documento - ${doc.label}`}
                     class="h-48 w-full object-cover"
                     loading="lazy"
+                    on:error={() => markDocMissing(doc.label)}
                   />
                 </a>
               {:else}
