@@ -145,11 +145,11 @@
     }
   }
 
-  function openDocumentModal(broker: Broker) {
+  async function openDocumentModal(broker: Broker) {
     const baseDocs = broker.documents ?? {
-      creci_front_url: (broker as unknown as Record<string, string | null>)?.creci_front_url ?? null,
-      creci_back_url: (broker as unknown as Record<string, string | null>)?.creci_back_url ?? null,
-      selfie_url: (broker as unknown as Record<string, string | null>)?.selfie_url ?? null
+      creci_front_url: (broker as any)?.creci_front_url ?? null,
+      creci_back_url: (broker as any)?.creci_back_url ?? null,
+      selfie_url: (broker as any)?.selfie_url ?? null
     };
 
     selectedBroker = broker;
@@ -158,6 +158,25 @@
       creci_back_url: baseDocs.creci_back_url ?? null,
       selfie_url: baseDocs.selfie_url ?? null
     };
+
+    // Se faltar algum documento, tenta buscar detalhes completos
+    if (
+      !selectedDocuments.creci_front_url ||
+      !selectedDocuments.creci_back_url ||
+      !selectedDocuments.selfie_url
+    ) {
+      try {
+        const details = await api.get<Broker>(`/admin/brokers/${broker.id}`);
+        const docs = (details as any)?.documents ?? details ?? {};
+        selectedDocuments = {
+          creci_front_url: docs.creci_front_url ?? selectedDocuments.creci_front_url ?? null,
+          creci_back_url: docs.creci_back_url ?? selectedDocuments.creci_back_url ?? null,
+          selfie_url: docs.selfie_url ?? selectedDocuments.selfie_url ?? null
+        };
+      } catch (err) {
+        console.error('Erro ao buscar documentos do corretor:', err);
+      }
+    }
 
     const hasDocs =
       Boolean(selectedDocuments?.creci_front_url) ||
@@ -234,13 +253,19 @@
     }
   }
 
-  function onSearchInput() {
+  function onSearchInput(event?: Event) {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
+    const target = event?.target as HTMLInputElement | undefined;
+    // Se limpar via "x" (value vazio), recarrega imediatamente
+    if (target && target.value.trim() === '') {
+      fetchBrokers();
+      return;
+    }
     debounceTimer = setTimeout(() => {
       fetchBrokers();
-    }, 500);
+    }, 300);
   }
 
   function handleSort(key: string) {

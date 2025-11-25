@@ -642,13 +642,18 @@
     }
   }
 
-  function onSearchInput() {
+  function onSearchInput(event?: Event) {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
+    const target = event?.target as HTMLInputElement | undefined;
+    if (target && target.value.trim() === '') {
+      fetchProperties();
+      return;
+    }
     debounceTimer = setTimeout(() => {
       fetchProperties();
-    }, 500);
+    }, 300);
   }
 </script>
 
