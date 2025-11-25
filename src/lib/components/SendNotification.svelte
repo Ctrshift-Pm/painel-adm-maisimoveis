@@ -17,7 +17,8 @@
   let clientsLoading = false;
   let clientsError: string | null = null;
 
-  let selectedRecipient = 'all';
+  let sendToAll = true;
+  let selectedRecipients = new Set<string>();
   let message = '';
   let isSubmitting = false;
   let feedback: { type: 'success' | 'error'; text: string } | null = null;
@@ -55,6 +56,15 @@
     }
   }
 
+  function toggleRecipient(id: string) {
+    if (selectedRecipients.has(id)) {
+      selectedRecipients.delete(id);
+    } else {
+      selectedRecipients.add(id);
+    }
+    selectedRecipients = new Set(selectedRecipients);
+  }
+
   async function handleSubmit() {
     feedback = null;
     if (!message.trim()) {
@@ -71,16 +81,22 @@
         return;
       }
 
+      const recipientIds =
+        sendToAll || selectedRecipients.size === 0
+          ? null
+          : Array.from(selectedRecipients).map((id) => Number(id));
+
       const payload = {
         message: message.trim(),
-        recipientId: selectedRecipient === 'all' ? null : Number(selectedRecipient)
+        recipientIds
       };
 
       await api.post('/admin/notifications/send', payload);
       toast.success('Notificação enviada com sucesso!');
       feedback = { type: 'success', text: 'Notificação enviada com sucesso!' };
       message = '';
-      selectedRecipient = 'all';
+      selectedRecipients = new Set();
+      sendToAll = true;
     } catch (error) {
       console.error('Erro ao enviar notificação:', error);
     } finally {
@@ -101,36 +117,51 @@
     </div>
 
     <form class="px-6 py-6 space-y-5" on:submit|preventDefault={handleSubmit}>
-      <div class="space-y-2">
-        <label for={RECIPIENT_FIELD_ID} class="text-sm font-medium text-gray-700 dark:text-gray-200">
-          Destinatário
-        </label>
-
-        {#if clientsLoading}
-          <div class="text-sm text-gray-500 dark:text-gray-400">Carregando clientes...</div>
-        {:else if clientsError}
-          <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-200">
-            {clientsError}
-          </div>
-        {:else}
-          <select
-            id={RECIPIENT_FIELD_ID}
-            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={selectedRecipient}
+      <div class="space-y-3">
+        <div class="flex items-center gap-2">
+          <input
+            id="send-all"
+            type="checkbox"
+            class="rounded border-gray-300 text-green-600 shadow-sm focus:ring-green-500"
+            bind:checked={sendToAll}
             disabled={isSubmitting}
-          >
-            <option value="all">Todos os clientes (broadcast)</option>
-            {#if clients.length === 0}
-              <option value="" disabled>Nenhum cliente disponível</option>
-            {:else}
+          />
+          <label for="send-all" class="text-sm font-medium text-gray-700 dark:text-gray-200">
+            Enviar para todos os clientes
+          </label>
+        </div>
+
+        {#if !sendToAll}
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for={RECIPIENT_FIELD_ID}>
+            Selecionar clientes
+          </label>
+          {#if clientsLoading}
+            <div class="text-sm text-gray-500 dark:text-gray-400">Carregando clientes...</div>
+          {:else if clientsError}
+            <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-200">
+              {clientsError}
+            </div>
+          {:else if clients.length === 0}
+            <div class="text-sm text-gray-500 dark:text-gray-400">Nenhum cliente disponível.</div>
+          {:else}
+            <div class="max-h-48 overflow-y-auto rounded-md border border-gray-200 p-3 space-y-2 dark:border-gray-700">
               {#each clients as client}
-                <option value={client.id.toString()}>
-                  {(client.name && client.name.trim()) ? client.name : 'Cliente sem nome'}
-                  {#if client.email} ({client.email}){/if}
-                </option>
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                  <input
+                    type="checkbox"
+                    class="rounded border-gray-300 text-green-600 shadow-sm focus:ring-green-500"
+                    checked={selectedRecipients.has(client.id.toString())}
+                    on:change={() => toggleRecipient(client.id.toString())}
+                    disabled={isSubmitting}
+                  />
+                  <span>
+                    {(client.name && client.name.trim()) ? client.name : 'Cliente sem nome'}
+                    {#if client.email} ({client.email}){/if}
+                  </span>
+                </label>
               {/each}
-            {/if}
-          </select>
+            </div>
+          {/if}
         {/if}
       </div>
 
@@ -169,9 +200,10 @@
           type="button"
           class="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 dark:focus:ring-offset-gray-900"
           on:click={() => {
-            message = '';
-            selectedRecipient = 'all';
-            feedback = null;
+      message = '';
+      selectedRecipients = new Set();
+      sendToAll = true;
+      feedback = null;
           }}
           disabled={isSubmitting}
         >

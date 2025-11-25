@@ -489,6 +489,11 @@
       }, [] as Array<[string, unknown]>);
 
       const payload = Object.fromEntries(payloadEntries);
+      if (Object.keys(payload).length === 0) {
+        editError = 'Nenhuma alteracao detectada para salvar.';
+        isSavingEdit = false;
+        return;
+      }
 
       const original = selectedProperty as PropertyDetails;
       const statusChanged =
