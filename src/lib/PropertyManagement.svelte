@@ -263,31 +263,18 @@
 
   function humanizeStatus(status: PropertyStatus): string {
     const map: Record<string, string> = {
-      pending_approval: 'Pendente de aprovação',
       approved: 'Disponível',
-      rejected: 'Rejeitado',
       rented: 'Alugado',
       sold: 'Vendido',
-      status: 'Status',
-      NO: 'NO',
-      MUL: 'MUL',
-      '': 'Indefinido',
     };
     return map[status] ?? status ?? 'Indefinido';
   }
 
   function statusBadgeClasses(status: PropertyStatus): string {
     const classes: Record<string, string> = {
-      pending_approval:
-        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
       approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       rented: 'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
       sold: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-      status: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
-      NO: 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
-      MUL: 'bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
-      '': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
     };
 
     return classes[status] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
@@ -458,6 +445,9 @@
       const normalizeValue = (key: string, value: unknown) => {
         if (value === undefined) return undefined;
         if (value === '' || value === null) return null;
+        if (key === 'description' && (value === null || value === undefined)) {
+          return '';
+        }
         if (booleanKeys.includes(key as any)) {
           return Boolean(value) ? 1 : 0;
         }
@@ -921,12 +911,6 @@
                     <option value="approved">Disponível</option>
                     <option value="rented">Alugado</option>
                     <option value="sold">Vendido</option>
-                    <option value="pending_approval">Pendente de aprovação</option>
-                    <option value="rejected">Rejeitado</option>
-                    <option value="status">Status</option>
-                    <option value="NO">NO</option>
-                    <option value="MUL">MUL</option>
-                    <option value="">Indefinido</option>
                   </select>
                 </div>
                 <Button on:click={saveEdits} disabled={isSavingEdit}>
