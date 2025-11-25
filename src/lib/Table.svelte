@@ -50,7 +50,11 @@
             rejected: 'Rejeitado',
             rented: 'Alugado',
             sold: 'Vendido',
-            pending_verification: 'Pendente de verificacao'
+            pending_verification: 'Pendente de verificacao',
+            status: 'Status',
+            no: 'NO',
+            mul: 'MUL',
+            '': 'Indefinido'
         };
         return labels[key] ?? (status ?? '');
     }
@@ -145,8 +149,12 @@
             pending_approval: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
             approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
             rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-            rented: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            sold: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+            rented: 'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
+            sold: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+            status: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
+            no: 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
+            mul: 'bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
+            '': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
         };
 
         const brokerStatusBadges: Record<string, string> = {

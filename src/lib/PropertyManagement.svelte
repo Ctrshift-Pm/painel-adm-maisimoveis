@@ -262,29 +262,35 @@
   }
 
   function humanizeStatus(status: PropertyStatus): string {
-    const map: Record<PropertyStatus, string> = {
+    const map: Record<string, string> = {
       pending_approval: 'Pendente de aprovação',
       approved: 'Disponível',
       rejected: 'Rejeitado',
       rented: 'Alugado',
-      sold: 'Vendido'
+      sold: 'Vendido',
+      status: 'Status',
+      NO: 'NO',
+      MUL: 'MUL',
+      '': 'Indefinido',
     };
-    return map[status] ?? status;
+    return map[status] ?? status ?? 'Indefinido';
   }
 
   function statusBadgeClasses(status: PropertyStatus): string {
-    const classes: Record<PropertyStatus, string> = {
+    const classes: Record<string, string> = {
       pending_approval:
         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
       approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      rented: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      sold: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+      rented: 'bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
+      sold: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      status: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
+      NO: 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
+      MUL: 'bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-100',
+      '': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
     };
 
-    return (
-      classes[status] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
-    );
+    return classes[status] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
   }
 
   const booleanKeys = [
@@ -498,6 +504,20 @@
           .map(([key, value]) => [key, normalizeValue(key, value)])
           .filter(([, value]) => value !== undefined)
       );
+
+      // Validação específica para vendido
+      if ((payload as any).status === 'sold') {
+        const cond = (payload as any).valor_condominio ?? selectedProperty.valor_condominio;
+        const iptu = (payload as any).valor_iptu ?? selectedProperty.valor_iptu;
+        const condOk = cond !== null && cond !== undefined && Number(cond) > 0;
+        const iptuOk = iptu !== null && iptu !== undefined && Number(iptu) > 0;
+        if (!condOk || !iptuOk) {
+          editError =
+            'Para marcar como Vendido, preencha os valores de Condominio e IPTU (maiores que 0).';
+          isSavingEdit = false;
+          return;
+        }
+      }
 
       const original = selectedProperty as PropertyDetails;
       const statusChanged =
@@ -835,11 +855,17 @@
           <div class="space-y-1">
             <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Finalidade</p>
             {#if isEditMode && editableProperty}
-              <input
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                bind:value={editableProperty.purpose}
-                placeholder="Finalidade"
-              />
+              <div class="flex flex-col gap-2">
+                <label class="text-xs text-gray-500 dark:text-gray-400" for="purpose-select">Finalidade</label>
+                <select
+                  id="purpose-select"
+                  class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:border-green-500 focus:ring-2 focus:ring-green-500"
+                  bind:value={editableProperty.purpose}
+                >
+                  <option value="Venda">Venda</option>
+                  <option value="Aluguel">Aluguel</option>
+                </select>
+              </div>
               <input
                 class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
                 type="number"
@@ -880,20 +906,38 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={isSavingEdit}>
-              {isEditMode ? 'Cancelar edicao' : 'Editar dados'}
-            </Button>
-            {#if isEditMode}
-              <Button on:click={saveEdits} disabled={isSavingEdit}>
-                {#if isSavingEdit}
-                  <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                {/if}
-                Salvar
+            <div class="flex items-center gap-2">
+              <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={isSavingEdit}>
+                {isEditMode ? 'Cancelar edicao' : 'Editar dados'}
               </Button>
-            {/if}
+              {#if isEditMode && editableProperty}
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-500 dark:text-gray-400" for="status-select">Status</label>
+                  <select
+                    id="status-select"
+                    class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:border-green-500 focus:ring-2 focus:ring-green-500"
+                    bind:value={editableProperty.status}
+                  >
+                    <option value="approved">Disponível</option>
+                    <option value="rented">Alugado</option>
+                    <option value="sold">Vendido</option>
+                    <option value="pending_approval">Pendente de aprovação</option>
+                    <option value="rejected">Rejeitado</option>
+                    <option value="status">Status</option>
+                    <option value="NO">NO</option>
+                    <option value="MUL">MUL</option>
+                    <option value="">Indefinido</option>
+                  </select>
+                </div>
+                <Button on:click={saveEdits} disabled={isSavingEdit}>
+                  {#if isSavingEdit}
+                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                  {/if}
+                  Salvar
+                </Button>
+              {/if}
+            </div>
           </div>
-        </div>
 
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
