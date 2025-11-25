@@ -689,6 +689,9 @@ toast.success(`Imóvel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`)
             {humanizeStatus(selectedProperty.status)}
           </span>
         </Dialog.Description>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Dashboard / Imoveis / Revisao #{selectedProperty.id}
+        </p>
       </Dialog.Header>
 
       <div class="space-y-6 overflow-y-auto px-6 py-4">
