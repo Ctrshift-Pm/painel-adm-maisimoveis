@@ -442,7 +442,21 @@
         video_url: editableProperty.video_url,
       };
 
-      await api.patch(`/admin/properties/${selectedProperty.id}`, payload);
+      const endpoint = `/admin/properties/${selectedProperty.id}`;
+      try {
+        await api.patch(endpoint, payload);
+      } catch (err: any) {
+        // Alguns backends podem não aceitar PATCH; tenta PUT como fallback
+        if (err?.response?.status === 404 || err?.response?.status === 405) {
+          await apiClient.put(endpoint, payload);
+        } else if (err?.response?.status === 401) {
+          toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+          authToken.set(null);
+          throw err;
+        } else {
+          throw err;
+        }
+      }
       toast.success('Imovel atualizado com sucesso.');
       isEditMode = false;
       await fetchProperties();
