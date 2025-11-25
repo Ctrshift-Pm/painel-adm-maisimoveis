@@ -287,6 +287,23 @@
     );
   }
 
+  const booleanKeys = [
+    'has_wifi',
+    'tem_piscina',
+    'tem_energia_solar',
+    'tem_automacao',
+    'tem_ar_condicionado',
+    'eh_mobiliada'
+  ] as const;
+
+  function sanitizeEditable(data: Partial<PropertyDetails>): PropertyDetails {
+    const coerced: Record<string, unknown> = { ...data };
+    for (const key of booleanKeys) {
+      coerced[key] = Boolean((data as any)?.[key]);
+    }
+    return coerced as unknown as PropertyDetails;
+  }
+
   async function reviewProperty(property: PropertySummary, event?: Event) {
     event?.stopPropagation?.();
     if (isDetailLoading && selectedProperty?.id === property.id) {
@@ -295,12 +312,13 @@
 
     isDetailLoading = true;
     selectedProperty = property;
-    editableProperty = { ...property } as PropertyDetails;
+    editableProperty = sanitizeEditable({ ...property } as PropertyDetails);
 
     try {
       const details = await api.get<PropertyDetails>(`/admin/properties/${property.id}`);
-      selectedProperty = { ...property, ...details };
-      editableProperty = { ...property, ...details };
+      const merged = { ...property, ...details } as PropertyDetails;
+      selectedProperty = merged;
+      editableProperty = sanitizeEditable(merged);
       isModalOpen = true;
     } catch (err) {
       console.error('Falha ao buscar detalhes do imóvel:', err);
@@ -434,6 +452,9 @@
       const normalizeValue = (key: string, value: unknown) => {
         if (value === undefined) return undefined;
         if (value === '' || value === null) return null;
+        if (booleanKeys.includes(key as any)) {
+          return Boolean(value) ? 1 : 0;
+        }
         if (numericKeys.has(key)) {
           const num = Number(value);
           return Number.isFinite(num) ? num : null;
@@ -496,7 +517,9 @@
       toast.success('Imovel atualizado com sucesso.');
       isEditMode = false;
       await fetchProperties();
-      await reviewProperty({ ...selectedProperty } as PropertySummary);
+      // Atualiza estado local para refletir a última versao
+      selectedProperty = { ...(selectedProperty as PropertySummary), ...(payload as any) } as PropertySummary;
+      editableProperty = sanitizeEditable(selectedProperty as any);
     } catch (err: any) {
       console.error('Erro ao salvar imovel:', err);
       const status = err?.response?.status;
