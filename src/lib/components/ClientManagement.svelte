@@ -96,13 +96,18 @@
     exportToCsv(dataToExport, `clientes_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
-  function onSearchInput() {
+  function onSearchInput(event?: Event) {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
+    const target = event?.target as HTMLInputElement | undefined;
+    if (target && target.value.trim() === '') {
+      fetchClients();
+      return;
+    }
     debounceTimer = setTimeout(() => {
       fetchClients();
-    }, 500);
+    }, 300);
   }
 
   function handleSort(newKey: string) {

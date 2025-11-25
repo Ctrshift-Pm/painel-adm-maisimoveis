@@ -159,7 +159,7 @@
       selfie_url: baseDocs.selfie_url ?? null
     };
 
-    // Se faltar algum documento, tenta buscar detalhes completos
+    // Se faltar algum documento, tenta buscar detalhes completos; ignora 404 silenciosamente
     if (
       !selectedDocuments.creci_front_url ||
       !selectedDocuments.creci_back_url ||
@@ -173,8 +173,11 @@
           creci_back_url: docs.creci_back_url ?? selectedDocuments.creci_back_url ?? null,
           selfie_url: docs.selfie_url ?? selectedDocuments.selfie_url ?? null
         };
-      } catch (err) {
-        console.error('Erro ao buscar documentos do corretor:', err);
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status !== 404) {
+          console.error('Erro ao buscar documentos do corretor:', err);
+        }
       }
     }
 
