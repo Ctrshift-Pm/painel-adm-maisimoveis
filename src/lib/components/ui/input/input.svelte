@@ -14,4 +14,7 @@
   {placeholder}
   {disabled}
   {name}
+  on:input
+  on:keydown
+  on:keyup
 />

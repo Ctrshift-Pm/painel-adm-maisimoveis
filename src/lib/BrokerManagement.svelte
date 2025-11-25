@@ -159,28 +159,6 @@
       selfie_url: baseDocs.selfie_url ?? null
     };
 
-    // Se faltar algum documento, tenta buscar detalhes completos; ignora 404 silenciosamente
-    if (
-      !selectedDocuments.creci_front_url ||
-      !selectedDocuments.creci_back_url ||
-      !selectedDocuments.selfie_url
-    ) {
-      try {
-        const details = await api.get<Broker>(`/admin/brokers/${broker.id}`);
-        const docs = (details as any)?.documents ?? details ?? {};
-        selectedDocuments = {
-          creci_front_url: docs.creci_front_url ?? selectedDocuments.creci_front_url ?? null,
-          creci_back_url: docs.creci_back_url ?? selectedDocuments.creci_back_url ?? null,
-          selfie_url: docs.selfie_url ?? selectedDocuments.selfie_url ?? null
-        };
-      } catch (err: any) {
-        const status = err?.response?.status;
-        if (status !== 404) {
-          console.error('Erro ao buscar documentos do corretor:', err);
-        }
-      }
-    }
-
     const hasDocs =
       Boolean(selectedDocuments?.creci_front_url) ||
       Boolean(selectedDocuments?.creci_back_url) ||
@@ -256,6 +234,16 @@
     }
   }
 
+  function handleKeyup(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
+    const key = event instanceof CustomEvent ? event.detail?.key : event.key;
+    const target = event instanceof CustomEvent ? (event.detail as any)?.target : (event.target as HTMLInputElement | undefined);
+    if (key === 'Enter') {
+      fetchBrokers();
+    } else if (target && target.value.trim() === '') {
+      fetchBrokers();
+    }
+  }
+
   function onSearchInput(event?: Event) {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -318,6 +306,7 @@
         bind:value={filters.search}
         on:input={onSearchInput}
         on:keydown={handleKeydown}
+        on:keyup={handleKeyup}
       />
       <Button
         variant="outline"

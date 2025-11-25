@@ -75,6 +75,16 @@
     }
   }
 
+  function handleKeyup(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
+    const key = event instanceof CustomEvent ? event.detail?.key : event.key;
+    const target = event instanceof CustomEvent ? (event.detail as any)?.target : (event.target as HTMLInputElement | undefined);
+    if (key === 'Enter') {
+      fetchClients();
+    } else if (target && target.value.trim() === '') {
+      fetchClients();
+    }
+  }
+
   function formatDate(value?: string) {
     if (!value) return '-';
     const date = new Date(value);
@@ -176,6 +186,7 @@
         bind:value={filters.search}
         on:input={onSearchInput}
         on:keydown={handleKeydown}
+        on:keyup={handleKeyup}
       />
       <Button variant="outline" on:click={handleRefresh} disabled={isLoading}>
         Recarregar

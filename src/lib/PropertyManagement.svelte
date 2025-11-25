@@ -413,6 +413,16 @@
     }
   }
 
+  function handleKeyup(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
+    const key = event instanceof CustomEvent ? event.detail?.key : event.key;
+    const target = event instanceof CustomEvent ? (event.detail as any)?.target : (event.target as HTMLInputElement | undefined);
+    if (key === 'Enter') {
+      fetchProperties();
+    } else if (target && target.value.trim() === '') {
+      fetchProperties();
+    }
+  }
+
   function onFilterChange() {
     fetchProperties();
   }
@@ -715,6 +725,7 @@
       bind:value={filters.search}
       on:input={onSearchInput}
       on:keydown={handleKeydown}
+      on:keyup={handleKeyup}
     />
   </div>
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
