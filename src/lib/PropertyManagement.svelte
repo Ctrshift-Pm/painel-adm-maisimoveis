@@ -451,6 +451,26 @@
       const endpoint = `/admin/properties/${selectedProperty.id}`;
       const altEndpoint = `/admin/properties/update/${selectedProperty.id}`;
 
+      const original = selectedProperty as PropertyDetails;
+      const statusChanged =
+        (payload as any).status && (payload as any).status !== original.status;
+
+      const fieldsBesidesStatus = Object.keys(payload).filter((k) => k !== 'status');
+      const onlyStatusChanged =
+        statusChanged && fieldsBesidesStatus.every((k) => (payload as any)[k] === (original as any)[k]);
+
+      // Se apenas o status mudou, use o endpoint dedicado de status
+      if (onlyStatusChanged) {
+        await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
+          status: (payload as any).status,
+        });
+        toast.success('Status do imovel atualizado.');
+        isEditMode = false;
+        await fetchProperties();
+        await reviewProperty({ ...selectedProperty } as PropertySummary);
+        return;
+      }
+
       const trySave = async (url: string, method: 'patch' | 'put') => {
         if (method === 'patch') return api.patch(url, payload);
         return apiClient.put(url, payload);
@@ -491,9 +511,16 @@
       await reviewProperty({ ...selectedProperty } as PropertySummary);
     } catch (err: any) {
       console.error('Erro ao salvar imovel:', err);
-      editError =
-        err?.response?.data?.error ||
-        (err instanceof Error ? err.message : 'Nao foi possivel salvar o imovel.');
+      const status = err?.response?.status;
+      if (status === 403) {
+        editError = 'Permissao negada pelo servidor para atualizar este imovel.';
+      } else if (status === 404) {
+        editError = 'Endpoint de atualizacao nao encontrado no servidor.';
+      } else {
+        editError =
+          err?.response?.data?.error ||
+          (err instanceof Error ? err.message : 'Nao foi possivel salvar o imovel.');
+      }
     } finally {
       isSavingEdit = false;
     }
