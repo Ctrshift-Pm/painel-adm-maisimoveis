@@ -16,7 +16,7 @@
     import StatusPieChart from './components/charts/StatusPieChart.svelte';
     import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
     import { navigate } from 'svelte-routing';
-    import { baseURL } from './api';
+    import { baseURL, handleUnauthorizedResponse } from './api';
     import { authToken } from './store';
     import { onMount } from 'svelte';
     import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
@@ -152,10 +152,14 @@
                 const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) throw new Error('Falha ao buscar estatÃƒÂ­sticas');
+                if (handleUnauthorizedResponse(response.status)) {
+                    isLoading = false;
+                    return;
+                }
+                if (!response.ok) throw new Error('Falha ao buscar estatisticas');
                 stats = await response.json();
             } catch (error) {
-                console.error("Erro ao buscar estatÃƒÂ­sticas do dashboard:", error);
+                console.error("Erro ao buscar estatisticas do dashboard:", error);
                 stats = null;
             } finally {
                 isLoading = false;
@@ -170,13 +174,17 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (!response.ok) throw new Error('Falha ao buscar solicitaÃƒÂ§ÃƒÂµes pendentes');
+                if (handleUnauthorizedResponse(response.status)) {
+                    isLoading = false;
+                    return;
+                }
+                if (!response.ok) throw new Error('Falha ao buscar solicitacoes pendentes');
                 
                 const result = await response.json();
                 pendingBrokers = result.data || result;
-                
+
             } catch (error) {
-                console.error("Erro ao buscar solicitaÃƒÂ§ÃƒÂµes de verificaÃƒÂ§ÃƒÂ£o:", error);
+                console.error("Erro ao buscar solicitacoes de verificacao:", error);
                 pendingBrokers = [];
             } finally {
                 isLoading = false;
@@ -207,7 +215,11 @@
             const response = await fetch(`${API_URL}${config.endpoint}?${params.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error('Falha na autenticaÃƒÂ§ÃƒÂ£o');
+            if (handleUnauthorizedResponse(response.status)) {
+                isLoading = false;
+                return;
+            }
+            if (!response.ok) throw new Error('Falha na autenticacao');
             
             const result = await response.json();
             allData = result.data || result;
@@ -236,6 +248,11 @@
             const response = await fetch(`${API_URL}/admin/stats/dashboard`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+
+            if (handleUnauthorizedResponse(response.status)) {
+                isChartLoading = false;
+                return;
+            }
 
             if (!response.ok) {
                 const text = await response.text();

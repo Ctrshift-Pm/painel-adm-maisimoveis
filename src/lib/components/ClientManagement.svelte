@@ -4,6 +4,9 @@
   import { Input } from '$lib/components/ui/input';
   import { api } from '$lib/apiClient';
   import { exportToCsv } from '$lib/utils/exportUtils';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import { Loader2 } from 'lucide-svelte';
+  import { toast } from 'svelte-sonner';
 
   type Client = {
     id: number;
@@ -28,6 +31,9 @@
   let filters: ClientFilters = { search: '' };
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let sortConfig: SortConfig = { key: 'created_at', order: 'desc' };
+  let isModalOpen = false;
+  let selectedClient: Client | null = null;
+  let isProcessing = false;
 
   async function fetchClients() {
     isLoading = true;
@@ -116,6 +122,36 @@
       return '';
     }
     return sortConfig.order === 'asc' ? '▲' : '▼';
+  }
+
+  function openClientModal(client: Client) {
+    selectedClient = client;
+    isModalOpen = true;
+  }
+
+  function closeModal() {
+    if (isProcessing) return;
+    isModalOpen = false;
+    selectedClient = null;
+  }
+
+  async function deleteClient() {
+    if (!selectedClient) return;
+    const confirmed = window.confirm(`Excluir o cliente ${selectedClient.name}?`);
+    if (!confirmed) return;
+
+    isProcessing = true;
+    try {
+      await api.delete(`/admin/clients/${selectedClient.id}`);
+      toast.success('Cliente excluido.');
+      clients = clients.filter((c) => c.id !== selectedClient?.id);
+      closeModal();
+    } catch (err) {
+      console.error('Erro ao excluir cliente:', err);
+      toast.error('Falha ao excluir cliente.');
+    } finally {
+      isProcessing = false;
+    }
   }
 </script>
 
@@ -206,6 +242,9 @@
                 <span aria-hidden="true">{getSortIndicator('created_at')}</span>
               </button>
             </th>
+            <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Ações
+            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -215,6 +254,11 @@
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{client.email}</td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{client.phone ?? 'N/A'}</td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{formatDate(client.created_at)}</td>
+              <td class="px-6 py-4 text-right">
+                <Button size="sm" variant="outline" on:click={() => openClientModal(client)}>
+                  Revisar
+                </Button>
+              </td>
             </tr>
           {/each}
         </tbody>
@@ -222,3 +266,33 @@
     </div>
   {/if}
 </section>
+
+<Dialog.Root bind:open={isModalOpen}>
+  <Dialog.Content className="max-w-md">
+    {#if selectedClient}
+      <Dialog.Header>
+        <Dialog.Title>Revisar Cliente</Dialog.Title>
+        <Dialog.Description>
+          Consulte os dados do cliente e exclua se necessário.
+        </Dialog.Description>
+      </Dialog.Header>
+
+      <div class="space-y-2 py-4 text-sm text-gray-700 dark:text-gray-300">
+        <p><strong>Nome:</strong> {selectedClient.name}</p>
+        <p><strong>Email:</strong> {selectedClient.email}</p>
+        <p><strong>Telefone:</strong> {selectedClient.phone ?? 'N/A'}</p>
+        <p><strong>Cadastrado em:</strong> {formatDate(selectedClient.created_at)}</p>
+      </div>
+
+      <Dialog.Footer className="flex gap-2">
+        <Button variant="outline" on:click={closeModal} disabled={isProcessing}>Cancelar</Button>
+        <Button variant="destructive" on:click={deleteClient} disabled={isProcessing}>
+          {#if isProcessing}
+            <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+          {/if}
+          Excluir cliente
+        </Button>
+      </Dialog.Footer>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>

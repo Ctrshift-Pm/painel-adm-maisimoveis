@@ -1,7 +1,7 @@
 import axios, { AxiosHeaders, type AxiosRequestConfig } from 'axios';
 import { toast } from 'svelte-sonner';
 import { get } from 'svelte/store';
-import { baseURL } from './api';
+import { baseURL, handleUnauthorizedResponse } from './api';
 import { authToken } from './store';
 
 type RequestOptions = {
@@ -82,7 +82,7 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (handleUnauthorizedResponse(error.response?.status)) {
       return Promise.reject(error);
     }
 

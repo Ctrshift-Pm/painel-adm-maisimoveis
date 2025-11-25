@@ -18,13 +18,13 @@
   }
   $: wasOpen = open;
 
-  async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
+  async function handleStatusUpdate(newStatus: 'rejected') {
     if (!broker) return;
 
     isProcessing = true;
     try {
       await api.patch(`/admin/brokers/${broker.id}/status`, { status: newStatus });
-      toast.success(`Corretor ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}.`);
+      toast.success('Corretor rejeitado.');
 
       dispatch('update');
       close();
@@ -40,15 +40,34 @@
     if (isProcessing) return;
     open = false;
   }
+
+  async function handleDelete() {
+    if (!broker) return;
+    const confirmed = window.confirm('Deseja remover este corretor permanentemente?');
+    if (!confirmed) return;
+
+    isProcessing = true;
+    try {
+      await api.delete(`/admin/brokers/${broker.id}`);
+      toast.success('Corretor excluido.');
+      dispatch('update');
+      close();
+    } catch (error) {
+      console.error('Erro ao excluir corretor:', error);
+      toast.error('Falha ao excluir corretor.');
+    } finally {
+      isProcessing = false;
+    }
+  }
 </script>
 
 <Dialog.Root bind:open={open}>
   <Dialog.Content className="max-w-md">
     {#if broker}
       <Dialog.Header>
-        <Dialog.Title className="text-2xl">Revisar Solicitação</Dialog.Title>
+        <Dialog.Title className="text-2xl">Revisar Corretor</Dialog.Title>
         <Dialog.Description>
-          Aprovar ou rejeitar o corretor <span class="font-semibold">{broker.name}</span>
+          Rejeite ou exclua o corretor <span class="font-semibold">{broker.name}</span>
         </Dialog.Description>
       </Dialog.Header>
 
@@ -69,11 +88,11 @@
           {/if}
           Rejeitar
         </Button>
-        <Button className="bg-green-600 text-white hover:bg-green-700" on:click={() => handleStatusUpdate('approved')} disabled={isProcessing}>
+        <Button className="bg-gray-900 text-white hover:bg-gray-800" on:click={handleDelete} disabled={isProcessing}>
           {#if isProcessing}
             <Loader2 class="mr-2 h-4 w-4 animate-spin" />
           {/if}
-          Aprovar
+          Excluir
         </Button>
       </Dialog.Footer>
     {/if}

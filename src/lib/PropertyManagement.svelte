@@ -372,11 +372,6 @@
   async function saveEdits() {
     if (!selectedProperty || !editableProperty) return;
 
-    if (selectedProperty.status === 'approved') {
-      editError = 'Imoveis aprovados so permitem atualizar o status.';
-      return;
-    }
-
     isSavingEdit = true;
     editError = null;
 
@@ -486,6 +481,8 @@
 
   async function handleVideoDelete() {
     if (!selectedProperty) return;
+    const confirmed = window.confirm('Confirma remover o video atual?');
+    if (!confirmed) return;
     videoDeleting = true;
     videoDeleteError = null;
     try {
@@ -759,7 +756,7 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={selectedProperty.status === 'approved' || isSavingEdit}>
+            <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={isSavingEdit}>
               {isEditMode ? 'Cancelar edicao' : 'Editar dados'}
             </Button>
             {#if isEditMode}
