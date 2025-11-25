@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Router, Route } from 'svelte-routing';
   import Login from './lib/Login.svelte';
   import Dashboard from './lib/Dashboard.svelte';
   import { Toaster } from '$lib/components/ui/sonner';
   import { authToken, theme } from './lib/store';
+  import type { View } from './lib/types';
 
   $: {
     if (typeof window !== 'undefined') {
@@ -13,18 +13,16 @@
       document.documentElement.classList.toggle('dark', isDark);
     }
   }
+
+  let initialView: View = 'dashboard';
+  if (typeof window !== 'undefined' && window.location.pathname === '/admin/properties') {
+    initialView = 'properties';
+  }
 </script>
 
 <main class="h-full">
   {#if $authToken}
-    <Router>
-      <Route path="/admin/properties">
-        <Dashboard initialView="properties" />
-      </Route>
-      <Route path="/">
-        <Dashboard />
-      </Route>
-    </Router>
+    <Dashboard {initialView} />
   {:else}
     <Login />
   {/if}

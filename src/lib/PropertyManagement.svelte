@@ -201,17 +201,42 @@
     return `${baseURL.replace(/\/+$/, '')}/${cleaned.replace(/^\/+/, '')}`;
   }
 
+  function parseDelimitedImages(raw: string): NormalizedImage[] {
+    const tokens = raw.split(/;|,/).map((t) => t.trim()).filter(Boolean);
+    return tokens
+      .map((token, idx) => {
+        const [maybeId, maybeUrl] = token.split('|');
+        const urlPart = maybeUrl ? maybeUrl : maybeId;
+        const parsedUrl = normalizeImageUrl(urlPart);
+        if (!parsedUrl) return null;
+        const parsedId = maybeUrl ? Number(maybeId) : idx;
+        return { id: Number.isFinite(parsedId) ? parsedId : idx, url: parsedUrl };
+      })
+      .filter((img): img is NormalizedImage => Boolean(img));
+  }
+
   function normalizeImages(
-    images?: Array<NormalizedImage | PropertyImageType | Record<string, unknown> | string> | null
+    images?: Array<NormalizedImage | PropertyImageType | Record<string, unknown> | string> | string | null
   ): NormalizedImage[] {
     if (!images) return [];
 
-    return images
-      .map<NormalizedImage | null>((image, index) => {
+    // Backend pode enviar string delimitada por ";" ou "," contendo id|url
+    if (typeof images === 'string') {
+      return parseDelimitedImages(images);
+    }
+
+    const list = Array.isArray(images) ? images : [images];
+
+    return list
+      .flatMap<NormalizedImage | null>((image, index) => {
         if (typeof image === 'string') {
+          // Se a string tiver vários itens, faça split
+          if (image.includes('|') || image.includes(';') || image.includes(',')) {
+            return parseDelimitedImages(image);
+          }
           const url = normalizeImageUrl(image);
           if (!url) return null;
-          return { id: index, url };
+          return [{ id: index, url }];
         }
         if (image && typeof image === 'object') {
           const anyImg = image as Record<string, unknown>;
@@ -222,10 +247,10 @@
           const fallbackId = Number.isFinite(Number(index)) ? index : 0;
           const rawId = (anyImg.id as number | undefined) ?? fallbackId;
           const parsedId = Number(rawId);
-          return {
+          return [{
             id: Number.isFinite(parsedId) ? parsedId : index,
             url: candidateUrl,
-          };
+          }];
         }
         return null;
       })

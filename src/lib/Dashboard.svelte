@@ -15,7 +15,6 @@
     import SendNotification from './components/SendNotification.svelte';
     import StatusPieChart from './components/charts/StatusPieChart.svelte';
     import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
-    import { navigate } from 'svelte-routing';
     import { baseURL, handleUnauthorizedResponse } from './api';
     import { authToken } from './store';
     import { onMount } from 'svelte';
@@ -294,14 +293,6 @@
         }
 
         activeView = newView;
-
-        if (typeof window !== 'undefined') {
-            if (newView === 'properties') {
-                navigate('/admin/properties', { replace: true });
-            } else if (window.location.pathname === '/admin/properties') {
-                navigate('/', { replace: true });
-            }
-        }
 
         isSidebarOpen = false;
         searchTerm = '';
