@@ -46,7 +46,7 @@
         const key = normalizeStatusKey(status);
         const labels: Record<string, string> = {
             pending_approval: 'Pendente de aprovacao',
-            approved: 'Aprovado',
+            approved: 'Disponivel',
             rejected: 'Rejeitado',
             rented: 'Alugado',
             sold: 'Vendido',
@@ -232,13 +232,6 @@
                                 <td class="px-2 py-2"><input type="text" bind:value={broker.name} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
                                 <td class="px-2 py-2"><input type="email" bind:value={broker.email} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
                                 <td class="px-2 py-2"><input type="text" bind:value={broker.creci} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2">
-                                    <select bind:value={broker.status} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white">
-                                        <option value="pending_verification">Pendente</option>
-                                        <option value="approved">Aprovado</option>
-                                        <option value="rejected">Rejeitado</option>
-                                    </select>
-                                </td>
                                 <td class="px-2 py-2"><input type="text" value={broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
                                 <td class="px-2 py-2"><input type="text" value={broker.property_count || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
 
@@ -268,11 +261,6 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">{broker.name}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{broker.email}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{broker.creci}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {getStatusBadgeClasses(broker.status)}">
-                                        {humanizeStatus(broker.status)}
-                                    </span>
-                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">{broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{broker.property_count}</td>
                             {:else if view === 'clients'}

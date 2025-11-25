@@ -82,13 +82,13 @@
         <Button variant="outline" on:click={close} disabled={isProcessing}>
           Cancelar
         </Button>
-        <Button variant="destructive" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
+        <Button variant="destructive" className="bg-red-500 hover:bg-red-600 text-white" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
           {#if isProcessing}
             <Loader2 class="mr-2 h-4 w-4 animate-spin" />
           {/if}
           Rejeitar
         </Button>
-        <Button className="bg-gray-900 text-white hover:bg-gray-800" on:click={handleDelete} disabled={isProcessing}>
+        <Button className="bg-red-700 text-white hover:bg-red-800" on:click={handleDelete} disabled={isProcessing}>
           {#if isProcessing}
             <Loader2 class="mr-2 h-4 w-4 animate-spin" />
           {/if}

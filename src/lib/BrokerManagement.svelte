@@ -17,7 +17,6 @@
   };
 
   type BrokerFilters = {
-    status: 'all' | Broker['status'];
     search: string;
   };
 
@@ -37,7 +36,6 @@
   let propertiesError: string | null = null;
   let propertiesModalTitle = '';
   let filters: BrokerFilters = {
-    status: 'all',
     search: '',
   };
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -56,24 +54,7 @@
     setTimeout(() => (feedback = null), 4000);
   }
 
-  function formatStatus(status: Broker['status']): string {
-    const map: Record<Broker['status'], string> = {
-      pending_verification: 'Pendente',
-      approved: 'Aprovado',
-      rejected: 'Rejeitado'
-    };
-    return map[status] ?? status;
-  }
-
-  function statusBadgeClasses(status: Broker['status']): string {
-    const map: Record<Broker['status'], string> = {
-      pending_verification:
-        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-    };
-    return map[status] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
-  }
+  // Status visual removido na UI de corretores
 
   function formatDate(value: string): string {
     return new Date(value).toLocaleDateString('pt-BR', {
@@ -134,9 +115,6 @@
 
     try {
       const params = new URLSearchParams();
-      if (filters.status !== 'all') {
-        params.append('status', filters.status);
-      }
       const trimmedSearch = filters.search.trim();
       if (trimmedSearch) {
         params.append('search', trimmedSearch);
@@ -409,12 +387,6 @@
               </button>
             </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              <button type="button" class="flex items-center gap-1" on:click={() => handleSort('status')}>
-                Status
-                <span aria-hidden="true">{getSortIndicator('status')}</span>
-              </button>
-            </th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               <button type="button" class="flex items-center gap-1" on:click={() => handleSort('created_at')}>
                 Criado em
                 <span aria-hidden="true">{getSortIndicator('created_at')}</span>
@@ -449,11 +421,6 @@
                 {/if}
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{broker.property_count ?? 0}</td>
-              <td class="px-6 py-4">
-                <span class={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClasses(broker.status)}`}>
-                  {formatStatus(broker.status)}
-                </span>
-              </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                 {broker.created_at ? formatDate(broker.created_at) : '-'}
               </td>

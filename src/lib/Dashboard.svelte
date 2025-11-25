@@ -89,7 +89,7 @@
         brokers: { 
             endpoint: '/admin/brokers', 
             title: 'Gerenciamento de Corretores', 
-            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Status', 'Criado em', 'Total de Imoveis'],
+            headers: ['ID', 'Nome', 'Email', 'CRECI', 'Criado em', 'Total de Imoveis'],
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
         },
