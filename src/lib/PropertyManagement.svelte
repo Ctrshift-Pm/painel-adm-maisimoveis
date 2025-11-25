@@ -471,29 +471,12 @@
         status: editableProperty.status ?? selectedProperty.status,
       };
 
-      // Enviar apenas campos alterados para reduzir rejeições do backend
-      const payloadEntries = Object.entries(basePayload).reduce((acc, [key, value]) => {
-        const normalized = normalizeValue(key, value);
-        const originalNormalized = normalizeValue(key, (selectedProperty as any)[key]);
-        const bothNull = normalized == null && originalNormalized == null;
-        const equal =
-          bothNull ||
-          (normalized !== null &&
-            normalized !== undefined &&
-            originalNormalized !== undefined &&
-            normalized === originalNormalized);
-        if (!equal) {
-          acc.push([key, normalized]);
-        }
-        return acc;
-      }, [] as Array<[string, unknown]>);
-
-      const payload = Object.fromEntries(payloadEntries);
-      if (Object.keys(payload).length === 0) {
-        editError = 'Nenhuma alteracao detectada para salvar.';
-        isSavingEdit = false;
-        return;
-      }
+      // Enviar todos os campos normalizados (inclusive booleans) para garantir persistência
+      const payload = Object.fromEntries(
+        Object.entries(basePayload)
+          .map(([key, value]) => [key, normalizeValue(key, value)])
+          .filter(([, value]) => value !== undefined)
+      );
 
       const original = selectedProperty as PropertyDetails;
       const statusChanged =
