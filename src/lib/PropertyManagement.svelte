@@ -413,7 +413,31 @@
     editError = null;
 
     try {
-      const rawPayload = {
+      const numericKeys = new Set([
+        'price',
+        'area_construida',
+        'area_terreno',
+        'valor_condominio',
+        'valor_iptu',
+        'bedrooms',
+        'bathrooms',
+        'garage_spots',
+        'sale_value',
+        'commission_rate',
+        'commission_value',
+      ]);
+
+      const normalizeValue = (key: string, value: unknown) => {
+        if (value === undefined) return undefined;
+        if (value === '' || value === null) return null;
+        if (numericKeys.has(key)) {
+          const num = Number(value);
+          return Number.isFinite(num) ? num : null;
+        }
+        return value;
+      };
+
+      const basePayload = {
         title: editableProperty.title,
         description: editableProperty.description,
         purpose: editableProperty.purpose,
@@ -443,10 +467,24 @@
         status: editableProperty.status ?? selectedProperty.status,
       };
 
-      // Remove chaves undefined para evitar rejeição por payload inválido
-      const payload = Object.fromEntries(
-        Object.entries(rawPayload).filter(([, value]) => value !== undefined)
-      );
+      // Enviar apenas campos alterados para reduzir rejeições do backend
+      const payloadEntries = Object.entries(basePayload).reduce((acc, [key, value]) => {
+        const normalized = normalizeValue(key, value);
+        const originalNormalized = normalizeValue(key, (selectedProperty as any)[key]);
+        const bothNull = normalized == null && originalNormalized == null;
+        const equal =
+          bothNull ||
+          (normalized !== null &&
+            normalized !== undefined &&
+            originalNormalized !== undefined &&
+            normalized === originalNormalized);
+        if (!equal) {
+          acc.push([key, normalized]);
+        }
+        return acc;
+      }, [] as Array<[string, unknown]>);
+
+      const payload = Object.fromEntries(payloadEntries);
 
       const original = selectedProperty as PropertyDetails;
       const statusChanged =
@@ -478,9 +516,17 @@
       console.error('Erro ao salvar imovel:', err);
       const status = err?.response?.status;
       if (status === 403) {
-        editError = 'Permissao negada pelo servidor para atualizar este imovel.';
+        editError =
+          err?.response?.data?.error ||
+          'Permissao negada pelo servidor para atualizar este imovel. Verifique campos obrigatorios e permissao do usuario.';
       } else if (status === 404) {
-        editError = 'Endpoint de atualizacao nao encontrado no servidor.';
+        editError =
+          err?.response?.data?.error ||
+          'Imovel nao encontrado ou rota de atualizacao ausente no servidor.';
+      } else if (status === 500) {
+        editError =
+          err?.response?.data?.error ||
+          'Erro interno no servidor ao salvar o imovel. Tente novamente e revise os campos.';
       } else {
         editError =
           err?.response?.data?.error ||
