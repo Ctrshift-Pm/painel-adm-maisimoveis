@@ -448,9 +448,6 @@
         Object.entries(rawPayload).filter(([, value]) => value !== undefined)
       );
 
-      const endpoint = `/admin/properties/${selectedProperty.id}`;
-      const altEndpoint = `/admin/properties/update/${selectedProperty.id}`;
-
       const original = selectedProperty as PropertyDetails;
       const statusChanged =
         (payload as any).status && (payload as any).status !== original.status;
@@ -458,56 +455,20 @@
       const fieldsBesidesStatus = Object.keys(payload).filter((k) => k !== 'status');
       const onlyStatusChanged =
         statusChanged && fieldsBesidesStatus.every((k) => (payload as any)[k] === (original as any)[k]);
+      const isApproved = original.status === 'approved';
+
+      if (isApproved && !onlyStatusChanged) {
+        editError = 'Imoveis aprovados so permitem atualizar o status.';
+        isSavingEdit = false;
+        return;
+      }
 
       if (onlyStatusChanged) {
-        // tenta endpoint dedicado de status e, se falhar, cai na rotina normal
-        try {
-          await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
-            status: (payload as any).status,
-          });
-          toast.success('Status do imovel atualizado.');
-          isEditMode = false;
-          await fetchProperties();
-          await reviewProperty({ ...selectedProperty } as PropertySummary);
-          return;
-        } catch (err: any) {
-          // continua para tentar outros endpoints
-        }
-      }
-
-      const attempts: Array<{ url: string; method: 'patch' | 'put' }> = [
-        { url: altEndpoint, method: 'put' },
-        { url: endpoint, method: 'patch' },
-        { url: endpoint, method: 'put' },
-      ];
-
-      let lastError: any = null;
-
-      for (const attempt of attempts) {
-        try {
-          if (attempt.method === 'patch') {
-            await api.patch(attempt.url, payload);
-          } else {
-            await apiClient.put(attempt.url, payload);
-          }
-          lastError = null;
-          break;
-        } catch (err: any) {
-          const status = err?.response?.status;
-          if (status === 401) {
-            toast.error('Sua sessao expirou. Por favor, faca login novamente.');
-            authToken.set(null);
-            throw err;
-          }
-          lastError = err;
-          if (status !== 404 && status !== 405 && status !== 403) {
-            break;
-          }
-        }
-      }
-
-      if (lastError) {
-        throw lastError;
+        await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
+          status: (payload as any).status,
+        });
+      } else {
+        await apiClient.put(`/admin/properties/${selectedProperty.id}`, payload);
       }
       toast.success('Imovel atualizado com sucesso.');
       isEditMode = false;
