@@ -20,6 +20,8 @@
 
   async function handleStatusUpdate(newStatus: 'rejected') {
     if (!broker) return;
+    const confirmed = window.confirm('Tem certeza que deseja rejeitar este corretor?');
+    if (!confirmed) return;
 
     isProcessing = true;
     try {

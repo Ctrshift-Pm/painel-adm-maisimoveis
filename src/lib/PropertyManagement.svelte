@@ -330,6 +330,10 @@
       toast.error('Erro de estado: o imovel selecionado esta nulo. Tente fechar e reabrir o modal.');
       return;
     }
+    if (newStatus === 'rejected') {
+      const confirmed = window.confirm('Tem certeza que deseja rejeitar este imovel?');
+      if (!confirmed) return;
+    }
     isProcessing = true;
     try {
       await api.patch(`/admin/properties/${selectedProperty.id}/status`, { status: newStatus });

@@ -38,6 +38,10 @@
   onMount(fetchRequests);
 
   async function handleStatusUpdate(propertyId: number, newStatus: 'approved' | 'rejected') {
+    if (newStatus === 'rejected') {
+      const confirmed = window.confirm('Tem certeza que deseja rejeitar este imovel?');
+      if (!confirmed) return;
+    }
     processing = { ...processing, [propertyId]: true };
     try {
       await api.patch(`/admin/properties/${propertyId}/status`, { status: newStatus });
