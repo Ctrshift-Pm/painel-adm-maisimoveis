@@ -47,9 +47,13 @@
 <aside
   class="fixed inset-y-0 left-0 z-30 w-64 bg-gray-800 dark:bg-gray-900 text-white flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'}"
 >
-  <div class="h-16 flex items-center justify-center gap-2 text-xl font-bold border-b border-gray-700 dark:border-gray-800">
-    <Logo className="w-8 h-8" />
-    <span>MaisImoveis</span>
+  <div class="h-16 flex items-center justify-center border-b border-gray-700 dark:border-gray-800">
+    <img
+      src="/maisimoveis.png"
+      alt="MaisImóveis"
+      class="h-10 w-auto object-contain"
+      loading="lazy"
+    />
   </div>
   <nav class="flex-1 px-4 py-4 space-y-2">
     <button
@@ -73,7 +77,7 @@
           d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m5-4h1m-1 4h1m-1-8h1m-5 8h1m-1-4h1"
         ></path>
       </svg>
-      Imoveis
+      Imóveis
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'property_requests' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
@@ -87,7 +91,7 @@
           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2h-1V3a1 1 0 00-1-1h-2a1 1 0 00-1 1v2H10V3a1 1 0 00-1-1H7a1 1 0 00-1 1v2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
         ></path>
       </svg>
-      Solicitacoes (Imoveis)
+      Solicitações (Imóveis)
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'brokers' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
@@ -129,7 +133,7 @@
           d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
         />
       </svg>
-      Solicitacoes de Verificacao
+      Solicitações de Verificação
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'notifications' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
@@ -143,7 +147,7 @@
           d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8h18a2 2 0 002-2V6a2 2 0 00-2-2H3a2 2 0 00-2 2v8a2 2 0 002 2z"
         />
       </svg>
-      Notificacoes
+      Notificações
     </button>
   </nav>
   <div class="px-4 py-4 border-t border-gray-700 dark:border-gray-800 space-y-4">

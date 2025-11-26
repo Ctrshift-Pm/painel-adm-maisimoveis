@@ -10,7 +10,6 @@
 </script>
 
 <div class="absolute inset-0 w-full h-full overflow-hidden -z-10">
-    <!-- Fundo Escuro (Cidade à Noite) -->
     <div class="absolute inset-0 w-full h-full transition-opacity duration-1000 {isDark ? 'opacity-100' : 'opacity-0'}">
         <svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" class="w-full h-full">
             <defs>

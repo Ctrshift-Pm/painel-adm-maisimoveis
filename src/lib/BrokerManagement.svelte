@@ -55,8 +55,6 @@
     setTimeout(() => (feedback = null), 4000);
   }
 
-  // Status visual removido na UI de corretores
-
   function formatDate(value: string): string {
     return new Date(value).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -108,7 +106,7 @@
 
     const token = get(authToken);
     if (!token) {
-      error = 'Sessao expirada. Faca login novamente.';
+      error = 'Sessão expirada. Faca login novamente.';
       authToken.set(null);
       isLoading = false;
       return;
@@ -132,8 +130,8 @@
       console.error('Erro ao buscar corretores:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
-        error = 'Sessao expirada. Faca login novamente.';
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
+        error = 'Sessão expirada. Faca login novamente.';
         authToken.set(null);
       } else {
         error =
@@ -166,7 +164,7 @@
       Boolean(selectedDocuments?.creci_back_url) ||
       Boolean(selectedDocuments?.selfie_url);
 
-    docsError = hasDocs ? null : 'Documentos nao disponiveis para este corretor.';
+    docsError = hasDocs ? null : 'Documentos não disponiveis para este corretor.';
     isDocumentsModalOpen = true;
   }
 
@@ -176,7 +174,7 @@
 
   async function openPropertiesModal(broker: Broker) {
     if (!get(authToken)) {
-      showFeedback('error', 'Sessao expirada. Faca login novamente.');
+      showFeedback('error', 'Sessão expirada. Faca login novamente.');
       authToken.set(null);
       return;
     }
@@ -197,8 +195,8 @@
       console.error('Erro ao carregar imóveis do corretor:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
-        propertiesError = 'Sessao expirada. Faca login novamente.';
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
+        propertiesError = 'Sessão expirada. Faca login novamente.';
         authToken.set(null);
       } else {
         propertiesError =
@@ -255,7 +253,6 @@
       clearTimeout(debounceTimer);
     }
     const target = event?.target as HTMLInputElement | undefined;
-    // Se limpar via "x" (value vazio), recarrega imediatamente
     if (target && target.value.trim() === '') {
       fetchBrokers();
       return;
@@ -353,7 +350,7 @@
         Nome <span aria-hidden="true">{getSortIndicator('name')}</span>
       </Button>
       <Button variant="outline" on:click={() => handleSort('property_count')} disabled={isLoading}>
-        Mais imoveis <span aria-hidden="true">{getSortIndicator('property_count')}</span>
+        Qtd. Imóveis <span aria-hidden="true">{getSortIndicator('property_count')}</span>
       </Button>
     </div>
   </header>

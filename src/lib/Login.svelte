@@ -58,7 +58,6 @@
 </script>
 
 <div class="relative flex min-h-screen items-center justify-center p-4 overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-    <!-- Background Waves -->
     <div class="absolute inset-0 overflow-hidden">
         <div class="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-r from-green-200/20 to-blue-200/20 rounded-full blur-3xl"></div>
         <div class="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-r from-blue-200/20 to-green-200/20 rounded-full blur-3xl"></div>
@@ -118,7 +117,6 @@
             </form>
         </div>
         
-        <!-- Wave Footer -->
         <div class="relative h-20">
             <div class="absolute bottom-0 left-0 w-full h-full overflow-hidden">
                 <svg viewBox="0 0 500 150" preserveAspectRatio="none" class="w-full h-full">

@@ -63,7 +63,6 @@
         return normalizeStatusKey(status) === 'sold';
     }
 
-    // Estados locais para a lÃ³gica de venda
     let commissionDisplayValue = '';
     let isEditingSaleDetails = false;
     let showSaleDeletionWarning = false;
@@ -120,7 +119,6 @@
         dispatch('delete', { id, type: getSingularType(view) });
     }
 
-    // Cores mais fortes para as bolinhas de status
     function getStatusDotClasses(status: string | undefined) {
         const key = normalizeStatusKey(status);
 
@@ -141,7 +139,6 @@
         return propertyStatusDots[key] ?? brokerStatusDots[key] ?? 'bg-gray-400';
     }
 
-    // Cores para o fundo do texto (badge)
     function getStatusBadgeClasses(status: string | undefined) {
         const key = normalizeStatusKey(status);
 
@@ -252,7 +249,6 @@
                                 <td class="px-2 py-2"><input type="text" value={client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
                             {/if}
                         {:else}
-                            <!-- MODO DE VISUALIZAÃ‡ÃƒO -->
                             {#if view === 'properties'}
                                 {@const prop = item as Property}
                                 <td class="px-6 py-4 whitespace-nowrap text-sm"><div class="flex items-center"><span class="h-2.5 w-2.5 rounded-full {getStatusDotClasses(prop.status)} mr-2.5"></span>{prop.id}</div></td>
@@ -318,11 +314,11 @@
                                                     <input id="sale_value_{item.id}" type="number" step="1" bind:value={prop.sale_value} placeholder="550000" class="w-full p-2 border rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" on:input={() => updateCommissionDisplay(prop.sale_value, prop.commission_rate)}>
                                                 </div>
                                                 <div>
-                                                    <label for="commission_rate_{item.id}" class="block text-xs font-medium text-gray-500 mb-1">ComissÃ£o (%)</label>
+                                                    <label for="commission_rate_{item.id}" class="block text-xs font-medium text-gray-500 mb-1">Comissão (%)</label>
                                                     <input id="commission_rate_{item.id}" type="number" step="1" bind:value={prop.commission_rate} placeholder="5" class="w-full p-2 border rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" on:input={() => updateCommissionDisplay(prop.sale_value, prop.commission_rate)}>
                                                 </div>
                                                 <div>
-                                                    <p class="block text-xs font-medium text-gray-500 mb-1">Valor Final da ComissÃ£o</p>
+                                                    <p class="block text-xs font-medium text-gray-500 mb-1">Valor Final da Comissão</p>
                                                     <div class="h-10 flex items-center px-3 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">{commissionDisplayValue || '...'}</div>
                                                 </div>
                                             </div>
@@ -333,11 +329,11 @@
                                                     <p class="font-semibold text-gray-800 dark:text-gray-200">{prop.sale_value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'N/A'}</p>
                                                 </div>
                                                 <div>
-                                                    <p class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">ComissÃ£o (%)</p>
+                                                    <p class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Comissão (%)</p>
                                                     <p class="font-semibold text-gray-800 dark:text-gray-200">{prop.commission_rate != null ? `${prop.commission_rate}%` : 'N/A'}</p>
                                                 </div>
                                                 <div>
-                                                    <p class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Valor Final da ComissÃ£o</p>
+                                                    <p class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Valor Final da Comissão</p>
                                                     <p class="font-semibold text-gray-800 dark:text-gray-200">{commissionDisplayValue || 'N/A'}</p>
                                                 </div>
                                             </div>
@@ -351,7 +347,7 @@
                             <tr class="warning-row">
                                 <td colspan={headers.length + 1} class="px-6 py-2 text-center">
                                      <p class="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                                        AtenÃ§Ã£o: Ao salvar com um novo status, os detalhes da venda anterior serÃ£o permanentemente removidos.
+                                        Atenção: Ao salvar com um novo status, os detalhes da venda anterior serão permanentemente removidos.
                                     </p>
                                 </td>
                             </tr>

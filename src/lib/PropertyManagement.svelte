@@ -852,7 +852,7 @@
           </span>
         </Dialog.Description>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Dashboard / Imoveis / Revisao #{selectedProperty.id}
+          Dashboard / Imóveis / Revisão #{selectedProperty.id}
         </p>
       </Dialog.Header>
 
@@ -888,7 +888,7 @@
             <div class="flex flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
               {#if isEditMode && editableProperty}
                 <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                  Condominio:
+                  Condomínio:
                   <input class="w-24 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
                     type="number" step="0.01" bind:value={editableProperty.valor_condominio} />
                 </label>
@@ -900,7 +900,7 @@
               {:else}
                 {#if selectedProperty.valor_condominio != null}
                   <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
-                    Condominio: {formatCurrency(selectedProperty.valor_condominio ?? undefined)}
+                    Condomínio: {formatCurrency(selectedProperty.valor_condominio ?? undefined)}
                   </span>
                 {/if}
                 {#if selectedProperty.valor_iptu != null}
@@ -1044,7 +1044,7 @@
           {/if}
 
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descricao</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descrição</h3>
           {#if isEditMode && editableProperty}
             <textarea
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
@@ -1060,7 +1060,7 @@
         </div>
 
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Localizacao e atributos</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Localização e atributos</h3>
           {#if isEditMode && editableProperty}
             <div class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
               <label class="flex flex-col gap-1">
@@ -1076,11 +1076,11 @@
                 <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bairro} />
               </label>
               <label class="flex flex-col gap-1">
-                <strong>Endereco:</strong>
+                <strong>Endereço:</strong>
                 <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.address} />
               </label>
               <label class="flex flex-col gap-1">
-                <strong>Numero:</strong>
+                <strong>Número:</strong>
                 <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.numero} />
               </label>
               <label class="flex flex-col gap-1">
@@ -1108,11 +1108,11 @@
                 <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bathrooms} />
               </label>
               <label class="flex flex-col gap-1">
-                <strong>Area construida:</strong>
+                <strong>Área construida:</strong>
                 <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_construida} />
               </label>
               <label class="flex flex-col gap-1">
-                <strong>Area terreno:</strong>
+                <strong>Área terreno:</strong>
                 <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_terreno} />
               </label>
               <p><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</p>
@@ -1131,8 +1131,8 @@
               <li><strong>Tipo do lote:</strong> {selectedProperty.tipo_lote ?? '-'}</li>
               <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
               <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
-              <li><strong>Area construida:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
-              <li><strong>Area terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
+              <li><strong>Área construida:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
+              <li><strong>Área terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
               <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
               <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
             </ul>
@@ -1157,11 +1157,11 @@
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
                 <input type="checkbox" bind:checked={editableProperty.tem_automacao} />
-                Automacao
+                Automação
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
                 <input type="checkbox" bind:checked={editableProperty.tem_ar_condicionado} />
-                Ar condicionado
+                Ar-condicionado
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
                 <input type="checkbox" bind:checked={editableProperty.eh_mobiliada} />
