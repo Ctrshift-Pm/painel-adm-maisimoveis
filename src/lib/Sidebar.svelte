@@ -49,7 +49,7 @@
 >
   <div class="h-16 flex items-center justify-center border-b border-gray-700 dark:border-gray-800">
     <img
-      src="../static/maisimoveis.png"
+      src="/static/maisimoveis.png"
       alt="MaisImóveis"
       class="h-10 w-auto object-contain"
       loading="lazy"
