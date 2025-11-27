@@ -2,7 +2,6 @@
 
 <div align="center">
   <img src="./logo_circular.png" alt="Logo Mais Imóveis" width="150"/>
-  <img src="src\static\maisimoveis.png" alt="Logo 2 Mais Imóveis" width="450"/>
   <br>
   <br>
   
