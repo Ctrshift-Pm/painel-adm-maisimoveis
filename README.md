@@ -1,47 +1,107 @@
-# Svelte + TS + Vite
+# Painel Administrativo - Mais Imóveis
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+<div align="center">
+  <img src="./logo_circular.png" alt="Logo Mais Imóveis" width="150"/>
+  <img src="src\static\maisimoveis.png" alt="Logo 2 Mais Imóveis" width="450"/>
+  <br>
+  <br>
+  
+  ![Svelte](https://img.shields.io/badge/svelte-%23f1413d.svg?style=for-the-badge&logo=svelte&logoColor=white)
+  ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+  ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
+  ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
+</div>
 
-## Recommended IDE Setup
+<br>
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## Sobre o Projeto
 
-## Need an official Svelte framework?
+O **Painel Administrativo Mais Imóveis** é uma aplicação web desenvolvida para gerenciar as operações administrativas da imobiliária **Mais Imóveis**. O sistema oferece uma interface moderna e responsiva para controle de dados e visualização de métricas.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+O projeto foi construído utilizando **Svelte** e **TypeScript** para garantir alta performance e tipagem segura, estilizado com **Tailwind CSS** para um design limpo e eficiente, e utiliza **Vite** para um ambiente de desenvolvimento ultra-rápido.
 
-## Technical considerations
+> **Acesse a versão online:** [painel-adm-maisimoveis.vercel.app](https://painel-adm-maisimoveis.vercel.app)
 
-**Why use this over SvelteKit?**
+---
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+## Tecnologias Utilizadas
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+- **[Svelte](https://svelte.dev/):** Framework reativo para construção de interfaces web.
+- **[TypeScript](https://www.typescriptlang.org/):** Superset do JavaScript que adiciona tipagem estática.
+- **[Tailwind CSS](https://tailwindcss.com/):** Framework de utilitários CSS para estilização rápida.
+- **[PostCSS](https://postcss.org/):** Ferramenta para transformar CSS com JavaScript.
+- **[Vite](https://vitejs.dev/):** Build tool e servidor de desenvolvimento.
+- **[Vercel](https://vercel.com/):** Plataforma utilizada para deploy e hospedagem.
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+---
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
+## Funcionalidades
 
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
+### Dashboard e Visão Geral
+A página inicial do sistema oferece uma visão macro do negócio logo após o login.
+- **Métricas e Indicadores:** Acompanhamento visual do estado atual do aplicativo e desempenho.
+- **Central de Avisos:** Sistema integrado de notificações (Sino) para alertas importantes do sistema.
 
-**Why include `.vscode/extensions.json`?**
+### Gestão Avançada de Imóveis
+Controle total sobre o inventário da imobiliária via painel web.
+- **Edição Completa de Mídia:** Revisão e edição de galerias de imagens e vídeos dos imóveis.
+- **Controle de Informações:** Edição detalhada de todas as características e dados dos imóveis.
+- **Aprovação de Solicitações:** Fluxo de revisão para imóveis submetidos pelos corretores antes da publicação.
 
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
+### Gestão de Corretores e Usuários
+Ferramentas para administrar a equipe e o acesso ao sistema.
+- **Ranking e Organização:** Listagem de corretores com ordenação por produtividade (maior nº de imóveis) ou ordem alfabética.
+- **Solicitações de Cadastro:** Visualização e aprovação de novos corretores que solicitam acesso à plataforma.
 
-**Why enable `allowJs` in the TS template?**
+### Comunicação e Notificações
+Ferramentas de engajamento direto pelo painel.
+- **Push Notifications:** Envio de notificações personalizadas para grupos seletos de usuários ou via broadcast (para todos).
 
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
+### Regras de Negócio e Financeiro
+Configuração flexível de parâmetros financeiros.
+- **Configuração de Taxas:** Definição de valores e percentuais de Condomínio e IPTU atribuídos ao imóvel para o corretor.
 
-**Why is HMR not preserving my local component state?**
+### Interface e Experiência (UX)
+- **Temas:** Suporte nativo a **Dark Mode** (Tema Escuro) e Light Mode.
+- **Design Responsivo:** Layout 100% adaptável para desktops, tablets e smartphones.
+--- 
 
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
+## Pré-requisitos
 
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
+Antes de começar, certifique-se de ter instalado em sua máquina:
+* [Node.js](https://nodejs.org/) (versão 16 ou superior)
+* [NPM](https://www.npmjs.com/) ou [Yarn](https://yarnpkg.com/)
 
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
-```
+---
+
+## Instalação e Execução
+
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/Ctrshift-Pm/painel-adm-maisimoveis.git
+
+2.  **Acesse a pasta do projeto:**
+
+    ```bash
+    cd painel-adm-maisimoveis
+    ```
+
+3.  **Instale as dependências:**
+
+    ```bash
+    npm install
+    # ou
+    yarn install
+    ```
+
+4.  **Inicie o servidor de desenvolvimento:**
+
+    ```bash
+    npm run dev
+    # ou
+    yarn dev
+    ```
+
+5.  O aplicativo estará rodando em `http://localhost:5173`.
+
+-----
