@@ -18,15 +18,17 @@
   }
   $: wasOpen = open;
 
-  async function handleStatusUpdate(newStatus: 'rejected') {
+  async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
     if (!broker) return;
-    const confirmed = window.confirm('Tem certeza que deseja rejeitar este corretor?');
-    if (!confirmed) return;
+    if (newStatus === 'rejected') {
+      const confirmed = window.confirm('Tem certeza que deseja rejeitar este corretor?');
+      if (!confirmed) return;
+    }
 
     isProcessing = true;
     try {
       await api.patch(`/admin/brokers/${broker.id}/status`, { status: newStatus });
-      toast.success('Corretor rejeitado.');
+      toast.success(newStatus === 'approved' ? 'Corretor aprovado.' : 'Corretor rejeitado.');
 
       dispatch('update');
       close();
@@ -83,6 +85,17 @@
       <Dialog.Footer className="flex gap-2">
         <Button variant="outline" on:click={close} disabled={isProcessing}>
           Cancelar
+        </Button>
+        <Button
+          variant="outline"
+          className="bg-green-600 text-white hover:bg-green-700"
+          on:click={() => handleStatusUpdate('approved')}
+          disabled={isProcessing}
+        >
+          {#if isProcessing}
+            <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+          {/if}
+          Aprovar
         </Button>
         <Button variant="destructive" className="bg-red-500 hover:bg-red-600 text-white" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
           {#if isProcessing}
