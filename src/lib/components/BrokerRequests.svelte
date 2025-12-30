@@ -110,6 +110,7 @@
 <BrokerReviewModal
   bind:open={isModalOpen}
   broker={selectedBroker}
+  showApprove={true}
   on:update={fetchRequests}
   on:close={() => (selectedBroker = null)}
 />

@@ -11,7 +11,6 @@
     import ClientManagement from '../lib/components/ClientManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
     import BrokerRequests from './components/BrokerRequests.svelte';
-    import PropertyRequests from './components/PropertyRequests.svelte';
     import SendNotification from './components/SendNotification.svelte';
     import StatusPieChart from './components/charts/StatusPieChart.svelte';
     import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
@@ -559,7 +558,7 @@
             {:else if activeView === 'properties'}
                 <PropertyManagement />
             {:else if activeView === 'property_requests'}
-                <PropertyRequests />
+                <PropertyManagement initialStatus="pending_approval" allowApproval={true} />
             {:else if activeView === 'brokers'}
                 <BrokerManagement />
             {:else if activeView === 'broker_requests'}

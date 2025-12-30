@@ -63,12 +63,15 @@
     search: string;
   };
 
+  export let initialStatus: PropertyStatus | 'all' = 'approved';
+  export let allowApproval = false;
+
     let properties: PropertySummary[] = [];
   let isLoading = false;
   let error: string | null = null;
   let cities: string[] = [];
   let filters: PropertyFilters = {
-    status: 'approved',
+    status: initialStatus,
     city: 'all',
     search: '',
   };
@@ -1208,7 +1211,7 @@
             Rejeitar
           </Button>
         {/if}
-        {#if selectedProperty.status !== 'approved'}
+        {#if allowApproval && selectedProperty.status !== 'approved'}
           <Button
             className="bg-green-600 text-white hover:bg-green-700"
             on:click={() => handleStatusUpdate('approved')}

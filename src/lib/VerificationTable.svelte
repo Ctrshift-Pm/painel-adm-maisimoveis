@@ -186,6 +186,7 @@
 <BrokerReviewModal
     bind:open={isModalOpen}
     broker={selectedBroker}
+    showApprove={true}
     on:update={handleModalUpdate}
     on:close={() => (selectedBroker = null)}
 />
