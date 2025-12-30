@@ -9,13 +9,18 @@
     id: number;
     name?: string | null;
     email?: string | null;
+    role?: string | null;
   }
 
   const RECIPIENT_FIELD_ID = 'recipient';
+  const PAGE_SIZE = 50;
 
   let clients: Client[] = [];
+  let clientsTotal = 0;
   let clientsLoading = false;
   let clientsError: string | null = null;
+  let searchTerm = '';
+  let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
   let sendToAll = true;
   let selectedRecipients = new Set<string>();
@@ -30,30 +35,58 @@
     clientsError = null;
 
     try {
-      const response = await api.get<{ data?: Client[] } | Client[]>('/admin/users');
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      params.set('limit', String(PAGE_SIZE));
+      params.set('includeBrokers', 'true');
+      if (searchTerm.trim()) {
+        params.set('search', searchTerm.trim());
+      }
+
+      const response = await api.get<{ data?: Client[]; total?: number } | Client[]>(
+        `/admin/users?${params.toString()}`
+      );
       const raw = Array.isArray(response) ? response : response?.data ?? [];
+      clientsTotal = Array.isArray(response) ? raw.length : Number(response?.total ?? raw.length);
 
       if (Array.isArray(raw)) {
         const normalized = raw
           .map((item: any): Client => ({
             id: Number(item?.id),
             name: typeof item?.name === 'string' ? item.name : null,
-            email: typeof item?.email === 'string' ? item.email : null
+            email: typeof item?.email === 'string' ? item.email : null,
+            role: typeof item?.role === 'string' ? item.role : null
           }))
           .filter((client) => Number.isFinite(client.id));
         clients = normalized;
       } else {
         clients = [];
+        clientsTotal = 0;
       }
     } catch (error) {
-      console.error('Erro ao buscar clientes:', error);
+      console.error('Erro ao buscar usuarios:', error);
       clientsError =
         error instanceof Error
           ? error.message
-          : 'Falha ao carregar clientes.';
+          : 'Falha ao carregar usuarios.';
+      clients = [];
+      clientsTotal = 0;
     } finally {
       clientsLoading = false;
     }
+  }
+
+  function handleSearchInput(event: Event) {
+    const target = event.target as HTMLInputElement | null;
+    searchTerm = target?.value ?? '';
+
+    if (searchDebounce) {
+      clearTimeout(searchDebounce);
+    }
+
+    searchDebounce = setTimeout(() => {
+      loadClients();
+    }, 300);
   }
 
   function toggleRecipient(id: string) {
@@ -63,6 +96,10 @@
       selectedRecipients.add(id);
     }
     selectedRecipients = new Set(selectedRecipients);
+  }
+
+  $: if (sendToAll && selectedRecipients.size > 0) {
+    selectedRecipients = new Set();
   }
 
   async function handleSubmit() {
@@ -112,7 +149,7 @@
         Enviar Notificação
       </h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        Envie uma mensagem manual para clientes específicos ou para todos os usuários do sistema.
+        Envie uma mensagem manual para usuarios especificos ou para todos os usuarios do sistema.
       </p>
     </div>
 
@@ -127,22 +164,36 @@
             disabled={isSubmitting}
           />
           <label for="send-all" class="text-sm font-medium text-gray-700 dark:text-gray-200">
-            Enviar para todos os clientes
+            Enviar para todos os usuarios
           </label>
         </div>
 
         {#if !sendToAll}
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for={RECIPIENT_FIELD_ID}>
-            Selecionar clientes
-          </label>
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for={RECIPIENT_FIELD_ID}>
+              Selecionar usuarios
+            </label>
+            <input
+              id={RECIPIENT_FIELD_ID}
+              type="search"
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              placeholder="Buscar por nome ou email..."
+              bind:value={searchTerm}
+              on:input={handleSearchInput}
+              disabled={isSubmitting}
+            />
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Mostrando {clients.length} de {clientsTotal} usuarios | Selecionados: {selectedRecipients.size}
+            </div>
+          </div>
           {#if clientsLoading}
-            <div class="text-sm text-gray-500 dark:text-gray-400">Carregando clientes...</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Carregando usuarios...</div>
           {:else if clientsError}
             <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-200">
               {clientsError}
             </div>
           {:else if clients.length === 0}
-            <div class="text-sm text-gray-500 dark:text-gray-400">Nenhum cliente disponível.</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Nenhum usuario disponivel.</div>
           {:else}
             <div class="max-h-48 overflow-y-auto rounded-md border border-gray-200 p-3 space-y-2 dark:border-gray-700">
               {#each clients as client}
@@ -155,8 +206,13 @@
                     disabled={isSubmitting}
                   />
                   <span>
-                    {(client.name && client.name.trim()) ? client.name : 'Cliente sem nome'}
+                    {(client.name && client.name.trim()) ? client.name : 'Usuario sem nome'}
                     {#if client.email} ({client.email}){/if}
+                    {#if client.role}
+                      <span class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                        {client.role === 'broker' ? 'Corretor' : 'Cliente'}
+                      </span>
+                    {/if}
                   </span>
                 </label>
               {/each}
@@ -173,7 +229,7 @@
           id="message"
           class="w-full min-h-[140px] resize-y rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={message}
-          placeholder="Digite a mensagem que será enviada aos clientes..."
+          placeholder="Digite a mensagem que sera enviada aos usuarios..."
           rows={6}
           maxlength={2000}
           disabled={isSubmitting}
