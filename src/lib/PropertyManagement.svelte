@@ -702,10 +702,10 @@
 
 <div class="space-y-4">
   {#if isReviewOnly}
-    <section class="rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-50 via-white to-orange-50 p-6 shadow-sm dark:border-amber-800/60 dark:from-amber-900/30 dark:via-gray-900 dark:to-orange-900/20">
+    <section class="rounded-2xl border border-green-200/70 bg-gradient-to-r from-green-50 via-white to-emerald-50 p-6 shadow-sm dark:border-green-800/60 dark:from-green-900/30 dark:via-gray-900 dark:to-emerald-900/20">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="space-y-2">
-          <span class="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/60 dark:text-amber-100">
+          <span class="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 dark:bg-green-900/60 dark:text-green-100">
             Fila de revisão
           </span>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Solicitações de imóveis</h1>
@@ -714,10 +714,10 @@
           </p>
         </div>
         <div class="grid gap-2 sm:grid-cols-2">
-          <div class="rounded-lg border border-amber-100 bg-white/80 px-4 py-2 text-sm text-gray-700 shadow-sm dark:border-amber-900/60 dark:bg-gray-900/70 dark:text-gray-200">
+          <div class="rounded-lg border border-green-100 bg-white/80 px-4 py-2 text-sm text-gray-700 shadow-sm dark:border-green-900/60 dark:bg-gray-900/70 dark:text-gray-200">
             Pendentes: {isLoading ? '...' : properties.length}
           </div>
-          <div class="rounded-lg border border-amber-100 bg-white/80 px-4 py-2 text-sm text-gray-700 shadow-sm dark:border-amber-900/60 dark:bg-gray-900/70 dark:text-gray-200">
+          <div class="rounded-lg border border-green-100 bg-white/80 px-4 py-2 text-sm text-gray-700 shadow-sm dark:border-green-900/60 dark:bg-gray-900/70 dark:text-gray-200">
             Filtro: pendente de aprovação
           </div>
         </div>
@@ -725,7 +725,7 @@
       <div class="mt-4 flex flex-wrap gap-2">
         <Button
           variant="outline"
-          className="flex items-center gap-2 border-amber-200 text-amber-800 hover:bg-amber-100/60 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/30"
+          className="flex items-center gap-2 border-green-200 text-green-800 hover:bg-green-100/60 dark:border-green-800 dark:text-green-100 dark:hover:bg-green-900/30"
           on:click={handleRefresh}
           disabled={isLoading}
         >
@@ -736,7 +736,7 @@
         </Button>
         <Button
           variant="outline"
-          className="border-amber-200 text-amber-800 hover:bg-amber-100/60 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/30"
+          className="border-green-200 text-green-800 hover:bg-green-100/60 dark:border-green-800 dark:text-green-100 dark:hover:bg-green-900/30"
           on:click={sortByCreatedDesc}
           disabled={isLoading}
         >
@@ -744,7 +744,7 @@
         </Button>
         <Button
           variant="outline"
-          className="border-amber-200 text-amber-800 hover:bg-amber-100/60 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/30"
+          className="border-green-200 text-green-800 hover:bg-green-100/60 dark:border-green-800 dark:text-green-100 dark:hover:bg-green-900/30"
           on:click={sortAlphabetical}
           disabled={isLoading}
         >
@@ -804,7 +804,7 @@
   {/if}
 
   {#if isReviewOnly}
-    <div class="rounded-xl border border-amber-100 bg-white/80 p-4 shadow-sm dark:border-amber-900/50 dark:bg-gray-900/70">
+    <div class="rounded-xl border border-green-100 bg-white/80 p-4 shadow-sm dark:border-green-900/50 dark:bg-gray-900/70">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <Input
           className="w-full md:w-96"
@@ -815,7 +815,7 @@
           on:keydown={handleKeydown}
           on:keyup={handleKeyup}
         />
-        <div class="text-xs text-amber-700 dark:text-amber-200">
+        <div class="text-xs text-green-700 dark:text-green-200">
           Dica: clique em Revisar para ver os detalhes completos.
         </div>
       </div>
@@ -883,7 +883,7 @@
     <div
       class={`overflow-x-auto rounded-lg border shadow-sm ${
         isReviewOnly
-          ? 'border-amber-200 bg-amber-50/40 dark:border-amber-800/60 dark:bg-gray-900/70'
+          ? 'border-green-200 bg-green-50/40 dark:border-green-800/60 dark:bg-gray-900/70'
           : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
       }`}
     >
