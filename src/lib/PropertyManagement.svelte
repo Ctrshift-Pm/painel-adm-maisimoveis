@@ -65,6 +65,8 @@
 
   export let initialStatus: PropertyStatus | 'all' = 'approved';
   export let allowApproval = false;
+  let isReviewOnly = false;
+  $: isReviewOnly = allowApproval;
 
     let properties: PropertySummary[] = [];
   let isLoading = false;
@@ -376,6 +378,34 @@
     }
   }
 
+  async function handleDeleteProperty() {
+    if (!selectedProperty) {
+      toast.error('Erro de estado: o imovel selecionado esta nulo. Tente fechar e reabrir o modal.');
+      return;
+    }
+    const confirmed = window.confirm('Tem certeza que deseja excluir este imovel? Esta acao nao pode ser desfeita.');
+    if (!confirmed) return;
+    isProcessing = true;
+    try {
+      await api.delete(`/admin/properties/${selectedProperty.id}`);
+      toast.success('Imovel excluido com sucesso.');
+      isModalOpen = false;
+      selectedProperty = null;
+      await fetchProperties();
+    } catch (err) {
+      console.error('Falha ao excluir o imovel:', err);
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        authToken.set(null);
+      } else {
+        toast.error('Falha ao excluir o imovel.');
+      }
+    } finally {
+      isProcessing = false;
+    }
+  }
+
   function handleSort(column: string) {
     if (sortConfig.key === column) {
       sortConfig = {
@@ -671,81 +701,168 @@
 </script>
 
 <div class="space-y-4">
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Gerenciamento de Imóveis</h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        Consulte os imóveis cadastrados e utilize filtros rápidos para priorizar as análises.
-      </p>
-    </div>
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <Button
-        variant="outline"
-        className="flex items-center gap-2"
-        on:click={handleRefresh}
-        disabled={isLoading}
-      >
-        {#if isLoading}
-          <Loader2 class="h-4 w-4 animate-spin" />
-        {/if}
-        Recarregar
-      </Button>
-      <Button variant="outline" on:click={sortAlphabetical} disabled={isLoading}>
-        Ordenar A-Z
-      </Button>
-      <Button variant="outline" on:click={sortByCreatedDesc} disabled={isLoading}>
-        Mais recentes
-      </Button>
-      <Button variant="outline" on:click={handleExport}>
-
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="mr-2 h-4 w-4"
-          aria-hidden="true"
+  {#if isReviewOnly}
+    <section class="rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-50 via-white to-orange-50 p-6 shadow-sm dark:border-amber-800/60 dark:from-amber-900/30 dark:via-gray-900 dark:to-orange-900/20">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="space-y-2">
+          <span class="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/60 dark:text-amber-100">
+            Fila de revisão
+          </span>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Solicitações de imóveis</h1>
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Revise informações, avalie fotos e aprove ou rejeite. Apenas pendentes aparecem aqui.
+          </p>
+        </div>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <div class="rounded-lg border border-amber-100 bg-white/80 px-4 py-2 text-sm text-gray-700 shadow-sm dark:border-amber-900/60 dark:bg-gray-900/70 dark:text-gray-200">
+            Pendentes: {isLoading ? '...' : properties.length}
+          </div>
+          <div class="rounded-lg border border-amber-100 bg-white/80 px-4 py-2 text-sm text-gray-700 shadow-sm dark:border-amber-900/60 dark:bg-gray-900/70 dark:text-gray-200">
+            Filtro: pendente de aprovação
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          className="flex items-center gap-2 border-amber-200 text-amber-800 hover:bg-amber-100/60 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/30"
+          on:click={handleRefresh}
+          disabled={isLoading}
         >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        Exportar Imóveis (CSV)
-      </Button>
-    </div>
-  </header>
+          {#if isLoading}
+            <Loader2 class="h-4 w-4 animate-spin" />
+          {/if}
+          Atualizar fila
+        </Button>
+        <Button
+          variant="outline"
+          className="border-amber-200 text-amber-800 hover:bg-amber-100/60 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/30"
+          on:click={sortByCreatedDesc}
+          disabled={isLoading}
+        >
+          Mais recentes
+        </Button>
+        <Button
+          variant="outline"
+          className="border-amber-200 text-amber-800 hover:bg-amber-100/60 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-900/30"
+          on:click={sortAlphabetical}
+          disabled={isLoading}
+        >
+          Ordenar A-Z
+        </Button>
+      </div>
+    </section>
+  {:else}
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Gerenciamento de Imóveis</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Consulte os imóveis cadastrados e utilize filtros rápidos para priorizar as análises.
+        </p>
+      </div>
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Button
+          variant="outline"
+          className="flex items-center gap-2"
+          on:click={handleRefresh}
+          disabled={isLoading}
+        >
+          {#if isLoading}
+            <Loader2 class="h-4 w-4 animate-spin" />
+          {/if}
+          Recarregar
+        </Button>
+        <Button variant="outline" on:click={sortAlphabetical} disabled={isLoading}>
+          Ordenar A-Z
+        </Button>
+        <Button variant="outline" on:click={sortByCreatedDesc} disabled={isLoading}>
+          Mais recentes
+        </Button>
+        <Button variant="outline" on:click={handleExport}>
 
-  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-    <Input
-      className="w-full md:w-80"
-      type="search"
-      placeholder="Buscar por título, cidade, ID..."
-      bind:value={filters.search}
-      on:input={onSearchInput}
-      on:keydown={handleKeydown}
-      on:keyup={handleKeyup}
-    />
-  </div>
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    <div class="relative">
-      <Select.Root bind:value={filters.city} on:valueChange={onFilterChange}>
-        <Select.Trigger>
-          <Select.Value placeholder="Filtrar por cidade" />
-        </Select.Trigger>
-        <Select.Content>
-          <Select.Item value="all">Todas as cidades</Select.Item>
-          {#each cities as city (city)}
-            <Select.Item value={city}>{city}</Select.Item>
-          {/each}
-        </Select.Content>
-      </Select.Root>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="mr-2 h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Exportar Imóveis (CSV)
+        </Button>
+      </div>
+    </header>
+  {/if}
+
+  {#if isReviewOnly}
+    <div class="rounded-xl border border-amber-100 bg-white/80 p-4 shadow-sm dark:border-amber-900/50 dark:bg-gray-900/70">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <Input
+          className="w-full md:w-96"
+          type="search"
+          placeholder="Buscar por título, cidade, ID..."
+          bind:value={filters.search}
+          on:input={onSearchInput}
+          on:keydown={handleKeydown}
+          on:keyup={handleKeyup}
+        />
+        <div class="text-xs text-amber-700 dark:text-amber-200">
+          Dica: clique em Revisar para ver os detalhes completos.
+        </div>
+      </div>
+      <div class="mt-3 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div class="relative">
+          <Select.Root bind:value={filters.city} on:valueChange={onFilterChange}>
+            <Select.Trigger>
+              <Select.Value placeholder="Filtrar por cidade" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="all">Todas as cidades</Select.Item>
+              {#each cities as city (city)}
+                <Select.Item value={city}>{city}</Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
+        </div>
+      </div>
     </div>
-  </div>
+  {:else}
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <Input
+        className="w-full md:w-80"
+        type="search"
+        placeholder="Buscar por título, cidade, ID..."
+        bind:value={filters.search}
+        on:input={onSearchInput}
+        on:keydown={handleKeydown}
+        on:keyup={handleKeyup}
+      />
+    </div>
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div class="relative">
+        <Select.Root bind:value={filters.city} on:valueChange={onFilterChange}>
+          <Select.Trigger>
+            <Select.Value placeholder="Filtrar por cidade" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="all">Todas as cidades</Select.Item>
+            {#each cities as city (city)}
+              <Select.Item value={city}>{city}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+      </div>
+    </div>
+  {/if}
   {#if isLoading}
     <div class="flex h-48 items-center justify-center rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div class="flex items-center gap-3 text-gray-600 dark:text-gray-300">
@@ -763,7 +880,13 @@
       <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Ajuste os filtros para visualizar outros resultados.</p>
     </div>
   {:else}
-    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+    <div
+      class={`overflow-x-auto rounded-lg border shadow-sm ${
+        isReviewOnly
+          ? 'border-amber-200 bg-amber-50/40 dark:border-amber-800/60 dark:bg-gray-900/70'
+          : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
+      }`}
+    >
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
         <thead class="bg-gray-50 dark:bg-gray-900/70">
           <tr>
@@ -915,31 +1038,33 @@
             </div>
           </div>
 
-            <div class="flex items-center gap-2">
-              <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={isSavingEdit}>
-                {isEditMode ? 'Cancelar edicao' : 'Editar dados'}
-              </Button>
-              {#if isEditMode && editableProperty}
-                <div class="flex items-center gap-2">
-                  <label class="text-xs text-gray-500 dark:text-gray-400" for="status-select">Status</label>
-                  <select
-                    id="status-select"
-                    class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:border-green-500 focus:ring-2 focus:ring-green-500"
-                    bind:value={editableProperty.status}
-                  >
-                    <option value="approved">Disponível</option>
-                    <option value="rented">Alugado</option>
-                    <option value="sold">Vendido</option>
-                  </select>
-                </div>
-                <Button on:click={saveEdits} disabled={isSavingEdit}>
-                  {#if isSavingEdit}
-                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                  {/if}
-                  Salvar
+            {#if !isReviewOnly}
+              <div class="flex items-center gap-2">
+                <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={isSavingEdit}>
+                  {isEditMode ? 'Cancelar edicao' : 'Editar dados'}
                 </Button>
-              {/if}
-            </div>
+                {#if isEditMode && editableProperty}
+                  <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-500 dark:text-gray-400" for="status-select">Status</label>
+                    <select
+                      id="status-select"
+                      class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:border-green-500 focus:ring-2 focus:ring-green-500"
+                      bind:value={editableProperty.status}
+                    >
+                      <option value="approved">Disponível</option>
+                      <option value="rented">Alugado</option>
+                      <option value="sold">Vendido</option>
+                    </select>
+                  </div>
+                  <Button on:click={saveEdits} disabled={isSavingEdit}>
+                    {#if isSavingEdit}
+                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                    {/if}
+                    Salvar
+                  </Button>
+                {/if}
+              </div>
+            {/if}
           </div>
 
         <div>
@@ -954,7 +1079,7 @@
                     class="h-32 w-auto rounded-md object-cover shadow"
                     loading="lazy"
                   />
-                  {#if image.id != null}
+                  {#if !isReviewOnly && image.id != null}
                     <Button variant="destructive" size="sm" on:click={() => handleImageDelete(image.id!)}>
                       Remover
                     </Button>
@@ -966,24 +1091,26 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
           {/if}
         </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
-          <input
-            id="upload-images-input"
-            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            type="file"
-            accept="image/*"
-            multiple
-            on:change={handleImageUpload}
-            disabled={imageUploading}
-          />
-          {#if imageUploading}
-            <p class="text-xs text-gray-500 dark:text-gray-400">Enviando imagens...</p>
-          {/if}
-          {#if imageUploadError}
-            <p class="text-xs text-red-500 dark:text-red-400">{imageUploadError}</p>
-          {/if}
-        </div>
+        {#if !isReviewOnly}
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
+            <input
+              id="upload-images-input"
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              type="file"
+              accept="image/*"
+              multiple
+              on:change={handleImageUpload}
+              disabled={imageUploading}
+            />
+            {#if imageUploading}
+              <p class="text-xs text-gray-500 dark:text-gray-400">Enviando imagens...</p>
+            {/if}
+            {#if imageUploadError}
+              <p class="text-xs text-red-500 dark:text-red-400">{imageUploadError}</p>
+            {/if}
+          </div>
+        {/if}
 
           {#if selectedProperty.video_url}
             <div>
@@ -998,19 +1125,21 @@
                   <track kind="captions" srclang="pt" label="Portugues" />
                 </video>
               </div>
-              <div class="mt-2 flex flex-wrap items-center gap-2">
-                <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
-                  {#if videoDeleting}
-                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+              {#if !isReviewOnly}
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
+                    {#if videoDeleting}
+                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                    {/if}
+                    Remover vídeo
+                  </Button>
+                  {#if videoDeleteError}
+                    <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
                   {/if}
-                  Remover vídeo
-                </Button>
-                {#if videoDeleteError}
-                  <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
-                {/if}
-              </div>
+                </div>
+              {/if}
             </div>
-          {:else if isEditMode}
+          {:else if !isReviewOnly && isEditMode}
             <div class="space-y-2">
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-video-input">Enviar vídeo</label>
               <input
@@ -1203,12 +1332,21 @@
         <Button variant="outline" on:click={closeModal} disabled={isProcessing}>
           Cancelar
         </Button>
-        {#if selectedProperty.status !== 'rejected'}
-          <Button variant="destructive" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
+        {#if allowApproval}
+          {#if selectedProperty.status !== 'rejected'}
+            <Button variant="destructive" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
+              {#if isProcessing}
+                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+              {/if}
+              Rejeitar
+            </Button>
+          {/if}
+        {:else}
+          <Button variant="destructive" on:click={handleDeleteProperty} disabled={isProcessing}>
             {#if isProcessing}
               <Loader2 class="mr-2 h-4 w-4 animate-spin" />
             {/if}
-            Rejeitar
+            Excluir
           </Button>
         {/if}
         {#if allowApproval && selectedProperty.status !== 'approved'}
