@@ -12,7 +12,7 @@
 	const dispatch = createEventDispatcher();
 
     const PROPERTY_STATUS_OPTIONS: Array<{ value: Property['status']; label: string }> = [
-        { value: 'pending_approval', label: 'Pendente de aprovacao' },
+        { value: 'pending_approval', label: 'Aprovação Pendente' },
         { value: 'approved', label: 'Aprovado' },
         { value: 'rejected', label: 'Rejeitado' },
         { value: 'rented', label: 'Alugado' },
@@ -25,6 +25,7 @@
         const normalized = status.trim().toLowerCase();
         const dictionary: Record<string, string> = {
             'pendente de aprovacao': 'pending_approval',
+            'pendente de aprovação': 'pending_approval',
             'pendente': 'pending_approval',
             'pending approval': 'pending_approval',
             'aprovado': 'approved',
@@ -36,7 +37,8 @@
             'alugado': 'rented',
             'rented': 'rented',
             'pending verification': 'pending_verification',
-            'pendente de verificacao': 'pending_verification'
+            'pendente de verificacao': 'pending_verification',
+            'pendente de verificação': 'pending_verification'
         };
 
         return dictionary[normalized] ?? normalized;
@@ -45,12 +47,12 @@
     function humanizeStatus(status: string | undefined): string {
         const key = normalizeStatusKey(status);
         const labels: Record<string, string> = {
-            pending_approval: 'Pendente de aprovacao',
-            approved: 'Disponivel',
+            pending_approval: 'Aprovação Pendente',
+            approved: 'Disponível',
             rejected: 'Rejeitado',
             rented: 'Alugado',
             sold: 'Vendido',
-            pending_verification: 'Pendente de verificacao',
+            pending_verification: 'Pendente de verificação',
             status: 'Status',
             no: 'NO',
             mul: 'MUL',

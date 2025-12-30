@@ -268,6 +268,7 @@
 
   function humanizeStatus(status: PropertyStatus): string {
     const map: Record<string, string> = {
+      pending_approval: 'Aprovação Pendente',
       approved: 'Disponível',
       rented: 'Alugado',
       sold: 'Vendido',
