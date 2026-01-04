@@ -41,7 +41,6 @@
     area_terreno?: number | null;
     broker_phone?: string | null;
     valor_condominio?: number | null;
-    valor_iptu?: number | null;
     video_url?: string | null;
     has_wifi?: boolean | null;
     tem_piscina?: boolean | null;
@@ -477,7 +476,6 @@
         'area_construida',
         'area_terreno',
         'valor_condominio',
-        'valor_iptu',
         'bedrooms',
         'bathrooms',
         'garage_spots',
@@ -521,7 +519,6 @@
         area_construida: editableProperty.area_construida,
         area_terreno: editableProperty.area_terreno,
         valor_condominio: editableProperty.valor_condominio,
-        valor_iptu: editableProperty.valor_iptu,
         has_wifi: editableProperty.has_wifi,
         tem_piscina: editableProperty.tem_piscina,
         tem_energia_solar: editableProperty.tem_energia_solar,
@@ -542,12 +539,10 @@
       // Validação específica para vendido
       if ((payload as any).status === 'sold') {
         const cond = (payload as any).valor_condominio ?? selectedProperty.valor_condominio;
-        const iptu = (payload as any).valor_iptu ?? selectedProperty.valor_iptu;
         const condOk = cond !== null && cond !== undefined && Number(cond) > 0;
-        const iptuOk = iptu !== null && iptu !== undefined && Number(iptu) > 0;
-        if (!condOk || !iptuOk) {
+        if (!condOk) {
           editError =
-            'Para marcar como Vendido, preencha os valores de Condominio e IPTU (maiores que 0).';
+            'Para marcar como Vendido, preencha o valor de Condominio (maior que 0).';
           isSavingEdit = false;
           return;
         }
@@ -1019,20 +1014,10 @@
                   <input class="w-24 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
                     type="number" step="0.01" bind:value={editableProperty.valor_condominio} />
                 </label>
-                <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                  IPTU:
-                  <input class="w-24 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
-                    type="number" step="0.01" bind:value={editableProperty.valor_iptu} />
-                </label>
               {:else}
                 {#if selectedProperty.valor_condominio != null}
                   <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
                     Condomínio: {formatCurrency(selectedProperty.valor_condominio ?? undefined)}
-                  </span>
-                {/if}
-                {#if selectedProperty.valor_iptu != null}
-                  <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
-                    IPTU: {formatCurrency(selectedProperty.valor_iptu ?? undefined)}
                   </span>
                 {/if}
               {/if}

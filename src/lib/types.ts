@@ -40,7 +40,6 @@ export interface Property {
   tem_ar_condicionado?: boolean;
   eh_mobiliada?: boolean;
   valor_condominio?: number | null;
-  valor_iptu?: number | null;
   video_url?: string | null;
   sale_value?: number | null;
   commission_value?: number | null;
