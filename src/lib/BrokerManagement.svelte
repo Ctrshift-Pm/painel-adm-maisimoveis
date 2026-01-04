@@ -71,6 +71,35 @@
     return numeric.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  function getPurposeFlags(purpose?: string | null) {
+    const normalized = (purpose ?? '').toLowerCase();
+    const supportsSale = normalized.includes('vend');
+    const supportsRent = normalized.includes('alug');
+    return { supportsSale, supportsRent };
+  }
+
+  function resolvePriceLines(property: Property) {
+    const lines: Array<{ label: string; value: number }> = [];
+    const { supportsSale, supportsRent } = getPurposeFlags(property.purpose ?? null);
+    const salePrice =
+      property.price_sale ??
+      (supportsSale && !supportsRent ? property.price ?? null : null);
+    const rentPrice =
+      property.price_rent ??
+      (supportsRent && !supportsSale ? property.price ?? null : null);
+
+    if (salePrice != null && salePrice > 0) {
+      lines.push({ label: 'Venda', value: Number(salePrice) });
+    }
+    if (rentPrice != null && rentPrice > 0) {
+      lines.push({ label: 'Aluguel', value: Number(rentPrice) });
+    }
+    if (lines.length === 0 && property.price != null) {
+      lines.push({ label: 'Preco', value: Number(property.price) });
+    }
+    return lines;
+  }
+
   function formatPropertyStatus(status?: string | null): string {
     if (!status) {
       return '-';
@@ -618,7 +647,13 @@
                   <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${propertyStatusBadge(property.status ?? null)}`}>
                     {formatPropertyStatus(property.status ?? null)}
                   </span>
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(property.price)}</span>
+                  <div class="flex flex-col gap-1 text-gray-700 dark:text-gray-300">
+                    {#each resolvePriceLines(property) as line}
+                      <span class="font-medium">
+                        {line.label}: {formatCurrency(line.value)}
+                      </span>
+                    {/each}
+                  </div>
                 </div>
               </div>
             </li>

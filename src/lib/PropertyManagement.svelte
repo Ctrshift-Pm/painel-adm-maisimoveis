@@ -19,7 +19,10 @@
     city?: string | null;
     state?: string | null;
     price?: number | null;
+    price_sale?: number | null;
+    price_rent?: number | null;
     status: PropertyStatus;
+    purpose?: string | null;
     broker_name?: string | null;
   }
 
@@ -40,6 +43,8 @@
     area_construida?: number | null;
     area_terreno?: number | null;
     broker_phone?: string | null;
+    price_sale?: number | null;
+    price_rent?: number | null;
     valor_condominio?: number | null;
     video_url?: string | null;
     has_wifi?: boolean | null;
@@ -140,6 +145,8 @@
           if (!Number.isFinite(id)) return null;
 
           const priceValue = record['price'];
+          const priceSaleValue = record['price_sale'];
+          const priceRentValue = record['price_rent'];
 
           return {
             id,
@@ -147,7 +154,10 @@
             city: (record['city'] as string | null | undefined) ?? null,
             state: (record['state'] as string | null | undefined) ?? null,
             price: priceValue != null ? Number(priceValue) : null,
+            price_sale: priceSaleValue != null ? Number(priceSaleValue) : null,
+            price_rent: priceRentValue != null ? Number(priceRentValue) : null,
             status: (record['status'] as PropertyStatus) ?? 'pending_approval',
+            purpose: (record['purpose'] as string | null | undefined) ?? null,
             broker_name: (record['broker_name'] as string | null | undefined) ?? null,
           } as PropertySummary;
         })
@@ -195,6 +205,38 @@
   function formatCurrency(value?: number | null): string {
     if (value == null || Number.isNaN(value)) return '-';
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function getPurposeFlags(purpose?: string | null) {
+    const normalized = (purpose ?? '').toLowerCase();
+    const supportsSale = normalized.includes('vend');
+    const supportsRent = normalized.includes('alug');
+    return { supportsSale, supportsRent, isDual: supportsSale && supportsRent };
+  }
+
+  function resolvePriceLines(property: {
+    price?: number | null;
+    price_sale?: number | null;
+    price_rent?: number | null;
+    purpose?: string | null;
+  }) {
+    const lines: Array<{ label: string; value: number }> = [];
+    const { supportsSale, supportsRent } = getPurposeFlags(property.purpose ?? null);
+    const salePrice =
+      property.price_sale ?? (supportsSale && !supportsRent ? property.price ?? null : null);
+    const rentPrice =
+      property.price_rent ?? (supportsRent && !supportsSale ? property.price ?? null : null);
+
+    if (salePrice != null && Number(salePrice) > 0) {
+      lines.push({ label: 'Venda', value: Number(salePrice) });
+    }
+    if (rentPrice != null && Number(rentPrice) > 0) {
+      lines.push({ label: 'Aluguel', value: Number(rentPrice) });
+    }
+    if (lines.length === 0 && property.price != null) {
+      lines.push({ label: 'Preco', value: Number(property.price) });
+    }
+    return lines;
   }
 
   function normalizeImageUrl(rawUrl: unknown): string | null {
@@ -265,7 +307,10 @@
     return normalizeImages(selectedProperty?.images ?? null);
   }
 
-  function humanizeStatus(status: PropertyStatus): string {
+  function humanizeStatus(status: PropertyStatus, purpose?: string | null): string {
+    if (status === 'approved' && purpose) {
+      return purpose;
+    }
     const map: Record<string, string> = {
       pending_approval: 'Aprovação Pendente',
       approved: 'Disponível',
@@ -315,8 +360,17 @@
     try {
       const details = await api.get<PropertyDetails>(`/admin/properties/${property.id}`);
       const merged = { ...property, ...details } as PropertyDetails;
+      const { supportsSale, supportsRent } = getPurposeFlags(merged.purpose ?? null);
+      const resolvedSale =
+        merged.price_sale ?? (supportsSale && !supportsRent ? merged.price ?? null : null);
+      const resolvedRent =
+        merged.price_rent ?? (supportsRent && !supportsSale ? merged.price ?? null : null);
       selectedProperty = merged;
-      editableProperty = sanitizeEditable(merged);
+      editableProperty = sanitizeEditable({
+        ...merged,
+        price_sale: resolvedSale,
+        price_rent: resolvedRent,
+      });
       isModalOpen = true;
     } catch (err) {
       console.error('Falha ao buscar detalhes do imóvel:', err);
@@ -473,6 +527,8 @@
     try {
       const numericKeys = new Set([
         'price',
+        'price_sale',
+        'price_rent',
         'area_construida',
         'area_terreno',
         'valor_condominio',
@@ -483,6 +539,47 @@
         'commission_rate',
         'commission_value',
       ]);
+
+      const normalizeInput = (value: unknown) =>
+        value === '' || value === undefined || value === null ? null : value;
+      const purposeFlags = getPurposeFlags(
+        editableProperty.purpose ?? selectedProperty.purpose ?? null
+      );
+      const rawPrice = normalizeInput(editableProperty.price);
+      const rawPriceSale = normalizeInput(editableProperty.price_sale);
+      const rawPriceRent = normalizeInput(editableProperty.price_rent);
+      const resolvedPriceSale =
+        purposeFlags.supportsSale
+          ? rawPriceSale ?? (purposeFlags.supportsRent ? null : rawPrice)
+          : null;
+      const resolvedPriceRent =
+        purposeFlags.supportsRent
+          ? rawPriceRent ?? (purposeFlags.supportsSale ? null : rawPrice)
+          : null;
+      const resolvedPrice = resolvedPriceSale ?? resolvedPriceRent ?? rawPrice ?? null;
+      const resolvedPriceSaleValue =
+        resolvedPriceSale != null ? Number(resolvedPriceSale) : null;
+      const resolvedPriceRentValue =
+        resolvedPriceRent != null ? Number(resolvedPriceRent) : null;
+      const resolvedPriceValue =
+        resolvedPrice != null ? Number(resolvedPrice) : null;
+
+      if (purposeFlags.isDual) {
+        if (
+          resolvedPriceSaleValue == null ||
+          resolvedPriceSaleValue <= 0 ||
+          resolvedPriceRentValue == null ||
+          resolvedPriceRentValue <= 0
+        ) {
+          editError = 'Informe os precos de venda e aluguel.';
+          isSavingEdit = false;
+          return;
+        }
+      } else if (resolvedPriceValue == null || resolvedPriceValue <= 0) {
+        editError = 'Informe um preco valido.';
+        isSavingEdit = false;
+        return;
+      }
 
       const normalizeValue = (key: string, value: unknown) => {
         if (value === undefined) return undefined;
@@ -504,7 +601,9 @@
         title: editableProperty.title,
         description: editableProperty.description,
         purpose: editableProperty.purpose,
-        price: editableProperty.price,
+        price: resolvedPriceValue ?? undefined,
+        price_sale: resolvedPriceSaleValue ?? undefined,
+        price_rent: resolvedPriceRentValue ?? undefined,
         address: editableProperty.address,
         city: editableProperty.city,
         state: editableProperty.state,
@@ -928,11 +1027,15 @@
                 {property.city ?? '-'}{#if property.state} / {property.state}{/if}
               </td>
               <td class="px-6 py-4 text-sm font-semibold text-gray-800 dark:text-gray-200">
-                {formatCurrency(property.price)}
+                <div class="flex flex-col gap-1">
+                  {#each resolvePriceLines(property) as line}
+                    <span>{line.label}: {formatCurrency(line.value)}</span>
+                  {/each}
+                </div>
               </td>
               <td class="px-6 py-4">
                 <span class={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClasses(property.status)}`}>
-                  {humanizeStatus(property.status)}
+                  {humanizeStatus(property.status, property.purpose)}
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
@@ -970,7 +1073,7 @@
         <Dialog.Description>
           Status:
           <span class={`ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadgeClasses(selectedProperty.status)}`}>
-            {humanizeStatus(selectedProperty.status)}
+            {humanizeStatus(selectedProperty.status, selectedProperty.purpose)}
           </span>
         </Dialog.Description>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -992,20 +1095,53 @@
                 >
                   <option value="Venda">Venda</option>
                   <option value="Aluguel">Aluguel</option>
+                  <option value="Venda e Aluguel">Venda e Aluguel</option>
                 </select>
               </div>
-              <input
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
-                type="number"
-                step="0.01"
-                bind:value={editableProperty.price}
-                placeholder="Preco"
-              />
+              {@const flags = getPurposeFlags(editableProperty.purpose ?? null)}
+              {#if flags.isDual}
+                <div class="grid gap-3 md:grid-cols-2">
+                  <input
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
+                    type="number"
+                    step="0.01"
+                    bind:value={editableProperty.price_sale}
+                    placeholder="Preco de venda"
+                  />
+                  <input
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
+                    type="number"
+                    step="0.01"
+                    bind:value={editableProperty.price_rent}
+                    placeholder="Preco do aluguel"
+                  />
+                </div>
+              {:else if flags.supportsRent}
+                <input
+                  class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
+                  type="number"
+                  step="0.01"
+                  bind:value={editableProperty.price_rent}
+                  placeholder="Preco do aluguel"
+                />
+              {:else}
+                <input
+                  class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
+                  type="number"
+                  step="0.01"
+                  bind:value={editableProperty.price_sale}
+                  placeholder="Preco de venda"
+                />
+              {/if}
             {:else}
               <p class="text-base text-gray-800 dark:text-gray-200">{selectedProperty.purpose ?? '-'} </p>
-              <p class="text-3xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(selectedProperty.price)}
-              </p>
+              <div class="space-y-1">
+                {#each resolvePriceLines(selectedProperty) as line}
+                  <p class="text-3xl font-bold text-green-600 dark:text-green-400">
+                    {line.label}: {formatCurrency(line.value)}
+                  </p>
+                {/each}
+              </div>
             {/if}
             <div class="flex flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
               {#if isEditMode && editableProperty}

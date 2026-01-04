@@ -19,6 +19,8 @@ export interface Property {
   purpose?: string | null;
   status: PropertyStatus;
   price: number;
+  price_sale?: number | null;
+  price_rent?: number | null;
   address?: string | null;
   quadra?: string | null;
   lote?: string | null;
