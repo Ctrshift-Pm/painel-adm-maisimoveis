@@ -8,6 +8,7 @@
   let isOpen = false;
   let isLoading = false;
   let notifications: Notification[] = [];
+  let totalCount = 0;
   let error: string | null = null;
   let hasFetched = false;
   let container: HTMLDivElement | null = null;
@@ -36,9 +37,13 @@
     } catch {
       return value;
     }
-  }  function badgeLabel(type: Notification['related_entity_type']): string {
+  }
+
+  function badgeLabel(type: Notification['related_entity_type']): string {
     if (type === 'property') return 'Imóveis';
     if (type === 'broker') return 'Corretor';
+    if (type === 'agency') return 'Imobiliária';
+    if (type === 'user') return 'Usuário';
     return 'Aviso';
   }
   async function fetchNotifications() {
@@ -52,15 +57,22 @@
     error = null;
 
     try {
-      const payload = await api.get<{ data?: Notification[] } | { notifications?: Notification[] } | Notification[]>('/admin/notifications');
+      const payload = await api.get<{
+        data?: Notification[];
+        total?: number;
+      } | { notifications?: Notification[] } | Notification[]>('/admin/notifications?limit=10&page=1');
       if (Array.isArray(payload)) {
         notifications = payload;
+        totalCount = payload.length;
       } else if (payload && 'data' in payload && Array.isArray(payload.data)) {
         notifications = payload.data;
+        totalCount = Number(payload.total ?? payload.data.length);
       } else if (payload && 'notifications' in payload && Array.isArray(payload.notifications)) {
         notifications = payload.notifications;
+        totalCount = payload.notifications.length;
       } else {
         notifications = Array.isArray(payload) ? payload : [];
+        totalCount = notifications.length;
       }
       hasFetched = true;
     } catch (err) {
@@ -113,9 +125,9 @@
         d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
       />
     </svg>
-    {#if notifications.length > 0}
+    {#if totalCount > 0}
       <span class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
-        {notifications.length > 9 ? '9+' : notifications.length}
+        {totalCount > 9 ? '9+' : totalCount}
       </span>
     {/if}
   </button>
