@@ -16,6 +16,7 @@
   const PAGE_SIZE = 50;
 
   let clients: Client[] = [];
+  let filteredClients: Client[] = [];
   let clientsTotal = 0;
   let clientsLoading = false;
   let clientsError: string | null = null;
@@ -23,6 +24,7 @@
   let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
   let sendToAll = true;
+  let audience: 'all' | 'client' | 'broker' = 'all';
   let selectedRecipients = new Set<string>();
   let message = '';
   let isSubmitting = false;
@@ -102,6 +104,28 @@
     selectedRecipients = new Set();
   }
 
+  $: filteredClients =
+    audience === 'all'
+      ? clients
+      : clients.filter((client) => {
+          const role = client.role ?? 'client';
+          return role === audience;
+        });
+
+  $: if (!sendToAll && selectedRecipients.size > 0) {
+    const allowedIds = new Set(filteredClients.map((client) => client.id.toString()));
+    let changed = false;
+    for (const id of selectedRecipients) {
+      if (!allowedIds.has(id)) {
+        selectedRecipients.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) {
+      selectedRecipients = new Set(selectedRecipients);
+    }
+  }
+
   async function handleSubmit() {
     feedback = null;
     if (!message.trim()) {
@@ -125,7 +149,8 @@
 
       const payload = {
         message: message.trim(),
-        recipientIds
+        recipientIds,
+        audience
       };
 
       await api.post('/admin/notifications/send', payload);
@@ -155,17 +180,34 @@
 
     <form class="px-6 py-6 space-y-5" on:submit|preventDefault={handleSubmit}>
       <div class="space-y-3">
-        <div class="flex items-center gap-2">
-          <input
-            id="send-all"
-            type="checkbox"
-            class="rounded border-gray-300 text-green-600 shadow-sm focus:ring-green-500"
-            bind:checked={sendToAll}
-            disabled={isSubmitting}
-          />
-          <label for="send-all" class="text-sm font-medium text-gray-700 dark:text-gray-200">
-            Enviar para todos os usuarios
-          </label>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="flex items-center gap-2">
+            <input
+              id="send-all"
+              type="checkbox"
+              class="rounded border-gray-300 text-green-600 shadow-sm focus:ring-green-500"
+              bind:checked={sendToAll}
+              disabled={isSubmitting}
+            />
+            <label for="send-all" class="text-sm font-medium text-gray-700 dark:text-gray-200">
+              Enviar para todos os usuarios
+            </label>
+          </div>
+          <div class="space-y-1">
+            <label for="audience" class="text-sm font-medium text-gray-700 dark:text-gray-200">
+              Publico-alvo
+            </label>
+            <select
+              id="audience"
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              bind:value={audience}
+              disabled={isSubmitting}
+            >
+              <option value="all">Todos (clientes e corretores)</option>
+              <option value="client">Somente clientes</option>
+              <option value="broker">Somente corretores</option>
+            </select>
+          </div>
         </div>
 
         {#if !sendToAll}
@@ -183,7 +225,7 @@
               disabled={isSubmitting}
             />
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              Mostrando {clients.length} de {clientsTotal} usuarios | Selecionados: {selectedRecipients.size}
+              Mostrando {filteredClients.length} de {clientsTotal} usuarios | Selecionados: {selectedRecipients.size}
             </div>
           </div>
           {#if clientsLoading}
@@ -192,11 +234,11 @@
             <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-200">
               {clientsError}
             </div>
-          {:else if clients.length === 0}
+          {:else if filteredClients.length === 0}
             <div class="text-sm text-gray-500 dark:text-gray-400">Nenhum usuario disponivel.</div>
           {:else}
             <div class="max-h-48 overflow-y-auto rounded-md border border-gray-200 p-3 space-y-2 dark:border-gray-700">
-              {#each clients as client}
+              {#each filteredClients as client}
                 <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                   <input
                     type="checkbox"
