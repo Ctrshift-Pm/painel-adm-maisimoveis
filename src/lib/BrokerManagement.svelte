@@ -453,22 +453,6 @@
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{broker.phone ?? '-'}</td>
               <td class="px-6 py-4 text-sm font-semibold text-gray-800 dark:text-gray-200">{broker.creci}</td>
-              <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                {#if broker.agency?.name}
-                  <div class="font-medium text-gray-800 dark:text-gray-100">{broker.agency.name}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">
-                    {#if broker.agency.city}{broker.agency.city}{/if}
-                    {#if broker.agency.state}
-                      {#if broker.agency.city}, {/if}{broker.agency.state}
-                    {/if}
-                  </div>
-                  {#if broker.agency.phone}
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{broker.agency.phone}</div>
-                  {/if}
-                {:else}
-                  <span class="text-gray-400">-</span>
-                {/if}
-              </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{broker.property_count ?? 0}</td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                 {broker.created_at ? formatDate(broker.created_at) : '-'}
