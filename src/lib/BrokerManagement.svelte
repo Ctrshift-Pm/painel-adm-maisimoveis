@@ -428,7 +428,6 @@
                 <span aria-hidden="true">{getSortIndicator('creci')}</span>
               </button>
             </th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Imobiliária</th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               <button type="button" class="flex items-center gap-1" on:click={() => handleSort('property_count')}>
                 Qtd. Imóveis
