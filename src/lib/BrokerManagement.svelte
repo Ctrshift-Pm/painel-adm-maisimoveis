@@ -498,6 +498,7 @@
 <BrokerReviewModal
   bind:open={isReviewModalOpen}
   broker={brokerUnderReview}
+  showReject={false}
   on:update={fetchBrokers}
   on:close={() => (brokerUnderReview = null)}
 />

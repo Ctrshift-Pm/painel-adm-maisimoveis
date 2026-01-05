@@ -9,6 +9,7 @@
   export let open = false;
   export let broker: any | null = null;
   export let showApprove = false;
+  export let showReject = true;
 
   let isProcessing = false;
   const dispatch = createEventDispatcher();
@@ -28,8 +29,13 @@
 
     isProcessing = true;
     try {
-      await api.patch(`/admin/brokers/${broker.id}/status`, { status: newStatus });
-      toast.success(newStatus === 'approved' ? 'Corretor aprovado.' : 'Corretor rejeitado.');
+      if (newStatus === 'rejected') {
+        await api.post(`/admin/brokers/${broker.id}/cleanup`, {});
+        toast.success('Corretor rejeitado e removido.');
+      } else {
+        await api.patch(`/admin/brokers/${broker.id}/status`, { status: newStatus });
+        toast.success('Corretor aprovado.');
+      }
 
       dispatch('update');
       close();
@@ -100,12 +106,14 @@
             Aprovar
           </Button>
         {/if}
-        <Button variant="destructive" className="bg-red-500 hover:bg-red-600 text-white" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
-          {#if isProcessing}
-            <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-          {/if}
-          Rejeitar
-        </Button>
+        {#if showReject}
+          <Button variant="destructive" className="bg-red-500 hover:bg-red-600 text-white" on:click={() => handleStatusUpdate('rejected')} disabled={isProcessing}>
+            {#if isProcessing}
+              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+            {/if}
+            Rejeitar
+          </Button>
+        {/if}
         <Button className="bg-red-700 text-white hover:bg-red-800" on:click={handleDelete} disabled={isProcessing}>
           {#if isProcessing}
             <Loader2 class="mr-2 h-4 w-4 animate-spin" />
