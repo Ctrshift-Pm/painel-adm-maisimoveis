@@ -1,4 +1,4 @@
-<script lang="ts">
+ï»¿<script lang="ts">
     import Sidebar from './Sidebar.svelte';
     import Header from './Header.svelte';
     import Table from './Table.svelte';
@@ -76,13 +76,13 @@
         },
         properties: { 
             endpoint: '/admin/properties-with-brokers', 
-            title: 'Gerenciamento de Imóveis', 
+            title: 'Gerenciamento de ImÃ³veis', 
             headers: ['ID', 'Codigo', 'Titulo', 'Tipo', 'Status', 'Preco', 'Cidade', 'Corretor'],
             filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'Codigo' }, { value: 'p.title', label: 'Titulo' } ],
             sortColumn: 'p.title'
         },
         property_requests: {
-            title: 'Solicitações de Imóveis'
+            title: 'SolicitaÃ§Ãµes de ImÃ³veis'
         },
         brokers: { 
             endpoint: '/admin/brokers', 
@@ -92,7 +92,7 @@
             sortColumn: 'name'
         },
         broker_requests: { 
-            title: 'Solicitações de Corretores'
+            title: 'SolicitaÃ§Ãµes de Corretores'
         },
         clients: { 
             endpoint: '/admin/clients', 
@@ -102,11 +102,11 @@
             sortColumn: 'name'
         },
         notifications: {
-            title: 'Notificações'
+            title: 'NotificaÃ§Ãµes'
         },
         verification: { 
             endpoint: '/admin/brokers/pending', 
-            title: 'Solicitações de Verificação', 
+            title: 'SolicitaÃ§Ãµes de VerificaÃ§Ã£o', 
             headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'Acoes'],
             filterOptions: [] 
         }
@@ -153,10 +153,10 @@
                     isLoading = false;
                     return;
                 }
-                if (!response.ok) throw new Error('Falha ao buscar estatísticas');
+                if (!response.ok) throw new Error('Falha ao buscar estatÃ­sticas');
                 stats = await response.json();
             } catch (error) {
-                console.error("Erro ao buscar estatísticas do dashboard:", error);
+                console.error("Erro ao buscar estatÃ­sticas do dashboard:", error);
                 stats = null;
             } finally {
                 isLoading = false;
@@ -175,13 +175,13 @@
                     isLoading = false;
                     return;
                 }
-                if (!response.ok) throw new Error('Falha ao buscar solicitações pendentes');
+                if (!response.ok) throw new Error('Falha ao buscar solicitaÃ§Ãµes pendentes');
                 
                 const result = await response.json();
                 pendingBrokers = result.data || result;
 
             } catch (error) {
-                console.error("Erro ao buscar solicitações de verificação:", error);
+                console.error("Erro ao buscar solicitaÃ§Ãµes de verificaÃ§Ã£o:", error);
                 pendingBrokers = [];
             } finally {
                 isLoading = false;
@@ -216,7 +216,7 @@
                 isLoading = false;
                 return;
             }
-            if (!response.ok) throw new Error('Falha na autenticação');
+            if (!response.ok) throw new Error('Falha na autenticaÃ§Ã£o');
             
             const result = await response.json();
             allData = result.data || result;
@@ -253,7 +253,7 @@
 
             if (!response.ok) {
                 const text = await response.text();
-                throw new Error(text || 'Falha ao buscar estatísticas.');
+                throw new Error(text || 'Falha ao buscar estatÃ­sticas.');
             }
 
             const payload = await response.json();
@@ -276,8 +276,8 @@
                 newPropertiesOverTime,
             };
         } catch (error) {
-            console.error('Erro ao buscar estatísticas do dashboard:', error);
-            chartError = 'Não foi possivel carregar os gráficos.';
+            console.error('Erro ao buscar estatÃ­sticas do dashboard:', error);
+            chartError = 'NÃ£o foi possivel carregar os grÃ¡ficos.';
             chartData = null;
         } finally {
             isChartLoading = false;
@@ -471,11 +471,11 @@
 
                     <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-                        <KpiCard title="Total de Imóveis" value={stats?.totalProperties ?? 0} color="green" />
+                        <KpiCard title="Total de ImÃ³veis" value={stats?.totalProperties ?? 0} color="green" />
 
                         <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
 
-                        <KpiCard title="Total de Usuários" value={stats?.totalUsers ?? 0} color="yellow" />
+                        <KpiCard title="Total de UsuÃ¡rios" value={stats?.totalUsers ?? 0} color="yellow" />
                         <KpiCard title="Total de Clientes" value={totalClients} color="blue" />
 
 
@@ -491,7 +491,7 @@
 
                             <p class="text-sm text-gray-500 dark:text-gray-400">
 
-                                Acompanhe a distribuição por status e o volume de novos imóveis cadastrados.
+                                Acompanhe a distribuiÃ§Ã£o por status e o volume de novos imÃ³veis cadastrados.
 
                             </p>
 
@@ -505,7 +505,7 @@
 
                                     <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent dark:border-gray-600"></span>
 
-                                    Carregando gráficos...
+                                    Carregando grÃ¡ficos...
 
                                 </div>
 
@@ -525,7 +525,7 @@
 
                             {:else}
 
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum dado de estatística encontrado.</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum dado de estatÃ­stica encontrado.</p>
 
                             {/if}
 
@@ -540,9 +540,9 @@
 {:else if activeView === 'verification'}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitações de Verificação de Corretores</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">SolicitaÃ§Ãµes de VerificaÃ§Ã£o de Corretores</h2>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {pendingBrokers.length} solicita??o(?es) pendente(s)
+                            {pendingBrokers.length} solicitaÃ§Ãµ(es) pendente(s)
                         </p>
                     </div>
                     
@@ -573,8 +573,8 @@
                 <div class="space-y-6">
                     <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-                            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Enviar notificação manual</h1>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuários especifícos ou para todos os clientes e corretores da plataforma.</p>
+                            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Enviar notificaÃ§Ã£o manual</h1>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuÃ¡rios especifÃ­cos ou para todos os clientes e corretores da plataforma.</p>
                         </div>
                         <div class="p-6">
                             <SendNotification />
@@ -601,7 +601,7 @@
                                     <span>Ordenar A-Z</span>
                                 {:else}
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/></svg>
-                                    <span>Ordem Padrão</span>
+                                    <span>Ordem PadrÃ£o</span>
                                 {/if}
                             </button>
                         </div>
@@ -643,9 +643,9 @@
 
 {#if showModal}
     <Modal onConfirm={handleDeleteConfirm} onCancel={() => showModal = false}>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar Exclus?o</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar ExclusÃ£o</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 px-4 py-3">
-            Você tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
+            VocÃª tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
         </p>
     </Modal>
 {/if}
