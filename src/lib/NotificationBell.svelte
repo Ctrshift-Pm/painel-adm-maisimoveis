@@ -25,18 +25,24 @@
     isOpen = false;
   }
 
+  function parseDate(value: string): Date | null {
+    if (!value) return null;
+    const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+    const parsed = new Date(normalized);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }
+
   function formatDate(value: string): string {
-    try {
-      return new Date(value).toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return value;
-    }
+    const parsed = parseDate(value);
+    if (!parsed) return value;
+    return parsed.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
   function badgeLabel(type: Notification['related_entity_type']): string {

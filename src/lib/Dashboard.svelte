@@ -166,8 +166,12 @@
 
         if (activeView === 'verification') {
             try {
-                const config = getViewConfig(activeView);
-                const response = await fetch(`${API_URL}${config.endpoint}`, {
+                const params = new URLSearchParams({
+                    status: 'pending_verification',
+                    page: String(currentPage),
+                    limit: String(itemsPerPage)
+                });
+                const response = await fetch(`${API_URL}/admin/brokers?${params.toString()}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
@@ -540,10 +544,29 @@
 {:else if activeView === 'verification'}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700">
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitações de Verificação de Corretores</h2>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {pendingBrokers.length} solicitaçõ(es) pendente(s)
-                        </p>
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicita??es de Verifica??o de Corretores</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    {totalItems} solicita??(es) pendente(s)
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                                <label for="verification-items-per-page" class="font-medium">Mostrar</label>
+                                <select
+                                    id="verification-items-per-page"
+                                    bind:value={itemsPerPage}
+                                    on:change={() => (currentPage = 1)}
+                                    class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                                <span>entradas</span>
+                            </div>
+                        </div>
                     </div>
                     
                     {#if saveMessage}
@@ -558,6 +581,9 @@
                         {pendingBrokers}
                         on:refresh={fetchData}
                     />
+                    <div class="p-4 border-t dark:border-gray-700">
+                        <Pagination bind:currentPage {totalPages} {totalItems} {itemsPerPage} />
+                    </div>
                 </div>
             {:else if activeView === 'properties'}
                 <PropertyManagement />

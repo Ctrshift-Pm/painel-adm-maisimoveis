@@ -139,7 +139,7 @@
           Destaques escolhidos
         </h2>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          Selecione até {MAX_FEATURED} imóveis aprovados para aparecer na vitrine inicial. Clicando em salvar, os imóveis selecionados substituirão os atuais destaques do app. 
+          Selecione até {MAX_FEATURED} imóveis aprovados para aparecer na vitrine de destaques. Clicando em salvar, os imóveis selecionados substituirão os atuais destaques do app. 
         </p>
       </div>
       <button
@@ -174,7 +174,7 @@
         <div class="text-sm text-gray-500 dark:text-gray-400">Carregando destaques...</div>
       {:else if featured.length === 0}
         <div class="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-          Nenhum destaque selecionado. Os destaques do app irão mostrar os imoveis mais recentes.
+          Nenhum destaque selecionado. Os destaques do app irão mostrar os imóveis mais recentes.
         </div>
       {:else}
         <div class="space-y-3">
