@@ -14,6 +14,7 @@
 
   const RECIPIENT_FIELD_ID = 'recipient';
   const PAGE_SIZE = 50;
+  const MAX_MESSAGE_LENGTH = 500;
 
   let clients: Client[] = [];
   let filteredClients: Client[] = [];
@@ -130,6 +131,14 @@
     feedback = null;
     if (!message.trim()) {
       feedback = { type: 'error', text: 'A mensagem não pode estar vazia.' };
+      return;
+    }
+
+    if (message.trim().length > MAX_MESSAGE_LENGTH) {
+      feedback = {
+        type: 'error',
+        text: `A mensagem deve ter no maximo ${MAX_MESSAGE_LENGTH} caracteres.`,
+      };
       return;
     }
 
@@ -273,12 +282,14 @@
           bind:value={message}
           placeholder="Digite a mensagem que sera enviada aos usuarios..."
           rows={6}
-          maxlength={2000}
+          maxlength={MAX_MESSAGE_LENGTH}
           disabled={isSubmitting}
         ></textarea>
-        <p class="text-xs text-gray-400 dark:text-gray-500">
-          A mensagem será entregue imediatamente aos destinatários selecionados.
-        </p>
+        <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
+          <span>A mensagem será entregue imediatamente aos destinatários selecionados.
+        </span>
+          <span>{message.length}/{MAX_MESSAGE_LENGTH}</span>
+        </div>
       </div>
 
       <div class="flex items-center gap-3">
