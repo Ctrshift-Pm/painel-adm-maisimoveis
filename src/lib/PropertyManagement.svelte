@@ -407,10 +407,10 @@
     isProcessing = true;
     try {
       if (newStatus === 'approved') {
-        await api.patch(`/admin/properties/${selectedProperty.id}/approve`);
+        await api.patch(`/admin/properties/${selectedProperty.id}/approve`, {});
         toast.success('Imovel aprovado.');
       } else {
-        await api.patch(`/admin/properties/${selectedProperty.id}/reject`);
+        await api.patch(`/admin/properties/${selectedProperty.id}/reject`, {});
         toast.success('Imovel rejeitado e removido.');
       }
       isModalOpen = false;
@@ -655,7 +655,7 @@
       const requestedStatus = (payload as any).status;
 
       if (requestedStatus === 'rejected') {
-        await api.patch(`/admin/properties/${selectedProperty.id}/reject`);
+        await api.patch(`/admin/properties/${selectedProperty.id}/reject`, {});
         toast.success('Imovel rejeitado e removido.');
         isEditMode = false;
         isModalOpen = false;
@@ -667,7 +667,7 @@
 
       if (onlyStatusChanged) {
         if (requestedStatus === 'approved') {
-          await api.patch(`/admin/properties/${selectedProperty.id}/approve`);
+          await api.patch(`/admin/properties/${selectedProperty.id}/approve`, {});
         } else {
           await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
             status: requestedStatus,

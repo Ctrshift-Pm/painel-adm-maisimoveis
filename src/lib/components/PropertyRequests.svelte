@@ -45,10 +45,10 @@
     processing = { ...processing, [propertyId]: true };
     try {
       if (newStatus === 'approved') {
-        await api.patch(`/admin/properties/${propertyId}/approve`);
+        await api.patch(`/admin/properties/${propertyId}/approve`, {});
         toast.success('Imovel aprovado.');
       } else {
-        await api.patch(`/admin/properties/${propertyId}/reject`);
+        await api.patch(`/admin/properties/${propertyId}/reject`, {});
         toast.success('Imovel rejeitado e removido.');
       }
       requests = requests.filter((property) => property.id !== propertyId);
