@@ -546,9 +546,9 @@
                     <div class="p-4 border-b dark:border-gray-700">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicita??es de Verifica??o de Corretores</h2>
+                                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitações de Verificação de Corretores</h2>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    {totalItems} solicita??(es) pendente(s)
+                                    {totalItems} solicitaçõ(es) pendente(s)
                                 </p>
                             </div>
                             <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
