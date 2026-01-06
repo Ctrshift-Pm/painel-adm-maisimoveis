@@ -406,15 +406,13 @@
     }
     isProcessing = true;
     try {
-      await api.patch(`/admin/properties/${selectedProperty.id}/status`, { status: newStatus });
-      await api.post('/admin/notifications/send', {
-        message: `Status do imovel #${selectedProperty.id} alterado para ${newStatus}.`,
-        related_entity_type: 'property',
-        related_entity_id: selectedProperty.id,
-        recipientId: null,
-      });
-
-      toast.success(`Imovel ${newStatus === 'approved' ? 'aprovado' : 'rejeitado'}!`);
+      if (newStatus === 'approved') {
+        await api.patch(`/admin/properties/${selectedProperty.id}/approve`);
+        toast.success('Imovel aprovado.');
+      } else {
+        await api.patch(`/admin/properties/${selectedProperty.id}/reject`);
+        toast.success('Imovel rejeitado e removido.');
+      }
       isModalOpen = false;
       selectedProperty = null;
       await fetchProperties();
@@ -654,18 +652,34 @@
       const fieldsBesidesStatus = Object.keys(payload).filter((k) => k !== 'status');
       const onlyStatusChanged =
         statusChanged && fieldsBesidesStatus.every((k) => (payload as any)[k] === (original as any)[k]);
+      const requestedStatus = (payload as any).status;
+
+      if (requestedStatus === 'rejected') {
+        await api.patch(`/admin/properties/${selectedProperty.id}/reject`);
+        toast.success('Imovel rejeitado e removido.');
+        isEditMode = false;
+        isModalOpen = false;
+        selectedProperty = null;
+        editableProperty = null;
+        await fetchProperties();
+        return;
+      }
 
       if (onlyStatusChanged) {
-        await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
-          status: (payload as any).status,
-        });
+        if (requestedStatus === 'approved') {
+          await api.patch(`/admin/properties/${selectedProperty.id}/approve`);
+        } else {
+          await api.patch(`/admin/properties/${selectedProperty.id}/status`, {
+            status: requestedStatus,
+          });
+        }
       } else {
         await apiClient.put(`/admin/properties/${selectedProperty.id}`, payload);
       }
       toast.success('Imovel atualizado com sucesso.');
       isEditMode = false;
       await fetchProperties();
-      // Atualiza estado local para refletir a última versao
+      // Atualiza estado local para refletir a ?ltima versao
       selectedProperty = { ...(selectedProperty as PropertySummary), ...(payload as any) } as PropertySummary;
       editableProperty = sanitizeEditable(selectedProperty as any);
     } catch (err: any) {
