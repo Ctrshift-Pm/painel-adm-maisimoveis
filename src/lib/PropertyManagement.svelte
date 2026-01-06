@@ -9,6 +9,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
   import { Input } from '$lib/components/ui/input';
+  import FeaturedPropertiesPanel from '$lib/components/FeaturedPropertiesPanel.svelte';
   import { baseURL } from './api';
   import { authToken } from './store';
   import type { PropertyStatus, PropertyImage as PropertyImageType } from './types';
@@ -910,6 +911,7 @@
         </Button>
       </div>
     </header>
+    <FeaturedPropertiesPanel />
   {/if}
 
   {#if isReviewOnly}
