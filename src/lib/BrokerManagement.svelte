@@ -7,6 +7,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Loader2 } from 'lucide-svelte';
   import BrokerReviewModal from '$lib/components/BrokerReviewModal.svelte';
+  import Pagination from '$lib/Pagination.svelte';
   import { authToken } from './store';
   import { toast } from 'svelte-sonner';
   import type { Broker, BrokerDocuments, Property } from './types';
@@ -38,6 +39,12 @@
   let filters: BrokerFilters = {
     search: '',
   };
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let totalItems = 0;
+  let totalPages = 1;
+  let fetchKey = 0;
+  let hasMounted = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let isReviewModalOpen = false;
   let brokerUnderReview: Broker | null = null;
@@ -129,6 +136,13 @@
     return map[status] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
   }
 
+  function requestFetch(resetPage = false) {
+    if (resetPage) {
+      currentPage = 1;
+    }
+    fetchKey += 1;
+  }
+
   async function fetchBrokers() {
     isLoading = true;
     error = null;
@@ -149,12 +163,19 @@
       }
       params.append('sortBy', sortConfig.key);
       params.append('sortOrder', sortConfig.order);
+      params.append('page', String(currentPage));
+      params.append('limit', String(itemsPerPage));
 
-      const response = await api.get<{ data?: Broker[] } | Broker[]>(
+      const response = await api.get<{ data?: Broker[]; total?: number } | Broker[]>(
         `/admin/brokers?${params.toString()}`
       );
       const data = Array.isArray(response) ? response : response?.data;
       brokers = Array.isArray(data) ? data : [];
+      totalItems = Number((response as { total?: number })?.total ?? brokers.length);
+      totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+      if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+      }
     } catch (err) {
       console.error('Erro ao buscar corretores:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -253,17 +274,25 @@
   }
 
   onMount(() => {
-    fetchBrokers();
+    hasMounted = true;
+    requestFetch();
   });
 
-  function handleRefresh() {
+  $: if (hasMounted) {
+    currentPage;
+    itemsPerPage;
+    fetchKey;
     fetchBrokers();
+  }
+
+  function handleRefresh() {
+    requestFetch();
   }
 
   function handleKeydown(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
     const key = event instanceof CustomEvent ? event.detail?.key : event.key;
     if (key === 'Enter') {
-      fetchBrokers();
+      requestFetch(true);
     }
   }
 
@@ -271,9 +300,9 @@
     const key = event instanceof CustomEvent ? event.detail?.key : event.key;
     const target = event instanceof CustomEvent ? (event.detail as any)?.target : (event.target as HTMLInputElement | undefined);
     if (key === 'Enter') {
-      fetchBrokers();
+      requestFetch(true);
     } else if (target && target.value.trim() === '') {
-      fetchBrokers();
+      requestFetch(true);
     }
   }
 
@@ -283,11 +312,11 @@
     }
     const target = event?.target as HTMLInputElement | undefined;
     if (target && target.value.trim() === '') {
-      fetchBrokers();
+      requestFetch(true);
       return;
     }
     debounceTimer = setTimeout(() => {
-      fetchBrokers();
+      requestFetch(true);
     }, 300);
   }
 
@@ -301,7 +330,7 @@
       const defaultOrder = key === 'property_count' ? 'desc' : 'asc';
       sortConfig = { key, order: defaultOrder };
     }
-    fetchBrokers();
+    requestFetch(true);
   }
 
   function getSortIndicator(column: string) {
@@ -340,6 +369,21 @@
         on:keydown={handleKeydown}
         on:keyup={handleKeyup}
       />
+      <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <label for="brokers-items-per-page" class="font-medium">Mostrar</label>
+        <select
+          id="brokers-items-per-page"
+          bind:value={itemsPerPage}
+          on:change={() => requestFetch(true)}
+          class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <span>entradas</span>
+      </div>
       <Button
         variant="outline"
         className="flex items-center gap-2"
@@ -491,6 +535,9 @@
           {/each}
         </tbody>
       </table>
+    </div>
+    <div class="mt-4">
+      <Pagination bind:currentPage {totalPages} {totalItems} {itemsPerPage} />
     </div>
   {/if}
 </section>

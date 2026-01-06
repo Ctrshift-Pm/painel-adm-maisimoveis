@@ -57,9 +57,13 @@
     try {
       const params = new URLSearchParams();
       params.append('status', 'approved');
-      params.append('limit', '20');
-      if (search.trim()) {
-        params.append('search', search.trim());
+      const trimmedSearch = search.trim();
+      params.append('limit', trimmedSearch ? '100' : '5');
+      params.append('page', '1');
+      params.append('sortBy', 'p.created_at');
+      params.append('sortOrder', 'desc');
+      if (trimmedSearch) {
+        params.append('search', trimmedSearch);
       }
 
       const payload = await api.get<{ data?: FeaturedProperty[] }>(

@@ -7,6 +7,7 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import { Loader2 } from 'lucide-svelte';
   import { toast } from 'svelte-sonner';
+  import Pagination from '$lib/Pagination.svelte';
 
   type Client = {
     id: number;
@@ -29,11 +30,24 @@
   let isLoading = true;
   let error = '';
   let filters: ClientFilters = { search: '' };
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let totalItems = 0;
+  let totalPages = 1;
+  let fetchKey = 0;
+  let hasMounted = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let sortConfig: SortConfig = { key: 'created_at', order: 'desc' };
   let isModalOpen = false;
   let selectedClient: Client | null = null;
   let isProcessing = false;
+
+  function requestFetch(resetPage = false) {
+    if (resetPage) {
+      currentPage = 1;
+    }
+    fetchKey += 1;
+  }
 
   async function fetchClients() {
     isLoading = true;
@@ -41,8 +55,8 @@
 
     try {
       const params = new URLSearchParams();
-      params.set('page', '1');
-      params.set('limit', '1000');
+      params.set('page', String(currentPage));
+      params.set('limit', String(itemsPerPage));
       const trimmedSearch = filters.search.trim();
       if (trimmedSearch) {
         params.append('search', trimmedSearch);
@@ -50,9 +64,16 @@
       params.append('sortBy', sortConfig.key);
       params.append('sortOrder', sortConfig.order);
 
-      const response = await api.get<{ data?: Client[] } | Client[]>(`/admin/users?${params.toString()}`);
+      const response = await api.get<{ data?: Client[]; total?: number } | Client[]>(
+        `/admin/users?${params.toString()}`
+      );
       const list = Array.isArray(response) ? response : response?.data;
       clients = Array.isArray(list) ? list : [];
+      totalItems = Number((response as { total?: number })?.total ?? clients.length);
+      totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+      if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+      }
     } catch (err) {
       console.error('Erro ao buscar clientes:', err);
       error = err instanceof Error ? err.message : 'Não foi possível carregar os clientes.';
@@ -62,16 +83,26 @@
     }
   }
 
-  onMount(fetchClients);
+  onMount(() => {
+    hasMounted = true;
+    requestFetch();
+  });
+
+  $: if (hasMounted) {
+    currentPage;
+    itemsPerPage;
+    fetchKey;
+    fetchClients();
+  }
 
   function handleRefresh() {
-    fetchClients();
+    requestFetch();
   }
 
   function handleKeydown(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
     const key = event instanceof CustomEvent ? event.detail?.key : event.key;
     if (key === 'Enter') {
-      fetchClients();
+      requestFetch(true);
     }
   }
 
@@ -79,9 +110,9 @@
     const key = event instanceof CustomEvent ? event.detail?.key : event.key;
     const target = event instanceof CustomEvent ? (event.detail as any)?.target : (event.target as HTMLInputElement | undefined);
     if (key === 'Enter') {
-      fetchClients();
+      requestFetch(true);
     } else if (target && target.value.trim() === '') {
-      fetchClients();
+      requestFetch(true);
     }
   }
 
@@ -112,11 +143,11 @@
     }
     const target = event?.target as HTMLInputElement | undefined;
     if (target && target.value.trim() === '') {
-      fetchClients();
+      requestFetch(true);
       return;
     }
     debounceTimer = setTimeout(() => {
-      fetchClients();
+      requestFetch(true);
     }, 300);
   }
 
@@ -129,7 +160,7 @@
     } else {
       sortConfig = { key: newKey, order: 'desc' };
     }
-    fetchClients();
+    requestFetch(true);
   }
 
   function getSortIndicator(column: string) {
@@ -188,6 +219,21 @@
         on:keydown={handleKeydown}
         on:keyup={handleKeyup}
       />
+      <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <label for="clients-items-per-page" class="font-medium">Mostrar</label>
+        <select
+          id="clients-items-per-page"
+          bind:value={itemsPerPage}
+          on:change={() => requestFetch(true)}
+          class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <span>entradas</span>
+      </div>
       <Button variant="outline" on:click={handleRefresh} disabled={isLoading}>
         Recarregar
       </Button>
@@ -279,6 +325,9 @@
           {/each}
         </tbody>
       </table>
+    </div>
+    <div class="mt-4">
+      <Pagination bind:currentPage {totalPages} {totalItems} {itemsPerPage} />
     </div>
   {/if}
 </section>

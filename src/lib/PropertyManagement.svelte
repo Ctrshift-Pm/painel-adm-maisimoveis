@@ -10,6 +10,7 @@
   import * as Select from '$lib/components/ui/select';
   import { Input } from '$lib/components/ui/input';
   import FeaturedPropertiesPanel from '$lib/components/FeaturedPropertiesPanel.svelte';
+  import Pagination from '$lib/Pagination.svelte';
   import { baseURL } from './api';
   import { authToken } from './store';
   import type { PropertyStatus, PropertyImage as PropertyImageType } from './types';
@@ -82,6 +83,12 @@
     city: 'all',
     search: '',
   };
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let totalItems = 0;
+  let totalPages = 1;
+  let fetchKey = 0;
+  let hasMounted = false;
   let sortConfig: SortConfig = { key: 'p.created_at', order: 'desc' };
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let isModalOpen = false;
@@ -99,10 +106,25 @@
   let videoDeleteError: string | null = null;
   let videoInputEl: HTMLInputElement | null = null;
 
+  function requestFetch(resetPage = false) {
+    if (resetPage) {
+      currentPage = 1;
+    }
+    fetchKey += 1;
+  }
+
   onMount(() => {
-    fetchProperties();
+    hasMounted = true;
+    requestFetch();
     fetchCities();
   });
+
+  $: if (hasMounted) {
+    currentPage;
+    itemsPerPage;
+    fetchKey;
+    fetchProperties();
+  }
 
   async function fetchProperties() {
     isLoading = true;
@@ -126,6 +148,8 @@
       }
       params.append('sortBy', sortConfig.key);
       params.append('sortOrder', sortConfig.order);
+      params.append('page', String(currentPage));
+      params.append('limit', String(itemsPerPage));
       const trimmedSearch = filters.search.trim();
       if (trimmedSearch) {
         params.append('search', trimmedSearch);
@@ -137,6 +161,8 @@
       );
 
       const raw = (response?.data ?? response ?? []) as Array<Record<string, unknown>>;
+      totalItems = Number((response as { total?: number })?.total ?? raw.length);
+      totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
       properties = raw
         .map((item) => {
@@ -163,6 +189,10 @@
           } as PropertySummary;
         })
         .filter((item): item is PropertySummary => item !== null);
+
+      if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+      }
     } catch (err) {
       console.error('Erro ao carregar imóveis:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -468,17 +498,17 @@
     } else {
       sortConfig = { key: column, order: 'desc' };
     }
-    fetchProperties();
+    requestFetch(true);
   }
 
   function sortAlphabetical() {
     sortConfig = { key: 'p.title', order: 'asc' };
-    fetchProperties();
+    requestFetch(true);
   }
 
   function sortByCreatedDesc() {
     sortConfig = { key: 'p.created_at', order: 'desc' };
-    fetchProperties();
+    requestFetch(true);
   }
 
   function getSortIndicator(column: string) {
@@ -489,13 +519,13 @@
   }
 
   function handleRefresh() {
-    fetchProperties();
+    requestFetch();
   }
 
   function handleKeydown(event: KeyboardEvent | CustomEvent<KeyboardEvent>) {
     const key = event instanceof CustomEvent ? event.detail?.key : event.key;
     if (key === 'Enter') {
-      fetchProperties();
+      requestFetch(true);
     }
   }
 
@@ -503,14 +533,14 @@
     const key = event instanceof CustomEvent ? event.detail?.key : event.key;
     const target = event instanceof CustomEvent ? (event.detail as any)?.target : (event.target as HTMLInputElement | undefined);
     if (key === 'Enter') {
-      fetchProperties();
+      requestFetch(true);
     } else if (target && target.value.trim() === '') {
-      fetchProperties();
+      requestFetch(true);
     }
   }
 
   function onFilterChange() {
-    fetchProperties();
+    requestFetch(true);
   }
 
   function handleExport() {
@@ -801,11 +831,11 @@
     }
     const target = event?.target as HTMLInputElement | undefined;
     if (target && target.value.trim() === '') {
-      fetchProperties();
+      requestFetch(true);
       return;
     }
     debounceTimer = setTimeout(() => {
-      fetchProperties();
+      requestFetch(true);
     }, 300);
   }
 </script>
@@ -911,7 +941,6 @@
         </Button>
       </div>
     </header>
-    <FeaturedPropertiesPanel />
   {/if}
 
   {#if isReviewOnly}
@@ -929,6 +958,21 @@
         <div class="text-xs text-green-700 dark:text-green-200">
           Dica: clique em Revisar para ver os detalhes completos.
         </div>
+      </div>
+      <div class="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <label for="property-items-per-page-review" class="font-medium">Mostrar</label>
+        <select
+          id="property-items-per-page-review"
+          bind:value={itemsPerPage}
+          on:change={() => requestFetch(true)}
+          class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <span>entradas</span>
       </div>
       <div class="mt-3 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div class="relative">
@@ -957,6 +1001,21 @@
         on:keydown={handleKeydown}
         on:keyup={handleKeyup}
       />
+    </div>
+    <div class="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+      <label for="property-items-per-page" class="font-medium">Mostrar</label>
+      <select
+        id="property-items-per-page"
+        bind:value={itemsPerPage}
+        on:change={() => requestFetch(true)}
+        class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+      >
+        <option value={10}>10</option>
+        <option value={20}>20</option>
+        <option value={50}>50</option>
+        <option value={100}>100</option>
+      </select>
+      <span>entradas</span>
     </div>
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <div class="relative">
@@ -1078,6 +1137,12 @@
         </tbody>
       </table>
     </div>
+    <div class="mt-4">
+      <Pagination bind:currentPage {totalPages} {totalItems} {itemsPerPage} />
+    </div>
+  {/if}
+  {#if !isReviewOnly}
+    <FeaturedPropertiesPanel />
   {/if}
 </div>
 

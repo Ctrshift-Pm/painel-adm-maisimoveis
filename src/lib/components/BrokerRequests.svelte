@@ -5,19 +5,44 @@
   import { api } from '$lib/apiClient';
   import { Button } from '$lib/components/ui/button';
   import BrokerReviewModal from '$lib/components/BrokerReviewModal.svelte';
+  import Pagination from '$lib/Pagination.svelte';
   import type { Broker } from '$lib/types';
 
   let requests: Broker[] = [];
   let isLoading = true;
   let isModalOpen = false;
   let selectedBroker: Broker | null = null;
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let totalItems = 0;
+  let totalPages = 1;
+  let fetchKey = 0;
+  let hasMounted = false;
+
+  function requestFetch(resetPage = false) {
+    if (resetPage) {
+      currentPage = 1;
+    }
+    fetchKey += 1;
+  }
 
   async function fetchRequests() {
     isLoading = true;
     try {
-      const response = await api.get<{ data?: Broker[] } | Broker[]>(`/admin/brokers?status=pending_verification`);
+      const params = new URLSearchParams();
+      params.append('status', 'pending_verification');
+      params.append('page', String(currentPage));
+      params.append('limit', String(itemsPerPage));
+      const response = await api.get<{ data?: Broker[]; total?: number } | Broker[]>(
+        `/admin/brokers?${params.toString()}`
+      );
       const list = Array.isArray(response) ? response : response?.data;
       requests = Array.isArray(list) ? list : [];
+      totalItems = Number((response as { total?: number })?.total ?? requests.length);
+      totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+      if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+      }
     } catch (error) {
       console.error('Erro ao buscar solicitacoes de corretores:', error);
       toast.error('Erro ao carregar solicitacoes.');
@@ -27,7 +52,17 @@
     }
   }
 
-  onMount(fetchRequests);
+  onMount(() => {
+    hasMounted = true;
+    requestFetch();
+  });
+
+  $: if (hasMounted) {
+    currentPage;
+    itemsPerPage;
+    fetchKey;
+    fetchRequests();
+  }
 
   function reviewBroker(broker: Broker) {
     selectedBroker = broker;
@@ -43,7 +78,22 @@
         Aprove ou rejeite corretores pendentes diretamente nesta caixa de entrada.
       </p>
     </div>
-    <Button variant="outline" on:click={fetchRequests} disabled={isLoading}>
+    <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+      <label for="broker-requests-items-per-page" class="font-medium">Mostrar</label>
+      <select
+        id="broker-requests-items-per-page"
+        bind:value={itemsPerPage}
+        on:change={() => requestFetch(true)}
+        class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+      >
+        <option value={10}>10</option>
+        <option value={20}>20</option>
+        <option value={50}>50</option>
+        <option value={100}>100</option>
+      </select>
+      <span>entradas</span>
+    </div>
+    <Button variant="outline" on:click={() => requestFetch()} disabled={isLoading}>
       {#if isLoading}
         <Loader2 class="mr-2 h-4 w-4 animate-spin" />
       {/if}
@@ -104,6 +154,9 @@
         {/if}
       </tbody>
     </table>
+  </div>
+  <div class="mt-4">
+    <Pagination bind:currentPage {totalPages} {totalItems} {itemsPerPage} />
   </div>
 </div>
 
