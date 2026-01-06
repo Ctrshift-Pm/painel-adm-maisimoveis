@@ -71,8 +71,8 @@
       );
       candidates = payload?.data ?? [];
     } catch (err) {
-      console.error('Erro ao carregar imoveis aprovados:', err);
-      toast.error('Erro ao carregar imoveis aprovados.');
+      console.error('Erro ao carregar imóveis aprovados:', err);
+      toast.error('Erro ao carregar imóveis aprovados.');
       candidates = [];
     } finally {
       isLoadingCandidates = false;
@@ -139,7 +139,7 @@
           Destaques escolhidos
         </h2>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          Selecione ate {MAX_FEATURED} imoveis aprovados para aparecer na vitrine inicial.
+          Selecione até {MAX_FEATURED} imóveis aprovados para aparecer na vitrine inicial. Clicando em salvar, os imóveis selecionados substituirão os atuais destaques do app. 
         </p>
       </div>
       <button
@@ -166,7 +166,7 @@
           on:click={loadFeatured}
           disabled={isLoadingFeatured}
         >
-          Atualizar
+          Remover todos
         </button>
       </div>
 
@@ -174,7 +174,7 @@
         <div class="text-sm text-gray-500 dark:text-gray-400">Carregando destaques...</div>
       {:else if featured.length === 0}
         <div class="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-          Nenhum destaque selecionado. Os destaques do app continuarao mostrando os imoveis mais recentes.
+          Nenhum destaque selecionado. Os destaques do app irão mostrar os imoveis mais recentes.
         </div>
       {:else}
         <div class="space-y-3">
@@ -228,7 +228,7 @@
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Imoveis aprovados
+          Imóveis aprovados
         </h3>
         <input
           class="w-44 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
@@ -242,7 +242,7 @@
         <div class="text-sm text-gray-500 dark:text-gray-400">Carregando aprovados...</div>
       {:else if candidates.length === 0}
         <div class="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-          Nenhum imovel aprovado encontrado.
+          Nenhum imóvel aprovado encontrado.
         </div>
       {:else}
         <div class="space-y-3">

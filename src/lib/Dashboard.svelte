@@ -55,6 +55,7 @@
         totalUsers: number;
     }
     let stats: Stats | null = null;
+    $: totalClients = stats ? Math.max(0, stats.totalUsers - stats.totalBrokers) : 0;
 
     interface DashboardChartData {
         propertiesByStatus: { status: string; count: number }[];
@@ -276,7 +277,7 @@
             };
         } catch (error) {
             console.error('Erro ao buscar estatísticas do dashboard:', error);
-            chartError = 'Nao foi possivel carregar os gráficos.';
+            chartError = 'Não foi possivel carregar os gráficos.';
             chartData = null;
         } finally {
             isChartLoading = false;
@@ -474,7 +475,9 @@
 
                         <KpiCard title="Total de Corretores" value={stats?.totalBrokers ?? 0} color="blue" />
 
-                        <KpiCard title="Total de Clientes" value={stats?.totalUsers ?? 0} color="yellow" />
+                        <KpiCard title="Total de Usuários" value={stats?.totalUsers ?? 0} color="yellow" />
+                        <KpiCard title="Total de Clientes" value={totalClients} color="blue" />
+
 
                     </div>
 
@@ -539,7 +542,7 @@
                     <div class="p-4 border-b dark:border-gray-700">
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitações de Verificação de Corretores</h2>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {pendingBrokers.length} solicitação(ões) pendente(s)
+                            {pendingBrokers.length} solicita??o(?es) pendente(s)
                         </p>
                     </div>
                     
@@ -570,8 +573,8 @@
                 <div class="space-y-6">
                     <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
                         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-                            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Enviar notificacao manual</h1>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuarios especificos ou para todos os clientes e corretores da plataforma.</p>
+                            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Enviar notificação manual</h1>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuários especifícos ou para todos os clientes e corretores da plataforma.</p>
                         </div>
                         <div class="p-6">
                             <SendNotification />
@@ -640,11 +643,12 @@
 
 {#if showModal}
     <Modal onConfirm={handleDeleteConfirm} onCancel={() => showModal = false}>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar Exclusão</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-5">Confirmar Exclus?o</h3>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-2 px-4 py-3">
             Você tem certeza que deseja excluir o {itemToDelete?.type} de ID {itemToDelete?.id}?
         </p>
     </Modal>
 {/if}
+
 
 

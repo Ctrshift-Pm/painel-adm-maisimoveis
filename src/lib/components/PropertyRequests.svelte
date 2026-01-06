@@ -50,8 +50,8 @@
         currentPage = totalPages;
       }
     } catch (error) {
-      console.error('Erro ao carregar solicitacoes de imoveis:', error);
-      toast.error('Erro ao carregar solicitacoes de imoveis.');
+      console.error('Erro ao carregar solicitações de imóveis:', error);
+      toast.error('Erro ao carregar solicitações de imóveis.');
       requests = [];
     } finally {
       isLoading = false;
@@ -72,7 +72,7 @@
 
   async function handleStatusUpdate(propertyId: number, newStatus: 'approved' | 'rejected') {
     if (newStatus === 'rejected') {
-      const confirmed = window.confirm('Tem certeza que deseja rejeitar este imovel?');
+      const confirmed = window.confirm('Tem certeza que deseja rejeitar este imóvel?');
       if (!confirmed) return;
     }
     processing = { ...processing, [propertyId]: true };
@@ -82,7 +82,7 @@
         toast.success('Imovel aprovado.');
       } else {
         await api.patch(`/admin/properties/${propertyId}/reject`, {});
-        toast.success('Imovel rejeitado e removido.');
+        toast.success('Imóvel rejeitado e removido.');
       }
       requests = requests.filter((property) => property.id !== propertyId);
     } catch (error) {

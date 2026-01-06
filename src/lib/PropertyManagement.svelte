@@ -132,7 +132,7 @@
 
     const token = get(authToken);
     if (!token) {
-      error = 'Sessao expirada. Faca login novamente.';
+      error = 'Sessão expirada. Faca login novamente.';
       authToken.set(null);
       isLoading = false;
       return;
@@ -177,7 +177,7 @@
 
           return {
             id,
-            title: String(record['title'] ?? 'Imovel sem titulo'),
+            title: String(record['title'] ?? 'Imóvel sem título'),
             city: (record['city'] as string | null | undefined) ?? null,
             state: (record['state'] as string | null | undefined) ?? null,
             price: priceValue != null ? Number(priceValue) : null,
@@ -197,8 +197,8 @@
       console.error('Erro ao carregar imóveis:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
-        error = 'Sessao expirada. Faca login novamente.';
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
+        error = 'Sessão expirada. Faça login novamente.';
         authToken.set(null);
       } else {
         error = err instanceof Error ? err.message : 'Erro inesperado ao carregar imóveis.';
@@ -265,7 +265,7 @@
       lines.push({ label: 'Aluguel', value: Number(rentPrice) });
     }
     if (lines.length === 0 && property.price != null) {
-      lines.push({ label: 'Preco', value: Number(property.price) });
+      lines.push({ label: 'Preço', value: Number(property.price) });
     }
     return lines;
   }
@@ -407,10 +407,10 @@
       console.error('Falha ao buscar detalhes do imóvel:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
         authToken.set(null);
       } else {
-        toast.error('Nao foi possivel carregar os detalhes do imovel.');
+        toast.error('Nao foi possivel carregar os detalhes do imóvel.');
       }
     } finally {
       isDetailLoading = false;
@@ -428,21 +428,21 @@
 
   async function handleStatusUpdate(newStatus: 'approved' | 'rejected') {
     if (!selectedProperty) {
-      toast.error('Erro de estado: o imovel selecionado esta nulo. Tente fechar e reabrir o modal.');
+      toast.error('Erro de estado: o imóvel selecionado esta nulo. Tente fechar e reabrir o modal.');
       return;
     }
     if (newStatus === 'rejected') {
-      const confirmed = window.confirm('Tem certeza que deseja rejeitar este imovel?');
+      const confirmed = window.confirm('Tem certeza que deseja rejeitar este imóvel?');
       if (!confirmed) return;
     }
     isProcessing = true;
     try {
       if (newStatus === 'approved') {
         await api.patch(`/admin/properties/${selectedProperty.id}/approve`, {});
-        toast.success('Imovel aprovado.');
+        toast.success('Imóvel aprovado.');
       } else {
         await api.patch(`/admin/properties/${selectedProperty.id}/reject`, {});
-        toast.success('Imovel rejeitado e removido.');
+        toast.success('Imóvel rejeitado e removido.');
       }
       isModalOpen = false;
       selectedProperty = null;
@@ -451,7 +451,7 @@
       console.error('Falha ao atualizar status do imóvel:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
         authToken.set(null);
       } else {
         toast.error('Falha ao atualizar o status.');
@@ -463,26 +463,26 @@
 
   async function handleDeleteProperty() {
     if (!selectedProperty) {
-      toast.error('Erro de estado: o imovel selecionado esta nulo. Tente fechar e reabrir o modal.');
+      toast.error('Erro de estado: o imóvel selecionado esta nulo. Tente fechar e reabrir o modal.');
       return;
     }
-    const confirmed = window.confirm('Tem certeza que deseja excluir este imovel? Esta acao nao pode ser desfeita.');
+    const confirmed = window.confirm('Tem certeza que deseja excluir este imóvel? Esta acao nao pode ser desfeita.');
     if (!confirmed) return;
     isProcessing = true;
     try {
       await api.delete(`/admin/properties/${selectedProperty.id}`);
-      toast.success('Imovel excluido com sucesso.');
+      toast.success('Imóvel excluido com sucesso.');
       isModalOpen = false;
       selectedProperty = null;
       await fetchProperties();
     } catch (err) {
-      console.error('Falha ao excluir o imovel:', err);
+      console.error('Falha ao excluir o imóvel:', err);
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
         authToken.set(null);
       } else {
-        toast.error('Falha ao excluir o imovel.');
+        toast.error('Falha ao excluir o imóvel.');
       }
     } finally {
       isProcessing = false;
@@ -600,12 +600,12 @@
           resolvedPriceRentValue == null ||
           resolvedPriceRentValue <= 0
         ) {
-          editError = 'Informe os precos de venda e aluguel.';
+          editError = 'Informe os preços de venda e aluguel.';
           isSavingEdit = false;
           return;
         }
       } else if (resolvedPriceValue == null || resolvedPriceValue <= 0) {
-        editError = 'Informe um preco valido.';
+        editError = 'Informe um preço válido.';
         isSavingEdit = false;
         return;
       }
@@ -670,7 +670,7 @@
         const condOk = cond !== null && cond !== undefined && Number(cond) > 0;
         if (!condOk) {
           editError =
-            'Para marcar como Vendido, preencha o valor de Condominio (maior que 0).';
+            'Para marcar como Vendido, preencha o valor de Condomínio (maior que 0).';
           isSavingEdit = false;
           return;
         }
@@ -687,7 +687,7 @@
 
       if (requestedStatus === 'rejected') {
         await api.patch(`/admin/properties/${selectedProperty.id}/reject`, {});
-        toast.success('Imovel rejeitado e removido.');
+        toast.success('Imóvel rejeitado e removido.');
         isEditMode = false;
         isModalOpen = false;
         selectedProperty = null;
@@ -707,31 +707,31 @@
       } else {
         await apiClient.put(`/admin/properties/${selectedProperty.id}`, payload);
       }
-      toast.success('Imovel atualizado com sucesso.');
+      toast.success('Imóvel atualizado com sucesso.');
       isEditMode = false;
       await fetchProperties();
       // Atualiza estado local para refletir a ?ltima versao
       selectedProperty = { ...(selectedProperty as PropertySummary), ...(payload as any) } as PropertySummary;
       editableProperty = sanitizeEditable(selectedProperty as any);
     } catch (err: any) {
-      console.error('Erro ao salvar imovel:', err);
+      console.error('Erro ao salvar imóvel:', err);
       const status = err?.response?.status;
       if (status === 403) {
         editError =
           err?.response?.data?.error ||
-          'Permissao negada pelo servidor para atualizar este imovel. Verifique campos obrigatorios e permissao do usuario.';
+          'Permissão negada pelo servidor para atualizar este imóvel. Verifique campos obrigatórios e permissão do usuário.';
       } else if (status === 404) {
         editError =
           err?.response?.data?.error ||
-          'Imovel nao encontrado ou rota de atualizacao ausente no servidor.';
+          'Imóvel não encontrado ou rota de atualização ausente no servidor.';
       } else if (status === 500) {
         editError =
           err?.response?.data?.error ||
-          'Erro interno no servidor ao salvar o imovel. Tente novamente e revise os campos.';
+          'Erro interno no servidor ao salvar o imóvel. Tente novamente e revise os campos.';
       } else {
         editError =
           err?.response?.data?.error ||
-          (err instanceof Error ? err.message : 'Nao foi possivel salvar o imovel.');
+          (err instanceof Error ? err.message : 'Não foi possivel salvar o imóvel.');
       }
     } finally {
       isSavingEdit = false;
@@ -763,7 +763,7 @@
       console.error('Erro ao enviar imagens:', err);
       const status = err?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
         authToken.set(null);
       }
       imageUploadError =
@@ -788,7 +788,7 @@
       console.error('Erro ao remover imagem:', err);
       const status = err?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
         authToken.set(null);
       }
       imageDeleteError =
@@ -799,27 +799,27 @@
 
   async function handleVideoDelete() {
     if (!selectedProperty) return;
-    const confirmed = window.confirm('Confirma remover o video atual?');
+    const confirmed = window.confirm('Confirma remover o vídeo atual?');
     if (!confirmed) return;
     videoDeleting = true;
     videoDeleteError = null;
     try {
       await api.delete(`/admin/properties/${selectedProperty.id}/video`);
-      toast.success('Video removido com sucesso.');
+      toast.success('Vídeo removido com sucesso.');
       await reviewProperty(selectedProperty as PropertySummary);
       if (videoInputEl) {
         videoInputEl.value = '';
       }
     } catch (err: any) {
-      console.error('Erro ao remover video:', err);
+      console.error('Erro ao remover vídeo:', err);
       const status = err?.response?.status;
       if (status === 401) {
-        toast.error('Sua sessao expirou. Por favor, faca login novamente.');
+        toast.error('Sua sessão expirou. Por favor, faca login novamente.');
         authToken.set(null);
       }
       videoDeleteError =
         err?.response?.data?.error ||
-        (err instanceof Error ? err.message : 'Falha ao remover video.');
+        (err instanceof Error ? err.message : 'Falha ao remover vídeo.');
     } finally {
       videoDeleting = false;
     }
@@ -1278,7 +1278,7 @@
                 <div class="relative flex flex-col gap-2 items-center">
                   <img
                     src={image.url}
-                    alt="Foto do imovel"
+                    alt="Foto do imóvel"
                     class="h-32 w-auto rounded-md object-cover shadow"
                     loading="lazy"
                   />
@@ -1385,7 +1385,7 @@
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               rows="3"
               bind:value={editableProperty.description}
-              placeholder="Descricao do imovel"
+              placeholder="Descricao do imóvel"
             ></textarea>
           {:else}
             <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
@@ -1447,7 +1447,7 @@
                 <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_construida} />
               </label>
               <label class="flex flex-col gap-1">
-                <strong>Área terreno:</strong>
+                <strong>Área do terreno:</strong>
                 <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_terreno} />
               </label>
               <p><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</p>
@@ -1458,16 +1458,16 @@
               <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
               <li><strong>Estado:</strong> {selectedProperty.state ?? '-'}</li>
               <li><strong>Bairro:</strong> {selectedProperty.bairro ?? '-'}</li>
-              <li><strong>Endereco:</strong> {selectedProperty.address ?? '-'}</li>
-              <li><strong>Numero:</strong> {selectedProperty.numero ?? '-'}</li>
+              <li><strong>Endereço:</strong> {selectedProperty.address ?? '-'}</li>
+              <li><strong>Número:</strong> {selectedProperty.numero ?? '-'}</li>
               <li><strong>Complemento:</strong> {selectedProperty.complemento ?? '-'}</li>
               <li><strong>Quadra:</strong> {selectedProperty.quadra ?? '-'}</li>
               <li><strong>Lote:</strong> {selectedProperty.lote ?? '-'}</li>
               <li><strong>Tipo do lote:</strong> {selectedProperty.tipo_lote ?? '-'}</li>
               <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
               <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
-              <li><strong>Área construida:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
-              <li><strong>Área terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
+              <li><strong>Área construída:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
+              <li><strong>Área do terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
               <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
               <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
             </ul>
@@ -1507,7 +1507,7 @@
                 { label: 'Wi-Fi', value: selectedProperty.has_wifi },
                 { label: 'Piscina', value: selectedProperty.tem_piscina },
                 { label: 'Energia solar', value: selectedProperty.tem_energia_solar },
-                { label: 'Automacao', value: selectedProperty.tem_automacao },
+                { label: 'Automação', value: selectedProperty.tem_automacao },
                 { label: 'Ar condicionado', value: selectedProperty.tem_ar_condicionado },
                 { label: 'Mobiliada', value: selectedProperty.eh_mobiliada }
               ] as amenity}

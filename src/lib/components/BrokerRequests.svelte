@@ -44,8 +44,8 @@
         currentPage = totalPages;
       }
     } catch (error) {
-      console.error('Erro ao buscar solicitacoes de corretores:', error);
-      toast.error('Erro ao carregar solicitacoes.');
+      console.error('Erro ao buscar solicitações de corretores:', error);
+      toast.error('Erro ao carregar solicitações.');
       requests = [];
     } finally {
       isLoading = false;

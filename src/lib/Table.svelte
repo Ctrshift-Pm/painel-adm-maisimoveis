@@ -204,7 +204,7 @@
                 {#each headers as header}
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{header}</th>
                 {/each}
-                <th scope="col" class="relative px-6 py-3"><span class="sr-only">AÃ§Ãµes</span></th>
+                <th scope="col" class="relative px-6 py-3"><span class="sr-only">Ações</span></th>
             </tr>
         </thead>
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-600 dark:text-gray-300">

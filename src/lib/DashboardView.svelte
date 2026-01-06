@@ -13,6 +13,7 @@
     let stats: Stats | null = null;
     let isLoading = true;
     const API_URL = baseURL;
+    $: totalClients = stats ? Math.max(0, stats.totalUsers - stats.totalBrokers) : 0;
 
     onMount(async () => {
         const token = localStorage.getItem('authToken');
@@ -42,7 +43,9 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <KpiCard title="Total de Imóveis" value={stats.totalProperties} color="blue" />
             <KpiCard title="Total de Corretores" value={stats.totalBrokers} color="green" />
-            <KpiCard title="Total de Utilizadores" value={stats.totalUsers} color="yellow" />
+            <KpiCard title="Total de Usuários" value={stats.totalUsers} color="yellow" />
+            <KpiCard title="Total de Clientes" value={totalClients} color="blue" />
         </div>
     {/if}
 </div>
+

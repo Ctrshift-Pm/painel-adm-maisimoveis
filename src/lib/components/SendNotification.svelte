@@ -66,11 +66,11 @@
         clientsTotal = 0;
       }
     } catch (error) {
-      console.error('Erro ao buscar usuarios:', error);
+      console.error('Erro ao buscar usuários:', error);
       clientsError =
         error instanceof Error
           ? error.message
-          : 'Falha ao carregar usuarios.';
+          : 'Falha ao carregar usuários.';
       clients = [];
       clientsTotal = 0;
     } finally {
@@ -190,12 +190,12 @@
               disabled={isSubmitting}
             />
             <label for="send-all" class="text-sm font-medium text-gray-700 dark:text-gray-200">
-              Enviar para todos os usuarios
+              Enviar para todos os usuários
             </label>
           </div>
           <div class="space-y-1">
             <label for="audience" class="text-sm font-medium text-gray-700 dark:text-gray-200">
-              Publico-alvo
+              Público-alvo
             </label>
             <select
               id="audience"
@@ -213,7 +213,7 @@
         {#if !sendToAll}
           <div class="space-y-2">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-200" for={RECIPIENT_FIELD_ID}>
-              Selecionar usuarios
+              Selecionar usuários
             </label>
             <input
               id={RECIPIENT_FIELD_ID}
@@ -225,17 +225,17 @@
               disabled={isSubmitting}
             />
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              Mostrando {filteredClients.length} de {clientsTotal} usuarios | Selecionados: {selectedRecipients.size}
+              Mostrando {filteredClients.length} de {clientsTotal} usuários | Selecionados: {selectedRecipients.size}
             </div>
           </div>
           {#if clientsLoading}
-            <div class="text-sm text-gray-500 dark:text-gray-400">Carregando usuarios...</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Carregando usuários...</div>
           {:else if clientsError}
             <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-200">
               {clientsError}
             </div>
           {:else if filteredClients.length === 0}
-            <div class="text-sm text-gray-500 dark:text-gray-400">Nenhum usuario disponivel.</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400">Nenhum usuário disponivel.</div>
           {:else}
             <div class="max-h-48 overflow-y-auto rounded-md border border-gray-200 p-3 space-y-2 dark:border-gray-700">
               {#each filteredClients as client}
