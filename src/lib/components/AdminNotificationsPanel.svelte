@@ -5,6 +5,15 @@
   import type { Notification } from '$lib/types';
 
   const PAGE_SIZES = [10, 20, 50, 100];
+  const TYPE_FILTERS: Array<{ value: 'all' | Notification['related_entity_type']; label: string }> = [
+    { value: 'all', label: 'Todos' },
+    { value: 'property', label: 'Imóveis' },
+    { value: 'broker', label: 'Corretor' },
+    { value: 'agency', label: 'Imobiliária' },
+    { value: 'user', label: 'Usuário' },
+    { value: 'announcement', label: 'Anúncio' },
+    { value: 'other', label: 'Aviso' }
+  ];
 
   let notifications: Notification[] = [];
   let total = 0;
@@ -13,14 +22,17 @@
   let isLoading = false;
   let error: string | null = null;
   let hasMounted = false;
+  let typeFilter: 'all' | Notification['related_entity_type'] = 'all';
 
   $: totalPages = Math.max(1, Math.ceil(total / itemsPerPage));
 
   $: if (hasMounted) {
     const page = currentPage;
     const size = itemsPerPage;
+    const filter = typeFilter;
     page;
     size;
+    filter;
     fetchNotifications();
   }
 
@@ -53,6 +65,7 @@
     if (type === 'broker') return 'Corretor';
     if (type === 'agency') return 'Imobiliária';
     if (type === 'user') return 'Usuário';
+    if (type === 'announcement') return 'Anúncio';
     return 'Aviso';
   }
 
@@ -61,8 +74,15 @@
     error = null;
 
     try {
+      const params = new URLSearchParams({
+        limit: String(itemsPerPage),
+        page: String(currentPage)
+      });
+      if (typeFilter !== 'all') {
+        params.set('type', typeFilter);
+      }
       const payload = await api.get<{ data?: Notification[]; total?: number }>(
-        `/admin/notifications?limit=${itemsPerPage}&page=${currentPage}`
+        `/admin/notifications?${params.toString()}`
       );
       notifications = payload?.data ?? [];
       total = Number(payload?.total ?? notifications.length);
@@ -144,6 +164,20 @@
         >
           {#each PAGE_SIZES as size}
             <option value={size}>{size}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="notifications-type-filter" class="text-sm font-medium">
+          Tipo
+        </label>
+        <select
+          id="notifications-type-filter"
+          bind:value={typeFilter}
+          class="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+        >
+          {#each TYPE_FILTERS as option}
+            <option value={option.value}>{option.label}</option>
           {/each}
         </select>
       </div>

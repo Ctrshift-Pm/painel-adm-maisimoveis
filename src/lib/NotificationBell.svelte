@@ -50,6 +50,7 @@
     if (type === 'broker') return 'Corretor';
     if (type === 'agency') return 'Imobiliária';
     if (type === 'user') return 'Usuário';
+    if (type === 'announcement') return 'Anúncio';
     return 'Aviso';
   }
   async function fetchNotifications() {

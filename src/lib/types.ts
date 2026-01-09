@@ -96,7 +96,13 @@ export interface User {
 export interface Notification {
   id: number;
   message: string;
-  related_entity_type: 'property' | 'broker' | 'agency' | 'user' | 'other';
+  related_entity_type:
+    | 'property'
+    | 'broker'
+    | 'agency'
+    | 'user'
+    | 'announcement'
+    | 'other';
   related_entity_id: number | null;
   recipient_id?: number | null;
   is_read: boolean | 0 | 1;
