@@ -10,6 +10,9 @@
     id: number;
     title: string;
     broker_name?: string | null;
+    broker_phone?: string | null;
+    broker_id?: number | null;
+    broker_status?: string | null;
     city?: string | null;
     state?: string | null;
     created_at?: string;
@@ -136,6 +139,9 @@
             Anunciante
           </th>
           <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Telefone
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Cidade
           </th>
           <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -146,13 +152,13 @@
       <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
         {#if isLoading}
           <tr>
-            <td colspan="4" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            <td colspan="5" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               Carregando solicitações...
             </td>
           </tr>
         {:else if requests.length === 0}
           <tr>
-            <td colspan="4" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            <td colspan="5" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               Nenhuma solicitação pendente.
             </td>
           </tr>
@@ -163,7 +169,15 @@
                 {property.title}
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                {property.broker_name ?? 'Desconhecido'}
+                <div class="flex flex-col gap-1">
+                  <span>{property.broker_name ?? 'Desconhecido'}</span>
+                  <span class="w-fit rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    {property.broker_id ? 'Corretor' : 'Cliente'}
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                {property.broker_phone ?? '-'}
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                 {property.city ?? '-'}{#if property.state} / {property.state}{/if}
