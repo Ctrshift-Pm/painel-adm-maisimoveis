@@ -8,6 +8,7 @@
   import { Loader2 } from 'lucide-svelte';
   import { toast } from 'svelte-sonner';
   import Pagination from '$lib/Pagination.svelte';
+  import type { PropertyStatus } from '$lib/types';
 
   type Client = {
     id: number;
@@ -15,6 +16,13 @@
     email: string;
     phone?: string | null;
     created_at?: string;
+  };
+
+  type ClientProperty = {
+    id: number;
+    title: string;
+    status: PropertyStatus;
+    created_at?: string | null;
   };
 
   type SortConfig = {
@@ -40,6 +48,11 @@
   let sortConfig: SortConfig = { key: 'created_at', order: 'desc' };
   let isModalOpen = false;
   let selectedClient: Client | null = null;
+  let isPropertiesModalOpen = false;
+  let selectedClientForProperties: Client | null = null;
+  let clientProperties: ClientProperty[] = [];
+  let isPropertiesLoading = false;
+  let propertiesError: string | null = null;
   let isProcessing = false;
 
   function requestFetch(resetPage = false) {
@@ -175,10 +188,41 @@
     isModalOpen = true;
   }
 
+  async function openClientProperties(client: Client) {
+    selectedClientForProperties = client;
+    isPropertiesModalOpen = true;
+    isPropertiesLoading = true;
+    propertiesError = null;
+    clientProperties = [];
+
+    try {
+      const response = await api.get<{ data?: ClientProperty[] } | ClientProperty[]>(
+        `/admin/clients/${client.id}/properties`
+      );
+      const list = Array.isArray(response) ? response : response?.data;
+      clientProperties = Array.isArray(list) ? list : [];
+    } catch (err) {
+      console.error('Erro ao buscar imoveis do cliente:', err);
+      propertiesError =
+        err instanceof Error ? err.message : 'Nao foi possivel carregar os imoveis do cliente.';
+      clientProperties = [];
+    } finally {
+      isPropertiesLoading = false;
+    }
+  }
+
   function closeModal() {
     if (isProcessing) return;
     isModalOpen = false;
     selectedClient = null;
+  }
+
+  function closePropertiesModal() {
+    if (isPropertiesLoading) return;
+    isPropertiesModalOpen = false;
+    selectedClientForProperties = null;
+    clientProperties = [];
+    propertiesError = null;
   }
 
   async function deleteClient() {
@@ -317,9 +361,14 @@
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{client.phone ?? 'N/A'}</td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{formatDate(client.created_at)}</td>
               <td class="px-6 py-4 text-right">
-                <Button size="sm" variant="outline" on:click={() => openClientModal(client)}>
-                  Revisar
-                </Button>
+                <div class="flex justify-end gap-2">
+                  <Button size="sm" variant="outline" on:click={() => openClientProperties(client)}>
+                    Ver Imoveis
+                  </Button>
+                  <Button size="sm" variant="outline" on:click={() => openClientModal(client)}>
+                    Revisar
+                  </Button>
+                </div>
               </td>
             </tr>
           {/each}
@@ -356,6 +405,60 @@
             <Loader2 class="mr-2 h-4 w-4 animate-spin" />
           {/if}
           Excluir cliente
+        </Button>
+      </Dialog.Footer>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={isPropertiesModalOpen}>
+  <Dialog.Content className="max-w-lg">
+    {#if selectedClientForProperties}
+      <Dialog.Header>
+        <Dialog.Title>Imoveis do cliente</Dialog.Title>
+        <Dialog.Description>
+          {selectedClientForProperties.name} · {selectedClientForProperties.email}
+        </Dialog.Description>
+      </Dialog.Header>
+
+      <div class="space-y-3 py-4 text-sm text-gray-700 dark:text-gray-300">
+        {#if isPropertiesLoading}
+          <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <Loader2 class="h-4 w-4 animate-spin" />
+            Carregando imoveis...
+          </div>
+        {:else if propertiesError}
+          <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            {propertiesError}
+          </div>
+        {:else if clientProperties.length === 0}
+          <div class="rounded-md border border-dashed border-gray-200 px-4 py-6 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            Nenhum imovel cadastrado por este cliente.
+          </div>
+        {:else}
+          <ul class="space-y-2">
+            {#each clientProperties as property (property.id)}
+              <li class="flex items-start justify-between gap-4 rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700">
+                <div>
+                  <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {property.title}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                    ID: {property.id} · {formatDate(property.created_at ?? undefined)}
+                  </div>
+                </div>
+                <span class="mt-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  {property.status}
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+
+      <Dialog.Footer>
+        <Button variant="outline" on:click={closePropertiesModal} disabled={isPropertiesLoading}>
+          Fechar
         </Button>
       </Dialog.Footer>
     {/if}

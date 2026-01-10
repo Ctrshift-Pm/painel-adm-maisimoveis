@@ -77,7 +77,7 @@
         properties: { 
             endpoint: '/admin/properties-with-brokers', 
             title: 'Gerenciamento de Imóveis', 
-            headers: ['ID', 'Codigo', 'Titulo', 'Tipo', 'Status', 'Preco', 'Cidade', 'Corretor'],
+            headers: ['ID', 'Codigo', 'Titulo', 'Tipo', 'Status', 'Preco', 'Cidade', 'Anunciante'],
             filterOptions: [ { value: 'p.id', label: 'ID' }, { value: 'p.code', label: 'Codigo' }, { value: 'p.title', label: 'Titulo' } ],
             sortColumn: 'p.title'
         },

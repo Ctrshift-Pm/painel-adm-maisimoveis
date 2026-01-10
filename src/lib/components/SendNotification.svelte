@@ -159,7 +159,8 @@
       const payload = {
         message: message.trim(),
         recipientIds,
-        audience
+        audience,
+        related_entity_type: 'announcement'
       };
 
       await api.post('/admin/notifications/send', payload);

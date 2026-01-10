@@ -47,8 +47,11 @@ export interface Property {
   commission_value?: number | null;
   commission_rate?: number | null;
   broker_id?: number | null;
+  owner_id?: number | null;
   broker_name?: string | null;
   broker_phone?: string | null;
+  broker_status?: string | null;
+  broker_creci?: string | null;
   created_at?: string;
   updated_at?: string;
   images?: PropertyImage[];

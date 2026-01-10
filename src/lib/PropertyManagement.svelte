@@ -25,7 +25,12 @@
     price_rent?: number | null;
     status: PropertyStatus;
     purpose?: string | null;
+    broker_id?: number | null;
+    owner_id?: number | null;
     broker_name?: string | null;
+    broker_phone?: string | null;
+    broker_status?: string | null;
+    broker_creci?: string | null;
   }
 
   type NormalizedImage = PropertyImageType;
@@ -44,7 +49,6 @@
     bathrooms?: number | null;
     area_construida?: number | null;
     area_terreno?: number | null;
-    broker_phone?: string | null;
     price_sale?: number | null;
     price_rent?: number | null;
     valor_condominio?: number | null;
@@ -174,6 +178,11 @@
           const priceValue = record['price'];
           const priceSaleValue = record['price_sale'];
           const priceRentValue = record['price_rent'];
+          const brokerIdValue = record['broker_id'];
+          const ownerIdValue = record['owner_id'];
+          const brokerPhoneValue = record['broker_phone'];
+          const brokerStatusValue = record['broker_status'];
+          const brokerCreciValue = record['broker_creci'];
 
           return {
             id,
@@ -185,7 +194,12 @@
             price_rent: priceRentValue != null ? Number(priceRentValue) : null,
             status: (record['status'] as PropertyStatus) ?? 'pending_approval',
             purpose: (record['purpose'] as string | null | undefined) ?? null,
+            broker_id: brokerIdValue != null ? Number(brokerIdValue) : null,
+            owner_id: ownerIdValue != null ? Number(ownerIdValue) : null,
             broker_name: (record['broker_name'] as string | null | undefined) ?? null,
+            broker_phone: (brokerPhoneValue as string | null | undefined) ?? null,
+            broker_status: (brokerStatusValue as string | null | undefined) ?? null,
+            broker_creci: (brokerCreciValue as string | null | undefined) ?? null,
           } as PropertySummary;
         })
         .filter((item): item is PropertySummary => item !== null);
@@ -243,6 +257,10 @@
     const supportsSale = normalized.includes('vend');
     const supportsRent = normalized.includes('alug');
     return { supportsSale, supportsRent, isDual: supportsSale && supportsRent };
+  }
+
+  function isBrokerCredenciado(property?: PropertyDetails | null) {
+    return Boolean(property?.broker_id) && property?.broker_status === 'approved';
   }
 
   function resolvePriceLines(property: {
@@ -1084,7 +1102,7 @@
                 <span>{getSortIndicator('p.status')}</span>
               </button>
             </th>
-            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Corretor</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Anunciante</th>
             <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ações</th>
           </tr>
         </thead>
@@ -1450,8 +1468,12 @@
                 <strong>Área do terreno:</strong>
                 <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_terreno} />
               </label>
-              <p><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</p>
+              <p><strong>Anunciante:</strong> {selectedProperty.broker_name ?? '-'}</p>
               <p><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</p>
+              <p><strong>Corretor credenciado:</strong> {isBrokerCredenciado(selectedProperty) ? 'Sim' : 'Nao'}</p>
+              {#if isBrokerCredenciado(selectedProperty)}
+                <p><strong>CRECI:</strong> {selectedProperty.broker_creci ?? '-'}</p>
+              {/if}
             </div>
           {:else}
             <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
@@ -1468,8 +1490,12 @@
               <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
               <li><strong>Área construída:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
               <li><strong>Área do terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
-              <li><strong>Corretor:</strong> {selectedProperty.broker_name ?? '-'}</li>
+              <li><strong>Anunciante:</strong> {selectedProperty.broker_name ?? '-'}</li>
               <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
+              <li><strong>Corretor credenciado:</strong> {isBrokerCredenciado(selectedProperty) ? 'Sim' : 'Nao'}</li>
+              {#if isBrokerCredenciado(selectedProperty)}
+                <li><strong>CRECI:</strong> {selectedProperty.broker_creci ?? '-'}</li>
+              {/if}
             </ul>
           {/if}
         </div>
@@ -1568,4 +1594,3 @@
     {/if}
   </Dialog.Content>
 </Dialog.Root>
-

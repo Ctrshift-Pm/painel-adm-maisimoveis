@@ -46,11 +46,9 @@
   }
 
   function badgeLabel(type: Notification['related_entity_type']): string {
-    if (type === 'property') return 'Imóveis';
-    if (type === 'broker') return 'Corretor';
-    if (type === 'agency') return 'Imobiliária';
-    if (type === 'user') return 'Usuário';
-    if (type === 'announcement') return 'Anúncio';
+    if (type == 'property') return 'Imoveis';
+    if (type == 'broker') return 'Corretor';
+    if (type == 'user') return 'Cliente';
     return 'Aviso';
   }
   async function fetchNotifications() {

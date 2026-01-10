@@ -133,7 +133,7 @@
             Imóvel
           </th>
           <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Corretor
+            Anunciante
           </th>
           <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Cidade
