@@ -1103,6 +1103,7 @@
               </button>
             </th>
             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Anunciante</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Telefone</th>
             <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Ações</th>
           </tr>
         </thead>
@@ -1133,6 +1134,9 @@
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                 {property.broker_name ?? '-'}
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                {property.broker_phone ?? '-'}
               </td>
               <td class="px-6 py-4 text-right">
                 <Button
