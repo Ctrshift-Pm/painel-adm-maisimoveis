@@ -19,7 +19,7 @@ O **Painel Administrativo Mais Imóveis** é uma aplicação web desenvolvida pa
 
 O projeto foi construído utilizando **Svelte** e **TypeScript** para garantir alta performance e tipagem segura, estilizado com **Tailwind CSS** para um design limpo e eficiente, e utiliza **Vite** para um ambiente de desenvolvimento ultra-rápido.
 
-> **Acesse a versão online:** [painel-adm-maisimoveis.vercel.app](https://painel-adm-maisimoveis.vercel.app)
+> **Acesse a versão online:** [painel-adm-encontreaquiimoveis.vercel.app](https://painel-adm-encontreaquiimoveis.vercel.app)
 
 ---
 
@@ -77,12 +77,12 @@ Antes de começar, certifique-se de ter instalado em sua máquina:
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/Ctrshift-Pm/painel-adm-maisimoveis.git
+   git clone https://github.com/Ctrshift-Pm/painel-adm-encontreaquiimoveis.git
 
 2.  **Acesse a pasta do projeto:**
 
     ```bash
-    cd painel-adm-maisimoveis
+    cd painel-adm-encontreaquiimoveis
     ```
 
 3.  **Instale as dependências:**

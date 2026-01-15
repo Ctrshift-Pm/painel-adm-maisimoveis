@@ -2,7 +2,7 @@
   import { authToken } from './store';
   import ThemeToggle from './ThemeToggle.svelte';
   import type { View } from './types';
-  import maisimoveis from '../static/maisimoveis.png';
+  import encontreaquiimoveis from '../static/encontreaquiimoveis.png';
 
   export let isOpen = false;
   export let activeView: View;
@@ -48,7 +48,7 @@
   class="fixed inset-y-0 left-0 z-30 w-64 bg-gray-800 dark:bg-gray-900 text-white flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'}"
 >
   <div class="h-16 flex items-center justify-center border-b border-gray-700 dark:border-gray-800">
-    <img src={maisimoveis} alt="MaisImóveis" class="h-19 w-auto object-contain" loading="lazy" />
+    <img src={encontreaquiimoveis} alt="encontreaquiimoveis" class="h-19 w-auto object-contain" loading="lazy" />
   </div>
   <nav class="flex-1 px-4 py-4 space-y-2">
     <button
