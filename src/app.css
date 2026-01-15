@@ -2,11 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'DMSans';
+  src: url('/fonts/DMSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMSans';
+  src: url('/fonts/DMSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DMSans';
+  src: url('/fonts/DMSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HKGrotesk';
+  src: url('/fonts/HKGrotesk-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'HKGrotesk';
+  src: url('/fonts/HKGrotesk-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --color-primary: #ffffff;
+  --color-secondary: #ffca45;
+  --color-tertiary: #0d5051;
+  --color-on-primary: #0d5051;
+}
+
+.dark {
+  --color-primary: #0b1111;
+  --color-secondary: #ffca45;
+  --color-tertiary: #0d5051;
+  --color-on-primary: #f3f7f6;
+}
+
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'DMSans', sans-serif;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'HKGrotesk', sans-serif;
 }
 
 .sidebar-link.active {
-  background-color: #00a859;
-  color: white;
+  background-color: var(--color-secondary);
+  color: #0d5051;
 }
