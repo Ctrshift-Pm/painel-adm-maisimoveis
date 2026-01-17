@@ -55,7 +55,7 @@
       <img
         src={encontreaquiimoveis}
         alt="encontreaquiimoveis"
-        class="h-19 w-auto object-contain"
+        class="h-22 w-auto object-contain"
         loading="lazy"
       />
     </div>
