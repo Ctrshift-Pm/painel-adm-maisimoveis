@@ -2,7 +2,7 @@
   import { authToken } from './store';
   import ThemeToggle from './ThemeToggle.svelte';
   import type { View } from './types';
-  import encontreaquiimoveis from '../static/encontreaquiimoveis.png';
+  import encontreaquiimoveis from '../static/logo_principal.svg';
 
   export let isOpen = false;
   export let activeView: View;
