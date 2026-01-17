@@ -48,12 +48,14 @@
   class="fixed inset-y-0 left-0 z-30 w-64 bg-gray-800 dark:bg-gray-900 text-white flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'}"
 >
   <div class="h-16 flex items-center justify-center border-b border-gray-700 dark:border-gray-800">
-    <div class="bg-white rounded-md p-2 h-full flex items-center justify-center">
+    <div
+      class="bg-white rounded-md p-2 flex items-center justify-center"
+      style="height: 33%;"
+    >
       <img
         src={encontreaquiimoveis}
         alt="encontreaquiimoveis"
-        class="w-auto object-contain"
-        style="height: 33%;"
+        class="h-19 w-auto object-contain"
         loading="lazy"
       />
     </div>
