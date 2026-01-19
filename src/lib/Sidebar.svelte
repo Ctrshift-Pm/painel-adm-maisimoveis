@@ -45,24 +45,26 @@
 ></div>
 
 <aside
-  class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-white flex flex-col border-r border-white/5 shadow-xl shadow-black/40 transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'}"
+  class="fixed inset-y-0 left-0 z-30 w-64 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'} bg-white text-slate-900 border-r border-slate-200 shadow-lg shadow-black/5 dark:bg-slate-950 dark:text-white dark:border-white/5 dark:shadow-xl dark:shadow-black/40"
 >
-  <div class="h-16 flex items-center justify-center border-b border-white/10">
-    <div class="w-full px-4">
-      <div class="h-10 w-full rounded-lg bg-white/90 ring-1 ring-black/10 overflow-hidden flex items-center justify-center">
+  <div class="h-16 flex items-center px-4 border-b border-slate-200 dark:border-white/5">
+    <div class="w-full">
+      <div
+        class="flex items-center justify-center h-12 w-full rounded-xl bg-white ring-1 ring-black/10 dark:bg-white/95 dark:ring-black/5 overflow-hidden"
+      >
         <img
           src={encontreaquiimoveis}
-          alt="encontreaquiimoveis"
-          class="h-8 w-auto max-w-full object-contain select-none"
-          draggable="false"
+          alt="Encontre Aqui Imoveis"
+          class="h-10 w-auto max-w-[90%] object-contain"
           loading="lazy"
+          draggable="false"
         />
       </div>
     </div>
   </div>
   <nav class="flex-1 px-4 py-4 space-y-2">
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'dashboard' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'dashboard' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('dashboard')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +73,7 @@
       Dashboard
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'properties' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'properties' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('properties')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +87,7 @@
       Imóveis
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'property_requests' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'property_requests' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('property_requests')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +101,7 @@
       Solicitações (Imóveis)
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'brokers' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'brokers' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('brokers')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,7 +115,7 @@
       Corretores
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'clients' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'clients' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('clients')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +129,7 @@
       Clientes
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'verification' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'verification' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('verification')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +143,7 @@
       Solicitações de Verificação
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'notifications' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'notifications' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('notifications')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

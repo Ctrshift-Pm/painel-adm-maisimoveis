@@ -458,7 +458,7 @@
 
 </script>
 
-<div class="relative flex min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="relative flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-white">
     <Sidebar bind:isOpen={isSidebarOpen} {activeView} onNavigate={changeView} />
 
     <div class="flex-1 flex flex-col overflow-hidden lg:pl-64">
