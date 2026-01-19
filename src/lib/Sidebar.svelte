@@ -50,12 +50,12 @@
   <div class="h-16 flex items-center justify-center border-b border-gray-700 dark:border-gray-800">
     <div
       class="bg-white rounded-md p-2 flex items-center justify-center"
-      style="height: 39%;"
+      style="height: 40%;"
     >
       <img
         src={encontreaquiimoveis}
         alt="encontreaquiimoveis"
-        class="h-19 w-auto object-contain"
+        class="h-23 w-auto object-contain"
         loading="lazy"
       />
     </div>
