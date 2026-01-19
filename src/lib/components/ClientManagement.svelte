@@ -18,6 +18,17 @@
     created_at?: string;
   };
 
+  type ClientDetail = {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    created_at?: string;
+  };
+
   type ClientProperty = {
     id: number;
     title: string;
@@ -48,6 +59,9 @@
   let sortConfig: SortConfig = { key: 'created_at', order: 'desc' };
   let isModalOpen = false;
   let selectedClient: Client | null = null;
+  let clientDetail: ClientDetail | null = null;
+  let isClientDetailLoading = false;
+  let clientDetailError: string | null = null;
   let isPropertiesModalOpen = false;
   let selectedClientForProperties: Client | null = null;
   let clientProperties: ClientProperty[] = [];
@@ -186,6 +200,31 @@
   function openClientModal(client: Client) {
     selectedClient = client;
     isModalOpen = true;
+    clientDetail = null;
+    clientDetailError = null;
+    isClientDetailLoading = true;
+    fetchClientDetail(client.id);
+  }
+
+  async function fetchClientDetail(clientId: number) {
+    try {
+      const response = await api.get<{ data?: ClientDetail } | ClientDetail>(`/admin/clients/${clientId}`);
+      const detail = (response as { data?: ClientDetail })?.data ?? response;
+      if (detail && typeof detail === 'object' && 'id' in detail) {
+        clientDetail = detail as ClientDetail;
+        clientDetailError = null;
+      } else {
+        clientDetail = null;
+        clientDetailError = 'Nao foi possivel carregar os dados do cliente.';
+      }
+    } catch (err) {
+      console.error('Erro ao buscar detalhes do cliente:', err);
+      clientDetail = null;
+      clientDetailError =
+        err instanceof Error ? err.message : 'Nao foi possivel carregar os dados do cliente.';
+    } finally {
+      isClientDetailLoading = false;
+    }
   }
 
   async function openClientProperties(client: Client) {
@@ -215,6 +254,9 @@
     if (isProcessing) return;
     isModalOpen = false;
     selectedClient = null;
+    clientDetail = null;
+    clientDetailError = null;
+    isClientDetailLoading = false;
   }
 
   function closePropertiesModal() {
@@ -382,20 +424,74 @@
 </section>
 
 <Dialog.Root bind:open={isModalOpen}>
-  <Dialog.Content className="max-w-md">
+  <Dialog.Content className="max-w-lg">
     {#if selectedClient}
       <Dialog.Header>
         <Dialog.Title>Revisar Cliente</Dialog.Title>
         <Dialog.Description>
-          Consulte os dados do cliente e exclua se necessário.
+          Consulte os dados do cliente e exclua se necessario.
         </Dialog.Description>
       </Dialog.Header>
 
-      <div class="space-y-2 py-4 text-sm text-gray-700 dark:text-gray-300">
-        <p><strong>Nome:</strong> {selectedClient.name}</p>
-        <p><strong>Email:</strong> {selectedClient.email}</p>
-        <p><strong>Telefone:</strong> {selectedClient.phone ?? 'N/A'}</p>
-        <p><strong>Cadastrado em:</strong> {formatDate(selectedClient.created_at)}</p>
+      <div class="space-y-4 py-4 text-sm text-gray-700 dark:text-gray-300">
+        {#if isClientDetailLoading}
+          <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <Loader2 class="h-4 w-4 animate-spin" />
+            Carregando detalhes...
+          </div>
+        {:else if clientDetailError}
+          <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            {clientDetailError}
+          </div>
+        {:else}
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Nome</div>
+              <div class="font-medium text-gray-900 dark:text-gray-100">
+                {clientDetail?.name ?? selectedClient.name}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Email</div>
+              <div class="font-medium text-gray-900 dark:text-gray-100">
+                {clientDetail?.email ?? selectedClient.email}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Telefone</div>
+              <div class="font-medium text-gray-900 dark:text-gray-100">
+                {clientDetail?.phone ?? selectedClient.phone ?? 'N/A'}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Cadastrado em</div>
+              <div class="font-medium text-gray-900 dark:text-gray-100">
+                {formatDate(clientDetail?.created_at ?? selectedClient.created_at)}
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Endereco</div>
+            <div class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+              {clientDetail?.address ?? '-'}
+            </div>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Cidade</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {clientDetail?.city ?? '-'}
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Estado</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {clientDetail?.state ?? '-'}
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
       </div>
 
       <Dialog.Footer className="flex gap-2">
