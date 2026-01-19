@@ -45,24 +45,24 @@
 ></div>
 
 <aside
-  class="fixed inset-y-0 left-0 z-30 w-64 bg-gray-800 dark:bg-gray-900 text-white flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'}"
+  class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-white flex flex-col border-r border-white/5 shadow-xl shadow-black/40 transform transition-transform duration-300 ease-in-out lg:translate-x-0 {isOpen ? 'translate-x-0' : '-translate-x-full'}"
 >
-  <div class="h-16 flex items-center justify-center border-b border-gray-700 dark:border-gray-800">
-    <div
-      class="bg-white rounded-md p-2 flex items-center justify-center"
-      style="height: 40%;"
-    >
-      <img
-        src={encontreaquiimoveis}
-        alt="encontreaquiimoveis"
-        class="h-23 w-auto object-contain"
-        loading="lazy"
-      />
+  <div class="h-16 flex items-center justify-center border-b border-white/10">
+    <div class="w-full px-4">
+      <div class="h-10 w-full rounded-lg bg-white/90 ring-1 ring-black/10 overflow-hidden flex items-center justify-center">
+        <img
+          src={encontreaquiimoveis}
+          alt="encontreaquiimoveis"
+          class="h-8 w-auto max-w-full object-contain select-none"
+          draggable="false"
+          loading="lazy"
+        />
+      </div>
     </div>
   </div>
   <nav class="flex-1 px-4 py-4 space-y-2">
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'dashboard' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'dashboard' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
       on:click={() => handleNavigation('dashboard')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +71,7 @@
       Dashboard
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'properties' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'properties' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
       on:click={() => handleNavigation('properties')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +85,7 @@
       Imóveis
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'property_requests' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'property_requests' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
       on:click={() => handleNavigation('property_requests')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +99,7 @@
       Solicitações (Imóveis)
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'brokers' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'brokers' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
       on:click={() => handleNavigation('brokers')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,7 +113,7 @@
       Corretores
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'clients' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'clients' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
       on:click={() => handleNavigation('clients')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@
       Clientes
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'verification' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'verification' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
       on:click={() => handleNavigation('verification')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@
       Solicitações de Verificação
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition-colors {activeView === 'notifications' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' : 'hover:bg-gray-700'}"
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg text-slate-200 transition-colors {activeView === 'notifications' ? 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20' : 'hover:bg-white/5 hover:text-white'}"
       on:click={() => handleNavigation('notifications')}
     >
       <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +155,7 @@
       Notificações
     </button>
   </nav>
-  <div class="px-4 py-4 border-t border-gray-700 dark:border-gray-800 space-y-4">
+  <div class="px-4 py-4 border-t border-white/10 space-y-4">
     <ThemeToggle />
     <button
       on:click={() => authToken.set(null)}

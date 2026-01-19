@@ -75,3 +75,9 @@ h6 {
   background-color: var(--color-secondary);
   color: #0d5051;
 }
+
+@layer components {
+  .panel {
+    @apply rounded-2xl bg-slate-900/60 border border-white/5 shadow-lg shadow-black/30 backdrop-blur;
+  }
+}

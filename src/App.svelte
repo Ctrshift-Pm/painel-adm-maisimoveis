@@ -20,7 +20,7 @@
   }
 </script>
 
-<main class="h-full">
+<main class="min-h-screen bg-slate-950 text-slate-100 bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
   {#if $authToken}
     <Dashboard {initialView} />
   {:else}
