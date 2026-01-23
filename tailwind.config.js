@@ -1,5 +1,3 @@
-import colors from 'tailwindcss/colors';
-
 const texudo = {
   50: '#fff7e1',
   100: '#ffe9b3',
@@ -20,12 +18,9 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    colors: {
-      ...colors,
-      green: texudo,
-    },
     extend: {
       colors: {
+        green: texudo,
         'brand-primary': '#ffffff',
         'brand-secondary': '#ffca45',
         'brand-tertiary': '#0d5051',
