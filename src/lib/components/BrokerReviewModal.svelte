@@ -11,9 +11,13 @@
     name: string;
     email: string;
     phone?: string | null;
-    address?: string | null;
+    street?: string | null;
+    number?: string | null;
+    complement?: string | null;
+    bairro?: string | null;
     city?: string | null;
     state?: string | null;
+    cep?: string | null;
     creci?: string | null;
     status?: string | null;
     created_at?: string | null;
@@ -195,7 +199,33 @@
           <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
             <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Endereco</div>
             <div class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-              {brokerDetail?.address ?? '-'}
+              {brokerDetail?.street ?? '-'}
+            </div>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Numero</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {brokerDetail?.number ?? '-'}
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Complemento</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {brokerDetail?.complement ?? '-'}
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Bairro</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {brokerDetail?.bairro ?? '-'}
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">CEP</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {brokerDetail?.cep ?? '-'}
+                </div>
+              </div>
             </div>
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
