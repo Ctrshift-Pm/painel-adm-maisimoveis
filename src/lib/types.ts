@@ -30,6 +30,7 @@ export interface Property {
   tipo_lote?: string | null;
   city?: string | null;
   state?: string | null;
+  cep?: string | null;
   bedrooms?: number | null;
   bathrooms?: number | null;
   area_construida?: number | null;
@@ -120,7 +121,6 @@ export type View =
   | 'property_requests'
   | 'create_property'
   | 'brokers'
-  | 'broker_requests'
   | 'clients'
   | 'verification'
   | 'notifications';

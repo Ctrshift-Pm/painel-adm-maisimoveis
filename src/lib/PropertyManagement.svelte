@@ -20,6 +20,7 @@
     title: string;
     city?: string | null;
     state?: string | null;
+    cep?: string | null;
     price?: number | null;
     price_sale?: number | null;
     price_rent?: number | null;
@@ -27,6 +28,8 @@
     purpose?: string | null;
     broker_id?: number | null;
     owner_id?: number | null;
+    owner_name?: string | null;
+    owner_phone?: string | null;
     broker_name?: string | null;
     broker_phone?: string | null;
     broker_status?: string | null;
@@ -47,6 +50,7 @@
     tipo_lote?: string | null;
     bedrooms?: number | null;
     bathrooms?: number | null;
+    garage_spots?: number | null;
     area_construida?: number | null;
     area_terreno?: number | null;
     price_sale?: number | null;
@@ -103,6 +107,8 @@
   let editableProperty: PropertyDetails | null = null;
   let isSavingEdit = false;
   let editError: string | null = null;
+  let editPriceSaleDisplay = '';
+  let editPriceRentDisplay = '';
   let imageUploading = false;
   let imageUploadError: string | null = null;
   let imageDeleteError: string | null = null;
@@ -187,15 +193,19 @@
           const priceRentValue = record['price_rent'];
           const brokerIdValue = record['broker_id'];
           const ownerIdValue = record['owner_id'];
+          const ownerNameValue = record['owner_name'];
+          const ownerPhoneValue = record['owner_phone'];
           const brokerPhoneValue = record['broker_phone'];
           const brokerStatusValue = record['broker_status'];
           const brokerCreciValue = record['broker_creci'];
+          const cepValue = record['cep'];
 
           return {
             id,
             title: String(record['title'] ?? 'Imóvel sem título'),
             city: (record['city'] as string | null | undefined) ?? null,
             state: (record['state'] as string | null | undefined) ?? null,
+            cep: cepValue != null ? String(cepValue) : null,
             price: priceValue != null ? Number(priceValue) : null,
             price_sale: priceSaleValue != null ? Number(priceSaleValue) : null,
             price_rent: priceRentValue != null ? Number(priceRentValue) : null,
@@ -203,6 +213,8 @@
             purpose: (record['purpose'] as string | null | undefined) ?? null,
             broker_id: brokerIdValue != null ? Number(brokerIdValue) : null,
             owner_id: ownerIdValue != null ? Number(ownerIdValue) : null,
+            owner_name: ownerNameValue != null ? String(ownerNameValue) : null,
+            owner_phone: ownerPhoneValue != null ? String(ownerPhoneValue) : null,
             broker_name: (record['broker_name'] as string | null | undefined) ?? null,
             broker_phone: (brokerPhoneValue as string | null | undefined) ?? null,
             broker_status: (brokerStatusValue as string | null | undefined) ?? null,
@@ -257,6 +269,47 @@
   function formatCurrency(value?: number | null): string {
     if (value == null || Number.isNaN(value)) return '-';
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function onlyDigits(value: string) {
+    return value.replace(/\D/g, '');
+  }
+
+  function formatCep(value: string) {
+    const digits = onlyDigits(value).slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+
+  function formatCurrencyInput(raw: string) {
+    const digits = onlyDigits(raw);
+    if (!digits) return '';
+    const numberValue = Number(digits) / 100;
+    return numberValue.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+    });
+  }
+
+  function parseCurrency(value: string) {
+    const digits = onlyDigits(value);
+    if (!digits) return null;
+    const parsed = Number(digits) / 100;
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function sanitizeDigitsInput(value: string) {
+    return onlyDigits(value);
+  }
+
+  function sanitizeDecimalInput(value: string) {
+    const cleaned = value.replace(/[^\d.,]/g, '');
+    const parts = cleaned.split(/[.,]/);
+    const integer = parts.shift() ?? '';
+    const decimal = parts.join('');
+    if (!decimal) return integer;
+    return `${integer},${decimal}`;
   }
 
   function getPurposeFlags(purpose?: string | null) {
@@ -403,6 +456,27 @@
     return coerced as unknown as PropertyDetails;
   }
 
+  function syncEditPriceDisplays(property: PropertyDetails) {
+    const { supportsSale, supportsRent } = getPurposeFlags(property.purpose ?? null);
+    const resolvedSale =
+      property.price_sale ?? (supportsSale && !supportsRent ? property.price ?? null : null);
+    const resolvedRent =
+      property.price_rent ?? (supportsRent && !supportsSale ? property.price ?? null : null);
+    editPriceSaleDisplay = resolvedSale != null ? formatCurrency(Number(resolvedSale)) : '';
+    editPriceRentDisplay = resolvedRent != null ? formatCurrency(Number(resolvedRent)) : '';
+  }
+
+  function toggleEditMode() {
+    if (!selectedProperty) return;
+    isEditMode = !isEditMode;
+    editError = null;
+    if (isEditMode && editableProperty) {
+      syncEditPriceDisplays(editableProperty);
+    } else {
+      editableProperty = sanitizeEditable(selectedProperty as PropertyDetails);
+    }
+  }
+
   async function reviewProperty(property: PropertySummary, event?: Event) {
     event?.stopPropagation?.();
     if (isDetailLoading && selectedProperty?.id === property.id) {
@@ -427,6 +501,9 @@
         price_sale: resolvedSale,
         price_rent: resolvedRent,
       });
+      if (editableProperty) {
+        syncEditPriceDisplays(editableProperty);
+      }
       isModalOpen = true;
     } catch (err) {
       console.error('Falha ao buscar detalhes do imóvel:', err);
@@ -588,7 +665,6 @@
         'price_rent',
         'area_construida',
         'area_terreno',
-        'valor_condominio',
         'bedrooms',
         'bathrooms',
         'garage_spots',
@@ -662,6 +738,7 @@
         price_sale: resolvedPriceSaleValue ?? undefined,
         price_rent: resolvedPriceRentValue ?? undefined,
         address: editableProperty.address,
+        cep: editableProperty.cep ? onlyDigits(editableProperty.cep) : editableProperty.cep,
         city: editableProperty.city,
         state: editableProperty.state,
         bairro: editableProperty.bairro,
@@ -674,7 +751,6 @@
         bathrooms: editableProperty.bathrooms,
         area_construida: editableProperty.area_construida,
         area_terreno: editableProperty.area_terreno,
-        valor_condominio: editableProperty.valor_condominio,
         has_wifi: editableProperty.has_wifi,
         tem_piscina: editableProperty.tem_piscina,
         tem_energia_solar: editableProperty.tem_energia_solar,
@@ -691,18 +767,6 @@
           .map(([key, value]) => [key, normalizeValue(key, value)])
           .filter(([, value]) => value !== undefined)
       );
-
-      // Validação específica para vendido
-      if ((payload as any).status === 'sold') {
-        const cond = (payload as any).valor_condominio ?? selectedProperty.valor_condominio;
-        const condOk = cond !== null && cond !== undefined && Number(cond) > 0;
-        if (!condOk) {
-          editError =
-            'Para marcar como Vendido, preencha o valor de Condomínio (maior que 0).';
-          isSavingEdit = false;
-          return;
-        }
-      }
 
       const original = selectedProperty as PropertyDetails;
       const statusChanged =
@@ -1230,34 +1294,66 @@
                 <div class="grid gap-3 md:grid-cols-2">
                   <input
                     class="w-full rounded-md border border-gray-300 px-3 py-2 text-xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
-                    type="number"
-                    step="0.01"
-                    bind:value={editableProperty.price_sale}
-                    placeholder="Preco de venda"
+                    type="text"
+                    inputmode="numeric"
+                    bind:value={editPriceSaleDisplay}
+                    placeholder="Preço de venda"
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      editPriceSaleDisplay = formatCurrencyInput(target.value);
+                      if (editableProperty) {
+                        editableProperty.price_sale = parseCurrency(editPriceSaleDisplay);
+                        editableProperty.price = editableProperty.price_sale ?? editableProperty.price;
+                      }
+                    }}
                   />
                   <input
                     class="w-full rounded-md border border-gray-300 px-3 py-2 text-xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
-                    type="number"
-                    step="0.01"
-                    bind:value={editableProperty.price_rent}
-                    placeholder="Preco do aluguel"
+                    type="text"
+                    inputmode="numeric"
+                    bind:value={editPriceRentDisplay}
+                    placeholder="Preço do aluguel"
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      editPriceRentDisplay = formatCurrencyInput(target.value);
+                      if (editableProperty) {
+                        editableProperty.price_rent = parseCurrency(editPriceRentDisplay);
+                        editableProperty.price = editableProperty.price_rent ?? editableProperty.price;
+                      }
+                    }}
                   />
                 </div>
               {:else if flags.supportsRent}
                 <input
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
-                  type="number"
-                  step="0.01"
-                  bind:value={editableProperty.price_rent}
-                  placeholder="Preco do aluguel"
+                  type="text"
+                  inputmode="numeric"
+                  bind:value={editPriceRentDisplay}
+                  placeholder="Preço do aluguel"
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    editPriceRentDisplay = formatCurrencyInput(target.value);
+                    if (editableProperty) {
+                      editableProperty.price_rent = parseCurrency(editPriceRentDisplay);
+                      editableProperty.price = editableProperty.price_rent ?? editableProperty.price;
+                    }
+                  }}
                 />
               {:else}
                 <input
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
-                  type="number"
-                  step="0.01"
-                  bind:value={editableProperty.price_sale}
-                  placeholder="Preco de venda"
+                  type="text"
+                  inputmode="numeric"
+                  bind:value={editPriceSaleDisplay}
+                  placeholder="Preço de venda"
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    editPriceSaleDisplay = formatCurrencyInput(target.value);
+                    if (editableProperty) {
+                      editableProperty.price_sale = parseCurrency(editPriceSaleDisplay);
+                      editableProperty.price = editableProperty.price_sale ?? editableProperty.price;
+                    }
+                  }}
                 />
               {/if}
             {:else}
@@ -1270,26 +1366,10 @@
                 {/each}
               </div>
             {/if}
-            <div class="flex flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-300">
-              {#if isEditMode && editableProperty}
-                <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                  Condomínio:
-                  <input class="w-24 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
-                    type="number" step="0.01" bind:value={editableProperty.valor_condominio} />
-                </label>
-              {:else}
-                {#if selectedProperty.valor_condominio != null}
-                  <span class="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
-                    Condomínio: {formatCurrency(selectedProperty.valor_condominio ?? undefined)}
-                  </span>
-                {/if}
-              {/if}
-            </div>
           </div>
 
-            {#if !isReviewOnly}
               <div class="flex items-center gap-2">
-                <Button variant="outline" on:click={() => { isEditMode = !isEditMode; editError = null; }} disabled={isSavingEdit}>
+                <Button variant="outline" on:click={toggleEditMode} disabled={isSavingEdit}>
                   {isEditMode ? 'Cancelar edicao' : 'Editar dados'}
                 </Button>
                 {#if isEditMode && editableProperty}
@@ -1305,15 +1385,8 @@
                       <option value="sold">Vendido</option>
                     </select>
                   </div>
-                  <Button on:click={saveEdits} disabled={isSavingEdit}>
-                    {#if isSavingEdit}
-                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                    {/if}
-                    Salvar
-                  </Button>
                 {/if}
               </div>
-            {/if}
           </div>
 
         <div>
@@ -1468,12 +1541,35 @@
           {#if isEditMode && editableProperty}
             <div class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
               <label class="flex flex-col gap-1">
-                <strong>Cidade:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.city} />
-              </label>
-              <label class="flex flex-col gap-1">
                 <strong>Estado:</strong>
                 <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.state} />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>CEP:</strong>
+                <input
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.cep}
+                  inputmode="numeric"
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (editableProperty) {
+                      editableProperty.cep = formatCep(target.value);
+                    }
+                  }}
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Cidade:</strong>
+                <input
+                  list="property-cities-list"
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.city}
+                />
+                <datalist id="property-cities-list">
+                  {#each cities as cityOption}
+                    <option value={cityOption} />
+                  {/each}
+                </datalist>
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Bairro:</strong>
@@ -1505,20 +1601,90 @@
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Quartos:</strong>
-                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bedrooms} />
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.bedrooms}
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (editableProperty) {
+                      const digits = sanitizeDigitsInput(target.value);
+                      editableProperty.bedrooms = digits ? Number(digits) : null;
+                    }
+                  }}
+                />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Banheiros:</strong>
-                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bathrooms} />
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.bathrooms}
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (editableProperty) {
+                      const digits = sanitizeDigitsInput(target.value);
+                      editableProperty.bathrooms = digits ? Number(digits) : null;
+                    }
+                  }}
+                />
+              </label>
+              <label class="flex flex-col gap-1">
+                <strong>Garagens:</strong>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.garage_spots}
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (editableProperty) {
+                      const digits = sanitizeDigitsInput(target.value);
+                      editableProperty.garage_spots = digits ? Number(digits) : null;
+                    }
+                  }}
+                />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Área construida:</strong>
-                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_construida} />
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.area_construida}
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (editableProperty) {
+                      const sanitized = sanitizeDecimalInput(target.value);
+                      editableProperty.area_construida = sanitized
+                        ? Number(sanitized.replace(',', '.'))
+                        : null;
+                    }
+                  }}
+                />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Área do terreno:</strong>
-                <input type="number" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.area_terreno} />
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.area_terreno}
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (editableProperty) {
+                      const sanitized = sanitizeDecimalInput(target.value);
+                      editableProperty.area_terreno = sanitized
+                        ? Number(sanitized.replace(',', '.'))
+                        : null;
+                    }
+                  }}
+                />
               </label>
+              <p><strong>Proprietário:</strong> {selectedProperty.owner_name ?? '-'}</p>
+              <p><strong>Telefone do proprietário:</strong> {selectedProperty.owner_phone ?? '-'}</p>
               <p><strong>Anunciante:</strong> {selectedProperty.broker_name ?? '-'}</p>
               <p><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</p>
               <p><strong>Corretor credenciado:</strong> {isBrokerCredenciado(selectedProperty) ? 'Sim' : 'Nao'}</p>
@@ -1528,8 +1694,9 @@
             </div>
           {:else}
             <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
-              <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
               <li><strong>Estado:</strong> {selectedProperty.state ?? '-'}</li>
+              <li><strong>CEP:</strong> {selectedProperty.cep ?? '-'}</li>
+              <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
               <li><strong>Bairro:</strong> {selectedProperty.bairro ?? '-'}</li>
               <li><strong>Endereço:</strong> {selectedProperty.address ?? '-'}</li>
               <li><strong>Número:</strong> {selectedProperty.numero ?? '-'}</li>
@@ -1539,8 +1706,11 @@
               <li><strong>Tipo do lote:</strong> {selectedProperty.tipo_lote ?? '-'}</li>
               <li><strong>Quartos:</strong> {selectedProperty.bedrooms ?? '-'}</li>
               <li><strong>Banheiros:</strong> {selectedProperty.bathrooms ?? '-'}</li>
+              <li><strong>Garagens:</strong> {selectedProperty.garage_spots ?? '-'}</li>
               <li><strong>Área construída:</strong> {selectedProperty.area_construida ?? '-'} m2</li>
               <li><strong>Área do terreno:</strong> {selectedProperty.area_terreno ?? '-'} m2</li>
+              <li><strong>Proprietário:</strong> {selectedProperty.owner_name ?? '-'}</li>
+              <li><strong>Telefone do proprietário:</strong> {selectedProperty.owner_phone ?? '-'}</li>
               <li><strong>Anunciante:</strong> {selectedProperty.broker_name ?? '-'}</li>
               <li><strong>Telefone:</strong> {selectedProperty.broker_phone ?? '-'}</li>
               <li><strong>Corretor credenciado:</strong> {isBrokerCredenciado(selectedProperty) ? 'Sim' : 'Nao'}</li>
@@ -1627,6 +1797,18 @@
               <Loader2 class="mr-2 h-4 w-4 animate-spin" />
             {/if}
             Excluir
+          </Button>
+        {/if}
+        {#if isEditMode && editableProperty}
+          <Button
+            className="bg-emerald-400 text-white hover:bg-emerald-500"
+            on:click={saveEdits}
+            disabled={isSavingEdit || isProcessing}
+          >
+            {#if isSavingEdit}
+              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+            {/if}
+            Salvar
           </Button>
         {/if}
         {#if allowApproval && selectedProperty.status !== 'approved'}

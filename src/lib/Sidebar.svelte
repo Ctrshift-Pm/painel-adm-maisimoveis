@@ -10,8 +10,7 @@
   export let pendingCounts: {
     propertyRequests: number;
     brokerRequests: number;
-    verificationRequests: number;
-  } = { propertyRequests: 0, brokerRequests: 0, verificationRequests: 0 };
+  } = { propertyRequests: 0, brokerRequests: 0 };
 
   const validViews: View[] = [
     'dashboard',
@@ -19,7 +18,6 @@
     'property_requests',
     'create_property',
     'brokers',
-    'broker_requests',
     'clients',
     'verification',
     'notifications'
@@ -135,25 +133,6 @@
       Corretores
     </button>
     <button
-      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'broker_requests' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-      on:click={() => handleNavigation('broker_requests')}
-    >
-      <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-        ></path>
-      </svg>
-      Solicitações de Corretores
-      {#if pendingCounts.brokerRequests > 0}
-        <span class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
-          {pendingCounts.brokerRequests}
-        </span>
-      {/if}
-    </button>
-    <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'clients' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('clients')}
     >
@@ -179,10 +158,10 @@
           d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
         />
       </svg>
-      Solicitações de Verificação
-      {#if pendingCounts.verificationRequests > 0}
+      Solicitações de Corretores
+      {#if pendingCounts.brokerRequests > 0}
         <span class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
-          {pendingCounts.verificationRequests}
+          {pendingCounts.brokerRequests}
         </span>
       {/if}
     </button>

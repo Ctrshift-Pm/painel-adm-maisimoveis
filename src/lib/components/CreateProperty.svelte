@@ -57,6 +57,7 @@
   let address = '';
   let city = '';
   let state = 'GO';
+  let cep = '';
   let bairro = '';
   let numero = '';
   let quadra = '';
@@ -68,9 +69,6 @@
   let garageSpots = '';
   let areaConstruida = '';
   let areaTerreno = '';
-  let valorCondominio = '';
-  let ownerName = '';
-  let ownerPhone = '';
   let brokerId = '';
 
   let imagesInput: HTMLInputElement | null = null;
@@ -79,10 +77,60 @@
   let video: File | null = null;
   let isSubmitting = false;
 
-  function normalizeNumber(value: string) {
+  const cityCache: Record<string, string[]> = {};
+  let cities: string[] = [];
+  let citiesLoading = false;
+  let citiesError: string | null = null;
+  let cepLookupError: string | null = null;
+  let lastCepLookup = '';
+
+  function onlyDigits(value: string) {
+    return value.replace(/\D/g, '');
+  }
+
+  function formatCep(value: string) {
+    const digits = onlyDigits(value).slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+
+  function sanitizeDigitsInput(value: string) {
+    return onlyDigits(value);
+  }
+
+  function sanitizeDecimalInput(value: string) {
+    const cleaned = value.replace(/[^\d.,]/g, '');
+    const parts = cleaned.split(/[.,]/);
+    const integer = parts.shift() ?? '';
+    const decimal = parts.join('');
+    if (!decimal) return integer;
+    return `${integer},${decimal}`;
+  }
+
+  function normalizeDecimal(value: string) {
     if (!value) return null;
-    const normalized = value.replace(/[^\d,.-]/g, '').replace(',', '.');
+    const normalized = value.replace(/\./g, '').replace(',', '.');
     const parsed = Number(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function formatCurrencyInput(raw: string) {
+    const digits = onlyDigits(raw);
+    if (!digits) {
+      return '';
+    }
+    const numberValue = Number(digits) / 100;
+    return numberValue.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+    });
+  }
+
+  function parseCurrency(value: string) {
+    const digits = onlyDigits(value);
+    if (!digits) return null;
+    const parsed = Number(digits) / 100;
     return Number.isNaN(parsed) ? null : parsed;
   }
 
@@ -90,8 +138,8 @@
     const normalizedPurpose = purpose.toLowerCase();
     const supportsSale = normalizedPurpose.includes('vend');
     const supportsRent = normalizedPurpose.includes('alug');
-    const saleValue = normalizeNumber(priceSale);
-    const rentValue = normalizeNumber(priceRent);
+    const saleValue = parseCurrency(priceSale);
+    const rentValue = parseCurrency(priceRent);
 
     if (supportsSale && (!saleValue || saleValue <= 0)) {
       return { error: 'Informe o preço de venda.' };
@@ -141,10 +189,65 @@
     }
   }
 
+  async function fetchCitiesForState(uf: string) {
+    if (!uf) {
+      cities = [];
+      return;
+    }
+    if (cityCache[uf]) {
+      cities = cityCache[uf];
+      return;
+    }
+    citiesLoading = true;
+    citiesError = null;
+    try {
+      const response = await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`
+      );
+      if (!response.ok) throw new Error('Falha ao carregar cidades.');
+      const payload = await response.json();
+      const names = Array.isArray(payload)
+        ? payload.map((item) => String(item?.nome ?? '')).filter(Boolean)
+        : [];
+      cities = names.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      cityCache[uf] = cities;
+    } catch (error) {
+      console.error('Erro ao carregar cidades:', error);
+      citiesError = 'Não foi possível carregar cidades.';
+      cities = [];
+    } finally {
+      citiesLoading = false;
+    }
+  }
+
+  async function lookupCep(value: string) {
+    const digits = onlyDigits(value);
+    if (digits.length !== 8) return;
+    if (digits === lastCepLookup) return;
+    lastCepLookup = digits;
+    cepLookupError = null;
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      if (!response.ok) throw new Error('Falha ao consultar CEP.');
+      const data = await response.json();
+      if (data?.erro) return;
+      if (data?.uf) {
+        state = String(data.uf);
+        await fetchCitiesForState(state);
+      }
+      if (data?.localidade) {
+        city = String(data.localidade);
+      }
+    } catch (error) {
+      console.error('Erro ao consultar CEP:', error);
+      cepLookupError = 'CEP não encontrado.';
+    }
+  }
+
   async function handleSubmit() {
     if (isSubmitting) return;
-    if (!title.trim() || !type || !purpose || !address.trim() || !city.trim() || !state) {
-      toast.error('Preencha título, tipo, finalidade, endereço, cidade e estado.');
+    if (!title.trim() || !type || !purpose || !address.trim() || !city.trim() || !state || !cep.trim()) {
+      toast.error('Preencha título, tipo, finalidade, endereço, CEP, cidade e estado.');
       return;
     }
 
@@ -162,6 +265,7 @@
     form.append('address', address.trim());
     form.append('city', city.trim());
     form.append('state', state);
+    form.append('cep', onlyDigits(cep));
     if (description.trim()) form.append('description', description.trim());
     if (bairro.trim()) form.append('bairro', bairro.trim());
     if (numero.trim()) form.append('numero', numero.trim());
@@ -169,27 +273,29 @@
     if (lote.trim()) form.append('lote', lote.trim());
     if (complemento.trim()) form.append('complemento', complemento.trim());
     if (tipoLote.trim()) form.append('tipo_lote', tipoLote.trim());
-    if (ownerName.trim()) form.append('owner_name', ownerName.trim());
-    if (ownerPhone.trim()) form.append('owner_phone', ownerPhone.trim());
     if (brokerId) form.append('broker_id', brokerId);
 
     if (price != null) form.append('price', String(price));
     if (resolvedSale != null) form.append('price_sale', String(resolvedSale));
     if (resolvedRent != null) form.append('price_rent', String(resolvedRent));
 
-    const parsedBedrooms = normalizeNumber(bedrooms);
-    if (parsedBedrooms != null) form.append('bedrooms', String(parsedBedrooms));
-    const parsedBathrooms = normalizeNumber(bathrooms);
-    if (parsedBathrooms != null) form.append('bathrooms', String(parsedBathrooms));
-    const parsedGarage = normalizeNumber(garageSpots);
-    if (parsedGarage != null) form.append('garage_spots', String(parsedGarage));
-    const parsedAreaConstruida = normalizeNumber(areaConstruida);
+    const parsedBedrooms = bedrooms ? Number(bedrooms) : null;
+    if (parsedBedrooms != null && Number.isFinite(parsedBedrooms)) {
+      form.append('bedrooms', String(parsedBedrooms));
+    }
+    const parsedBathrooms = bathrooms ? Number(bathrooms) : null;
+    if (parsedBathrooms != null && Number.isFinite(parsedBathrooms)) {
+      form.append('bathrooms', String(parsedBathrooms));
+    }
+    const parsedGarage = garageSpots ? Number(garageSpots) : null;
+    if (parsedGarage != null && Number.isFinite(parsedGarage)) {
+      form.append('garage_spots', String(parsedGarage));
+    }
+    const parsedAreaConstruida = normalizeDecimal(areaConstruida);
     if (parsedAreaConstruida != null)
       form.append('area_construida', String(parsedAreaConstruida));
-    const parsedAreaTerreno = normalizeNumber(areaTerreno);
+    const parsedAreaTerreno = normalizeDecimal(areaTerreno);
     if (parsedAreaTerreno != null) form.append('area_terreno', String(parsedAreaTerreno));
-    const parsedCondo = normalizeNumber(valorCondominio);
-    if (parsedCondo != null) form.append('valor_condominio', String(parsedCondo));
 
     if (images && images.length > 0) {
       Array.from(images).forEach((file) => form.append('images', file));
@@ -214,6 +320,7 @@
       address = '';
       city = '';
       state = 'GO';
+      cep = '';
       bairro = '';
       numero = '';
       quadra = '';
@@ -225,9 +332,6 @@
       garageSpots = '';
       areaConstruida = '';
       areaTerreno = '';
-      valorCondominio = '';
-      ownerName = '';
-      ownerPhone = '';
       brokerId = '';
       images = null;
       video = null;
@@ -241,7 +345,10 @@
     }
   }
 
-  onMount(fetchBrokers);
+  onMount(() => {
+    fetchBrokers();
+    fetchCitiesForState(state);
+  });
 </script>
 
 <div class="space-y-6">
@@ -312,7 +419,12 @@
             <input
               class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               bind:value={priceSale}
-              placeholder="Ex: 450000"
+              inputmode="numeric"
+              placeholder="R$ 450.000,00"
+              on:input={(event) => {
+                const target = event.target as HTMLInputElement;
+                priceSale = formatCurrencyInput(target.value);
+              }}
             />
           </label>
         {/if}
@@ -322,7 +434,12 @@
             <input
               class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               bind:value={priceRent}
-              placeholder="Ex: 2500"
+              inputmode="numeric"
+              placeholder="R$ 2.500,00"
+              on:input={(event) => {
+                const target = event.target as HTMLInputElement;
+                priceRent = formatCurrencyInput(target.value);
+              }}
             />
           </label>
         {/if}
@@ -334,6 +451,12 @@
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bedrooms}
+            inputmode="numeric"
+            pattern="\d*"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              bedrooms = sanitizeDigitsInput(target.value);
+            }}
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -341,6 +464,12 @@
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bathrooms}
+            inputmode="numeric"
+            pattern="\d*"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              bathrooms = sanitizeDigitsInput(target.value);
+            }}
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -348,6 +477,12 @@
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={garageSpots}
+            inputmode="numeric"
+            pattern="\d*"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              garageSpots = sanitizeDigitsInput(target.value);
+            }}
           />
         </label>
       </div>
@@ -358,6 +493,11 @@
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={areaConstruida}
+            inputmode="decimal"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              areaConstruida = sanitizeDecimalInput(target.value);
+            }}
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -365,6 +505,11 @@
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={areaTerreno}
+            inputmode="decimal"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              areaTerreno = sanitizeDecimalInput(target.value);
+            }}
           />
         </label>
       </div>
@@ -393,17 +538,11 @@
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Cidade
-          <input
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={city}
-          />
-        </label>
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Estado
           <select
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={state}
+            on:change={() => fetchCitiesForState(state)}
           >
             {#each states as uf}
               <option value={uf}>{uf}</option>
@@ -411,28 +550,43 @@
           </select>
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Condomínio (opcional)
+          CEP
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={valorCondominio}
+            bind:value={cep}
+            placeholder="00000-000"
+            inputmode="numeric"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              cep = formatCep(target.value);
+              if (onlyDigits(cep).length === 8) {
+                lookupCep(cep);
+              }
+            }}
           />
         </label>
       </div>
 
       <div class="grid gap-4 md:grid-cols-2">
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Nome do proprietário
+          Cidade
           <input
+            list="cities-list"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={ownerName}
+            bind:value={city}
+            placeholder={citiesLoading ? 'Carregando cidades...' : 'Digite ou selecione'}
           />
-        </label>
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Telefone do proprietário
-          <input
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={ownerPhone}
-          />
+          <datalist id="cities-list">
+            {#each cities as option}
+              <option value={option} />
+            {/each}
+          </datalist>
+          {#if citiesError}
+            <span class="text-xs text-red-500 dark:text-red-400">{citiesError}</span>
+          {/if}
+          {#if cepLookupError}
+            <span class="text-xs text-red-500 dark:text-red-400">{cepLookupError}</span>
+          {/if}
         </label>
       </div>
 

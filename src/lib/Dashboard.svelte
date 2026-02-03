@@ -10,7 +10,6 @@
     import PropertyManagement from './PropertyManagement.svelte';
     import ClientManagement from '../lib/components/ClientManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
-    import BrokerRequests from './components/BrokerRequests.svelte';
     import CreateProperty from './components/CreateProperty.svelte';
     import SendNotification from './components/SendNotification.svelte';
     import AdminNotificationsPanel from './components/AdminNotificationsPanel.svelte';
@@ -53,12 +52,10 @@
     type PendingCounts = {
         propertyRequests: number;
         brokerRequests: number;
-        verificationRequests: number;
     };
     let pendingCounts: PendingCounts = {
         propertyRequests: 0,
-        brokerRequests: 0,
-        verificationRequests: 0
+        brokerRequests: 0
     };
     let pendingCountsInterval: ReturnType<typeof setInterval> | null = null;
     
@@ -107,9 +104,6 @@
             filterOptions: [ { value: 'name', label: 'Nome' }, { value: 'email', label: 'Email' } ],
             sortColumn: 'name'
         },
-        broker_requests: { 
-            title: 'Solicitações de Corretores'
-        },
         clients: { 
             endpoint: '/admin/clients', 
             title: 'Gerenciamento de Clientes', 
@@ -122,7 +116,7 @@
         },
         verification: { 
             endpoint: '/admin/brokers/pending', 
-            title: 'Solicitações de Verificação', 
+            title: 'Solicitações de Corretores', 
             headers: ['ID', 'Nome', 'CRECI', 'Documentos', 'Acoes'],
             filterOptions: [] 
         }
@@ -150,7 +144,6 @@
             activeView === 'properties' ||
             activeView === 'property_requests' ||
             activeView === 'brokers' ||
-            activeView === 'broker_requests' ||
             activeView === 'create_property'
         ) {
             headers = [];
@@ -259,7 +252,7 @@
     async function fetchPendingCounts() {
         const token = localStorage.getItem('authToken');
         if (!token) {
-            pendingCounts = { propertyRequests: 0, brokerRequests: 0, verificationRequests: 0 };
+            pendingCounts = { propertyRequests: 0, brokerRequests: 0 };
             authToken.set(null);
             return;
         }
@@ -283,12 +276,11 @@
         }
 
         try {
-            const [propertyRequests, brokerRequests, verificationRequests] = await Promise.all([
+            const [propertyRequests, brokerRequests] = await Promise.all([
                 fetchCount('/admin/properties-with-brokers?status=pending_approval&limit=1&page=1'),
                 fetchCount('/admin/brokers?status=pending_verification&limit=1&page=1'),
-                fetchCount('/admin/brokers/pending')
             ]);
-            pendingCounts = { propertyRequests, brokerRequests, verificationRequests };
+            pendingCounts = { propertyRequests, brokerRequests };
         } catch (error) {
             console.error('Erro ao buscar contagem de solicitacoes:', error);
         }
@@ -609,12 +601,12 @@
 
             
 
-{:else if activeView === 'verification'}
+            {:else if activeView === 'verification'}
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <div class="p-4 border-b dark:border-gray-700">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitações de Verificação de Corretores</h2>
+                                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitações de Corretores</h2>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                     {totalItems} solicitaçõ(es) pendente(s)
                                 </p>
@@ -661,8 +653,6 @@
                 <CreateProperty />
             {:else if activeView === 'brokers'}
                 <BrokerManagement />
-            {:else if activeView === 'broker_requests'}
-                <BrokerRequests />
             {:else if activeView === 'clients'}
                 <ClientManagement />
             {:else if activeView === 'notifications'}
