@@ -122,14 +122,6 @@
   let previewImageUrl: string | null = null;
   let previewImageIndex = 0;
   let previewImagesSnapshot: NormalizedImage[] = [];
-  let zoomLevel = 1;
-  let panX = 0;
-  let panY = 0;
-  let isPanning = false;
-  let panStartX = 0;
-  let panStartY = 0;
-  let panOriginX = 0;
-  let panOriginY = 0;
 
   $: previewImages = previewImagesSnapshot.length
     ? previewImagesSnapshot
@@ -151,9 +143,6 @@
     previewImagesSnapshot = selectedPropertyImages();
     previewImageIndex = index;
     previewImageUrl = url;
-    zoomLevel = 1;
-    panX = 0;
-    panY = 0;
     isImagePreviewOpen = true;
   }
 
@@ -161,51 +150,18 @@
     isImagePreviewOpen = false;
     previewImageUrl = null;
     previewImagesSnapshot = [];
-    zoomLevel = 1;
-    panX = 0;
-    panY = 0;
-  }
-
-  function clampZoom(value: number) {
-    return Math.min(4, Math.max(1, value));
-  }
-
-  function setZoom(value: number) {
-    zoomLevel = clampZoom(value);
-    if (zoomLevel === 1) {
-      panX = 0;
-      panY = 0;
-    }
-  }
-
-  function zoomIn() {
-    setZoom(zoomLevel + 0.25);
-  }
-
-  function zoomOut() {
-    setZoom(zoomLevel - 0.25);
-  }
-
-  function resetZoom() {
-    setZoom(1);
-  }
-
-  function toggleZoom() {
-    setZoom(zoomLevel === 1 ? 2 : 1);
   }
 
   function goPrevImage() {
     if (previewImageIndex <= 0) return;
     previewImageIndex -= 1;
     previewImageUrl = previewImages[previewImageIndex]?.url ?? null;
-    resetZoom();
   }
 
   function goNextImage() {
     if (previewImageIndex >= previewTotal - 1) return;
     previewImageIndex += 1;
     previewImageUrl = previewImages[previewImageIndex]?.url ?? null;
-    resetZoom();
   }
 
   function handlePreviewKeydown(event: KeyboardEvent) {
@@ -225,48 +181,7 @@
       goNextImage();
       return;
     }
-    if (event.key === '+' || event.key === '=') {
-      event.preventDefault();
-      zoomIn();
-      return;
-    }
-    if (event.key === '-') {
-      event.preventDefault();
-      zoomOut();
-      return;
-    }
-    if (event.key === '0') {
-      event.preventDefault();
-      resetZoom();
-    }
   }
-
-  function handleWheel(event: WheelEvent) {
-    if (!event.ctrlKey && !event.metaKey) return;
-    event.preventDefault();
-    const direction = event.deltaY > 0 ? -0.15 : 0.15;
-    setZoom(zoomLevel + direction);
-  }
-
-  function startPan(event: MouseEvent) {
-    if (zoomLevel <= 1) return;
-    isPanning = true;
-    panStartX = event.clientX;
-    panStartY = event.clientY;
-    panOriginX = panX;
-    panOriginY = panY;
-  }
-
-  function movePan(event: MouseEvent) {
-    if (!isPanning) return;
-    const dx = event.clientX - panStartX;
-    const dy = event.clientY - panStartY;
-    panX = panOriginX + dx;
-    panY = panOriginY + dy;
-  }
-
-  function endPan() {
-    isPanning = false;
   }
 
   function requestFetch(resetPage = false) {
@@ -1989,12 +1904,6 @@
     <div
       class="relative"
       on:click|stopPropagation
-      on:wheel|passive={handleWheel}
-      on:mousedown={startPan}
-      on:mousemove={movePan}
-      on:mouseup={endPan}
-      on:mouseleave={endPan}
-      on:dblclick={toggleZoom}
     >
       {#if previewTotal > 1}
         <button
@@ -2024,9 +1933,8 @@
         <img
           src={previewImageUrl}
           alt="Imagem do imóvel"
-          class={`max-h-[85vh] max-w-[95vw] select-none ${zoomLevel > 1 ? 'cursor-grab' : 'cursor-zoom-in'}`}
+          class="max-h-[85vh] max-w-[95vw] select-none"
           draggable="false"
-          style={`transform: translate(${panX}px, ${panY}px) scale(${zoomLevel}); transform-origin: center;`}
         />
       {/if}
       <button
