@@ -1977,31 +1977,9 @@
 <svelte:window on:keydown={handlePreviewKeydown} />
 
 <Dialog.Root bind:open={isImagePreviewOpen} closeOnOverlay={true}>
-  <Dialog.Content className="max-h-[90vh] w-[90vw] max-w-6xl overflow-hidden">
-    <div class="flex items-center justify-between gap-3 border-b border-gray-200 pb-3 dark:border-gray-800">
-      <div class="text-sm text-gray-600 dark:text-gray-300">
-        {previewTotal > 0 ? `${previewImageIndex + 1} / ${previewTotal}` : '0 / 0'}
-      </div>
-      <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm" on:click={goPrevImage} disabled={previewImageIndex <= 0}>
-          ←
-        </Button>
-        <Button variant="outline" size="sm" on:click={goNextImage} disabled={previewImageIndex >= previewTotal - 1}>
-          →
-        </Button>
-        <Button variant="outline" size="sm" on:click={zoomOut} disabled={zoomLevel <= 1}>
-          −
-        </Button>
-        <Button variant="outline" size="sm" on:click={resetZoom}>
-          {zoomLevel.toFixed(2)}x
-        </Button>
-        <Button variant="outline" size="sm" on:click={zoomIn}>
-          +
-        </Button>
-      </div>
-    </div>
+  <Dialog.Content className="w-auto max-w-[95vw] overflow-visible border-0 bg-transparent shadow-none">
     <div
-      class="relative mt-4 flex h-[70vh] w-full items-center justify-center overflow-hidden rounded-md bg-transparent"
+      class="relative flex max-h-[85vh] max-w-[95vw] items-center justify-center overflow-hidden"
       on:wheel|passive={handleWheel}
       on:mousedown={startPan}
       on:mousemove={movePan}
@@ -2012,35 +1990,46 @@
       {#if previewTotal > 1}
         <button
           type="button"
-          class="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-800 shadow transition hover:bg-white"
+          class="absolute left-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
           on:click={goPrevImage}
           disabled={previewImageIndex <= 0}
           aria-label="Imagem anterior"
         >
-          ‹
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </button>
         <button
           type="button"
-          class="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-800 shadow transition hover:bg-white"
+          class="absolute right-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
           on:click={goNextImage}
           disabled={previewImageIndex >= previewTotal - 1}
           aria-label="Próxima imagem"
         >
-          ›
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </button>
       {/if}
       {#if previewImageUrl}
         <img
           src={previewImageUrl}
           alt="Imagem do imóvel"
-          class={`max-h-full max-w-full select-none ${zoomLevel > 1 ? 'cursor-grab' : 'cursor-zoom-in'}`}
+          class={`max-h-[85vh] max-w-[95vw] select-none ${zoomLevel > 1 ? 'cursor-grab' : 'cursor-zoom-in'}`}
           draggable="false"
           style={`transform: translate(${panX}px, ${panY}px) scale(${zoomLevel}); transform-origin: center;`}
         />
       {/if}
+      <button
+        type="button"
+        class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70"
+        on:click={closeImagePreview}
+        aria-label="Fechar"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
     </div>
-    <Dialog.Footer>
-      <Button variant="outline" on:click={closeImagePreview}>Fechar</Button>
-    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
