@@ -132,6 +132,17 @@
 
   $: previewImages = selectedPropertyImages();
   $: previewTotal = previewImages.length;
+  $: if (isImagePreviewOpen && previewTotal > 0 && previewImageIndex >= previewTotal) {
+    previewImageIndex = previewTotal - 1;
+    previewImageUrl = previewImages[previewImageIndex]?.url ?? null;
+  }
+  $: if (previewTotal > 0) {
+    previewImages.forEach((image) => {
+      if (!image?.url) return;
+      const img = new Image();
+      img.src = image.url;
+    });
+  }
 
   function openImagePreview(url: string, index = 0) {
     previewImageIndex = index;
@@ -1965,7 +1976,7 @@
 
 <svelte:window on:keydown={handlePreviewKeydown} />
 
-<Dialog.Root bind:open={isImagePreviewOpen}>
+<Dialog.Root bind:open={isImagePreviewOpen} closeOnOverlay={true}>
   <Dialog.Content className="max-h-[90vh] w-[90vw] max-w-6xl overflow-hidden">
     <div class="flex items-center justify-between gap-3 border-b border-gray-200 pb-3 dark:border-gray-800">
       <div class="text-sm text-gray-600 dark:text-gray-300">
@@ -1990,7 +2001,7 @@
       </div>
     </div>
     <div
-      class="mt-4 flex h-[70vh] w-full items-center justify-center overflow-hidden rounded-md bg-black/90"
+      class="relative mt-4 flex h-[70vh] w-full items-center justify-center overflow-hidden rounded-md bg-transparent"
       on:wheel|passive={handleWheel}
       on:mousedown={startPan}
       on:mousemove={movePan}
@@ -1998,6 +2009,26 @@
       on:mouseleave={endPan}
       on:dblclick={toggleZoom}
     >
+      {#if previewTotal > 1}
+        <button
+          type="button"
+          class="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-800 shadow transition hover:bg-white"
+          on:click={goPrevImage}
+          disabled={previewImageIndex <= 0}
+          aria-label="Imagem anterior"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          class="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-800 shadow transition hover:bg-white"
+          on:click={goNextImage}
+          disabled={previewImageIndex >= previewTotal - 1}
+          aria-label="Próxima imagem"
+        >
+          ›
+        </button>
+      {/if}
       {#if previewImageUrl}
         <img
           src={previewImageUrl}
