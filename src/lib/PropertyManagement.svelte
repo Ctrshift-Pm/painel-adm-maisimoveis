@@ -121,6 +121,7 @@
   let isImagePreviewOpen = false;
   let previewImageUrl: string | null = null;
   let previewImageIndex = 0;
+  let previewImagesSnapshot: NormalizedImage[] = [];
   let zoomLevel = 1;
   let panX = 0;
   let panY = 0;
@@ -130,7 +131,9 @@
   let panOriginX = 0;
   let panOriginY = 0;
 
-  $: previewImages = selectedPropertyImages();
+  $: previewImages = previewImagesSnapshot.length
+    ? previewImagesSnapshot
+    : selectedPropertyImages();
   $: previewTotal = previewImages.length;
   $: if (isImagePreviewOpen && previewTotal > 0 && previewImageIndex >= previewTotal) {
     previewImageIndex = previewTotal - 1;
@@ -145,6 +148,7 @@
   }
 
   function openImagePreview(url: string, index = 0) {
+    previewImagesSnapshot = selectedPropertyImages();
     previewImageIndex = index;
     previewImageUrl = url;
     zoomLevel = 1;
@@ -156,6 +160,7 @@
   function closeImagePreview() {
     isImagePreviewOpen = false;
     previewImageUrl = null;
+    previewImagesSnapshot = [];
     zoomLevel = 1;
     panX = 0;
     panY = 0;
@@ -1976,10 +1981,14 @@
 
 <svelte:window on:keydown={handlePreviewKeydown} />
 
-<Dialog.Root bind:open={isImagePreviewOpen} closeOnOverlay={true}>
-  <Dialog.Content className="w-auto max-w-[95vw] overflow-visible border-0 bg-transparent shadow-none">
+{#if isImagePreviewOpen}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center"
+    on:click={closeImagePreview}
+  >
     <div
-      class="relative flex max-h-[85vh] max-w-[95vw] items-center justify-center overflow-hidden"
+      class="relative"
+      on:click|stopPropagation
       on:wheel|passive={handleWheel}
       on:mousedown={startPan}
       on:mousemove={movePan}
@@ -1990,7 +1999,7 @@
       {#if previewTotal > 1}
         <button
           type="button"
-          class="absolute left-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
+          class="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
           on:click={goPrevImage}
           disabled={previewImageIndex <= 0}
           aria-label="Imagem anterior"
@@ -2001,7 +2010,7 @@
         </button>
         <button
           type="button"
-          class="absolute right-4 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
+          class="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
           on:click={goNextImage}
           disabled={previewImageIndex >= previewTotal - 1}
           aria-label="Próxima imagem"
@@ -2022,7 +2031,7 @@
       {/if}
       <button
         type="button"
-        class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70"
+        class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white shadow hover:bg-black/70"
         on:click={closeImagePreview}
         aria-label="Fechar"
       >
@@ -2031,5 +2040,5 @@
         </svg>
       </button>
     </div>
-  </Dialog.Content>
-</Dialog.Root>
+  </div>
+{/if}
