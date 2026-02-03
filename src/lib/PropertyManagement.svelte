@@ -1139,6 +1139,11 @@
       </div>
     </div>
   {/if}
+  {#if !isReviewOnly}
+    <div class="mt-4">
+      <FeaturedPropertiesPanel />
+    </div>
+  {/if}
   {#if isLoading}
     <div class="flex h-48 items-center justify-center rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div class="flex items-center gap-3 text-gray-600 dark:text-gray-300">
@@ -1250,9 +1255,6 @@
     <div class="mt-4">
       <Pagination bind:currentPage {totalPages} {totalItems} {itemsPerPage} />
     </div>
-  {/if}
-  {#if !isReviewOnly}
-    <FeaturedPropertiesPanel />
   {/if}
 </div>
 
