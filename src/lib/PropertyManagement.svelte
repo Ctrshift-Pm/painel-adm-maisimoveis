@@ -118,6 +118,140 @@
   let videoDeleting = false;
   let videoDeleteError: string | null = null;
   let videoInputEl: HTMLInputElement | null = null;
+  let isImagePreviewOpen = false;
+  let previewImageUrl: string | null = null;
+  let previewImageIndex = 0;
+  let zoomLevel = 1;
+  let panX = 0;
+  let panY = 0;
+  let isPanning = false;
+  let panStartX = 0;
+  let panStartY = 0;
+  let panOriginX = 0;
+  let panOriginY = 0;
+
+  $: previewImages = selectedPropertyImages();
+  $: previewTotal = previewImages.length;
+
+  function openImagePreview(url: string, index = 0) {
+    previewImageIndex = index;
+    previewImageUrl = url;
+    zoomLevel = 1;
+    panX = 0;
+    panY = 0;
+    isImagePreviewOpen = true;
+  }
+
+  function closeImagePreview() {
+    isImagePreviewOpen = false;
+    previewImageUrl = null;
+    zoomLevel = 1;
+    panX = 0;
+    panY = 0;
+  }
+
+  function clampZoom(value: number) {
+    return Math.min(4, Math.max(1, value));
+  }
+
+  function setZoom(value: number) {
+    zoomLevel = clampZoom(value);
+    if (zoomLevel === 1) {
+      panX = 0;
+      panY = 0;
+    }
+  }
+
+  function zoomIn() {
+    setZoom(zoomLevel + 0.25);
+  }
+
+  function zoomOut() {
+    setZoom(zoomLevel - 0.25);
+  }
+
+  function resetZoom() {
+    setZoom(1);
+  }
+
+  function toggleZoom() {
+    setZoom(zoomLevel === 1 ? 2 : 1);
+  }
+
+  function goPrevImage() {
+    if (previewImageIndex <= 0) return;
+    previewImageIndex -= 1;
+    previewImageUrl = previewImages[previewImageIndex]?.url ?? null;
+    resetZoom();
+  }
+
+  function goNextImage() {
+    if (previewImageIndex >= previewTotal - 1) return;
+    previewImageIndex += 1;
+    previewImageUrl = previewImages[previewImageIndex]?.url ?? null;
+    resetZoom();
+  }
+
+  function handlePreviewKeydown(event: KeyboardEvent) {
+    if (!isImagePreviewOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeImagePreview();
+      return;
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      goPrevImage();
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      goNextImage();
+      return;
+    }
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      zoomIn();
+      return;
+    }
+    if (event.key === '-') {
+      event.preventDefault();
+      zoomOut();
+      return;
+    }
+    if (event.key === '0') {
+      event.preventDefault();
+      resetZoom();
+    }
+  }
+
+  function handleWheel(event: WheelEvent) {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    const direction = event.deltaY > 0 ? -0.15 : 0.15;
+    setZoom(zoomLevel + direction);
+  }
+
+  function startPan(event: MouseEvent) {
+    if (zoomLevel <= 1) return;
+    isPanning = true;
+    panStartX = event.clientX;
+    panStartY = event.clientY;
+    panOriginX = panX;
+    panOriginY = panY;
+  }
+
+  function movePan(event: MouseEvent) {
+    if (!isPanning) return;
+    const dx = event.clientX - panStartX;
+    const dy = event.clientY - panStartY;
+    panX = panOriginX + dx;
+    panY = panOriginY + dy;
+  }
+
+  function endPan() {
+    isPanning = false;
+  }
 
   function requestFetch(resetPage = false) {
     if (resetPage) {
@@ -1395,15 +1529,16 @@
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
           {#if selectedPropertyImages().length > 0}
             <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
-              {#each selectedPropertyImages() as image (image.id)}
+                {#each selectedPropertyImages() as image, index (image.id)}
                 <div class="relative flex flex-col gap-2 items-center">
                   <img
                     src={image.url}
                     alt="Foto do imóvel"
-                    class="h-32 w-auto rounded-md object-cover shadow"
+                    class="h-32 w-auto cursor-zoom-in rounded-md object-cover shadow"
                     loading="lazy"
+                    on:click={() => openImagePreview(image.url, index)}
                   />
-                  {#if !isReviewOnly && image.id != null}
+                  {#if image.id != null}
                     <Button variant="destructive" size="sm" on:click={() => handleImageDelete(image.id!)}>
                       Remover
                     </Button>
@@ -1415,49 +1550,47 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
           {/if}
         </div>
-        {#if !isReviewOnly}
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
-            <input
-              id="upload-images-input"
-              bind:this={imageInputEl}
-              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              type="file"
-              accept="image/*"
-              multiple
-              on:change={handleImageSelection}
-              disabled={imageUploading}
-            />
-            {#if stagedImages.length > 0}
-              <div class="mt-3 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
-                {#each stagedImagePreviews as preview}
-                  <img
-                    src={preview}
-                    alt="Prévia da imagem"
-                    class="h-24 w-auto rounded-md object-cover shadow"
-                  />
-                {/each}
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <Button on:click={uploadStagedImages} disabled={imageUploading}>
-                  {#if imageUploading}
-                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                  {/if}
-                  Salvar
-                </Button>
-                <Button variant="outline" on:click={clearStagedImages} disabled={imageUploading}>
-                  Cancelar
-                </Button>
-              </div>
-            {/if}
-            {#if imageUploading}
-              <p class="text-xs text-gray-500 dark:text-gray-400">Enviando imagens...</p>
-            {/if}
-            {#if imageUploadError}
-              <p class="text-xs text-red-500 dark:text-red-400">{imageUploadError}</p>
-            {/if}
-          </div>
-        {/if}
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
+          <input
+            id="upload-images-input"
+            bind:this={imageInputEl}
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            type="file"
+            accept="image/*"
+            multiple
+            on:change={handleImageSelection}
+            disabled={imageUploading}
+          />
+          {#if stagedImages.length > 0}
+            <div class="mt-3 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
+              {#each stagedImagePreviews as preview}
+                <img
+                  src={preview}
+                  alt="Prévia da imagem"
+                  class="h-24 w-auto rounded-md object-cover shadow"
+                />
+              {/each}
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <Button on:click={uploadStagedImages} disabled={imageUploading}>
+                {#if imageUploading}
+                  <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                {/if}
+                Salvar
+              </Button>
+              <Button variant="outline" on:click={clearStagedImages} disabled={imageUploading}>
+                Cancelar
+              </Button>
+            </div>
+          {/if}
+          {#if imageUploading}
+            <p class="text-xs text-gray-500 dark:text-gray-400">Enviando imagens...</p>
+          {/if}
+          {#if imageUploadError}
+            <p class="text-xs text-red-500 dark:text-red-400">{imageUploadError}</p>
+          {/if}
+        </div>
 
           {#if selectedProperty.video_url}
             <div>
@@ -1472,21 +1605,19 @@
                   <track kind="captions" srclang="pt" label="Portugues" />
                 </video>
               </div>
-              {#if !isReviewOnly}
-                <div class="mt-2 flex flex-wrap items-center gap-2">
-                  <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
-                    {#if videoDeleting}
-                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                    {/if}
-                    Remover vídeo
-                  </Button>
-                  {#if videoDeleteError}
-                    <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
+                  {#if videoDeleting}
+                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
                   {/if}
-                </div>
-              {/if}
+                  Remover vídeo
+                </Button>
+                {#if videoDeleteError}
+                  <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
+                {/if}
+              </div>
             </div>
-          {:else if !isReviewOnly && isEditMode}
+          {:else if isEditMode || isReviewOnly}
             <div class="space-y-2">
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-video-input">Enviar vídeo</label>
               <input
@@ -1803,7 +1934,9 @@
         {/if}
         {#if isEditMode && editableProperty}
           <Button
-            className="bg-emerald-400 text-white hover:bg-emerald-500"
+            className={allowApproval
+              ? 'bg-green-400 text-black hover:bg-green-500'
+              : 'bg-emerald-400 text-white hover:bg-emerald-500'}
             on:click={saveEdits}
             disabled={isSavingEdit || isProcessing}
           >
@@ -1827,5 +1960,56 @@
         {/if}
       </Dialog.Footer>
     {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<svelte:window on:keydown={handlePreviewKeydown} />
+
+<Dialog.Root bind:open={isImagePreviewOpen}>
+  <Dialog.Content className="max-h-[90vh] w-[90vw] max-w-6xl overflow-hidden">
+    <div class="flex items-center justify-between gap-3 border-b border-gray-200 pb-3 dark:border-gray-800">
+      <div class="text-sm text-gray-600 dark:text-gray-300">
+        {previewTotal > 0 ? `${previewImageIndex + 1} / ${previewTotal}` : '0 / 0'}
+      </div>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" on:click={goPrevImage} disabled={previewImageIndex <= 0}>
+          ←
+        </Button>
+        <Button variant="outline" size="sm" on:click={goNextImage} disabled={previewImageIndex >= previewTotal - 1}>
+          →
+        </Button>
+        <Button variant="outline" size="sm" on:click={zoomOut} disabled={zoomLevel <= 1}>
+          −
+        </Button>
+        <Button variant="outline" size="sm" on:click={resetZoom}>
+          {zoomLevel.toFixed(2)}x
+        </Button>
+        <Button variant="outline" size="sm" on:click={zoomIn}>
+          +
+        </Button>
+      </div>
+    </div>
+    <div
+      class="mt-4 flex h-[70vh] w-full items-center justify-center overflow-hidden rounded-md bg-black/90"
+      on:wheel|passive={handleWheel}
+      on:mousedown={startPan}
+      on:mousemove={movePan}
+      on:mouseup={endPan}
+      on:mouseleave={endPan}
+      on:dblclick={toggleZoom}
+    >
+      {#if previewImageUrl}
+        <img
+          src={previewImageUrl}
+          alt="Imagem do imóvel"
+          class={`max-h-full max-w-full select-none ${zoomLevel > 1 ? 'cursor-grab' : 'cursor-zoom-in'}`}
+          draggable="false"
+          style={`transform: translate(${panX}px, ${panY}px) scale(${zoomLevel}); transform-origin: center;`}
+        />
+      {/if}
+    </div>
+    <Dialog.Footer>
+      <Button variant="outline" on:click={closeImagePreview}>Fechar</Button>
+    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
