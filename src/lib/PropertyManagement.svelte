@@ -182,7 +182,6 @@
       return;
     }
   }
-  }
 
   function requestFetch(resetPage = false) {
     if (resetPage) {
@@ -1465,7 +1464,7 @@
                   <img
                     src={image.url}
                     alt="Foto do imóvel"
-                    class="h-32 w-auto cursor-zoom-in rounded-md object-cover shadow"
+                    class="h-32 w-auto cursor-pointer rounded-md object-cover shadow"
                     loading="lazy"
                     on:click={() => openImagePreview(image.url, index)}
                   />
