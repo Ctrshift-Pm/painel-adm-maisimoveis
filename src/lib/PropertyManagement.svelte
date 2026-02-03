@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
   import { Loader2 } from 'lucide-svelte';
@@ -106,6 +106,9 @@
   let imageUploading = false;
   let imageUploadError: string | null = null;
   let imageDeleteError: string | null = null;
+  let stagedImages: File[] = [];
+  let stagedImagePreviews: string[] = [];
+  let imageInputEl: HTMLInputElement | null = null;
   let videoDeleting = false;
   let videoDeleteError: string | null = null;
   let videoInputEl: HTMLInputElement | null = null;
@@ -121,6 +124,10 @@
     hasMounted = true;
     requestFetch();
     fetchCities();
+  });
+
+  onDestroy(() => {
+    clearStagedImages();
   });
 
   $: if (hasMounted) {
@@ -437,6 +444,7 @@
 
   function closeModal() {
     if (isProcessing) return;
+    clearStagedImages();
     isModalOpen = false;
     selectedProperty = null;
     editableProperty = null;
@@ -463,6 +471,7 @@
         toast.success('Imóvel rejeitado e removido.');
       }
       isModalOpen = false;
+      clearStagedImages();
       selectedProperty = null;
       await fetchProperties();
     } catch (err) {
@@ -491,6 +500,7 @@
       await api.delete(`/admin/properties/${selectedProperty.id}`);
       toast.success('Imóvel excluido com sucesso.');
       isModalOpen = false;
+      clearStagedImages();
       selectedProperty = null;
       await fetchProperties();
     } catch (err) {
@@ -756,20 +766,36 @@
     }
   }
 
-  async function handleImageUpload(event: Event) {
-    if (!selectedProperty) return;
+  function clearStagedImages() {
+    stagedImagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    stagedImagePreviews = [];
+    stagedImages = [];
+    if (imageInputEl) {
+      imageInputEl.value = '';
+    }
+  }
+
+  function handleImageSelection(event: Event) {
     const input = event.target as HTMLInputElement;
     const files = input.files;
     if (!files || files.length === 0) {
+      clearStagedImages();
       return;
     }
 
+    clearStagedImages();
+    stagedImages = Array.from(files);
+    stagedImagePreviews = stagedImages.map((file) => URL.createObjectURL(file));
+  }
+
+  async function uploadStagedImages() {
+    if (!selectedProperty || stagedImages.length === 0) return;
     imageUploading = true;
     imageUploadError = null;
 
     try {
       const form = new FormData();
-      Array.from(files).forEach((file) => form.append('images', file));
+      stagedImages.forEach((file) => form.append('images', file));
 
       await apiClient.post(`/admin/properties/${selectedProperty.id}/images`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -777,6 +803,7 @@
 
       toast.success('Imagens enviadas com sucesso.');
       await reviewProperty(selectedProperty as PropertySummary);
+      clearStagedImages();
     } catch (err: any) {
       console.error('Erro ao enviar imagens:', err);
       const status = err?.response?.status;
@@ -789,9 +816,6 @@
         (err instanceof Error ? err.message : 'Falha ao enviar imagens.');
     } finally {
       imageUploading = false;
-      if (input) {
-        input.value = '';
-      }
     }
   }
 
@@ -1321,13 +1345,36 @@
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
             <input
               id="upload-images-input"
+              bind:this={imageInputEl}
               class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               type="file"
               accept="image/*"
               multiple
-              on:change={handleImageUpload}
+              on:change={handleImageSelection}
               disabled={imageUploading}
             />
+            {#if stagedImages.length > 0}
+              <div class="mt-3 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
+                {#each stagedImagePreviews as preview}
+                  <img
+                    src={preview}
+                    alt="Prévia da imagem"
+                    class="h-24 w-auto rounded-md object-cover shadow"
+                  />
+                {/each}
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <Button on:click={uploadStagedImages} disabled={imageUploading}>
+                  {#if imageUploading}
+                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                  {/if}
+                  Salvar
+                </Button>
+                <Button variant="outline" on:click={clearStagedImages} disabled={imageUploading}>
+                  Cancelar
+                </Button>
+              </div>
+            {/if}
             {#if imageUploading}
               <p class="text-xs text-gray-500 dark:text-gray-400">Enviando imagens...</p>
             {/if}

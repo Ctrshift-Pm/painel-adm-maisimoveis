@@ -666,27 +666,34 @@
       {:else}
         <ul class="space-y-4">
           {#each brokerProperties as property}
-            <li class="rounded-lg border border-gray-200 p-4 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-700/60">
-              <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p class="text-sm font-semibold text-gray-900 dark:text-white">{property.title ?? `Imovel #${property.id}`}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">
-                    {property.city ?? '-'}{#if property.state} / {property.state}{/if}
-                  </p>
-                </div>
-                <div class="flex items-center gap-3 text-sm">
-                  <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${propertyStatusBadge(property.status ?? null)}`}>
-                    {formatPropertyStatus(property.status ?? null)}
-                  </span>
-                  <div class="flex flex-col gap-1 text-gray-700 dark:text-gray-300">
-                    {#each resolvePriceLines(property) as line}
-                      <span class="font-medium">
-                        {line.label}: {formatCurrency(line.value)}
-                      </span>
-                    {/each}
+            <li class="rounded-lg border border-gray-200 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-700/60">
+              <a
+                href={`https://encontreaquiimoveis.app/property/${property.id}`}
+                target="_blank"
+                rel="noreferrer"
+                class="block p-4"
+              >
+                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{property.title ?? `Imovel #${property.id}`}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {property.city ?? '-'}{#if property.state} / {property.state}{/if}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-3 text-sm">
+                    <span class={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${propertyStatusBadge(property.status ?? null)}`}>
+                      {formatPropertyStatus(property.status ?? null)}
+                    </span>
+                    <div class="flex flex-col gap-1 text-gray-700 dark:text-gray-300">
+                      {#each resolvePriceLines(property) as line}
+                        <span class="font-medium">
+                          {line.label}: {formatCurrency(line.value)}
+                        </span>
+                      {/each}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </a>
             </li>
           {/each}
         </ul>

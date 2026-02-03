@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../../../projeto-imobiliario/frontend"
+		},
+		{
+			"path": "../../../backend"
+		},
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"chatgpt.openOnStartup": true
+	}
+}

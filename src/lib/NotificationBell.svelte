@@ -145,15 +145,6 @@
     >
       <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Notificações</h3>
-        <button
-          class="rounded-md bg-gray-100 p-1 text-gray-500 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-          on:click={close}
-          aria-label="Fechar notificações"
-        >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
       </div>
       <div class="max-h-72 overflow-y-auto px-4 py-3">
         {#if isLoading}

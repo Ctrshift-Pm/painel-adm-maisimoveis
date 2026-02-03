@@ -48,6 +48,8 @@ export interface Property {
   commission_rate?: number | null;
   broker_id?: number | null;
   owner_id?: number | null;
+  owner_name?: string | null;
+  owner_phone?: string | null;
   broker_name?: string | null;
   broker_phone?: string | null;
   broker_status?: string | null;
@@ -116,6 +118,7 @@ export type View =
   | 'dashboard'
   | 'properties'
   | 'property_requests'
+  | 'create_property'
   | 'brokers'
   | 'broker_requests'
   | 'clients'

@@ -11,13 +11,14 @@
     import ClientManagement from '../lib/components/ClientManagement.svelte';
     import BrokerManagement from './BrokerManagement.svelte';
     import BrokerRequests from './components/BrokerRequests.svelte';
+    import CreateProperty from './components/CreateProperty.svelte';
     import SendNotification from './components/SendNotification.svelte';
     import AdminNotificationsPanel from './components/AdminNotificationsPanel.svelte';
     import StatusPieChart from './components/charts/StatusPieChart.svelte';
     import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
     import { baseURL, handleUnauthorizedResponse } from './api';
     import { authToken } from './store';
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
     
     export let initialView: View = 'dashboard';
@@ -48,6 +49,18 @@
 
     let sortBy = 'id';
     let sortOrder = 'desc';
+
+    type PendingCounts = {
+        propertyRequests: number;
+        brokerRequests: number;
+        verificationRequests: number;
+    };
+    let pendingCounts: PendingCounts = {
+        propertyRequests: 0,
+        brokerRequests: 0,
+        verificationRequests: 0
+    };
+    let pendingCountsInterval: ReturnType<typeof setInterval> | null = null;
     
     interface Stats {
         totalProperties: number;
@@ -83,6 +96,9 @@
         },
         property_requests: {
             title: 'Solicitações de Imóveis'
+        },
+        create_property: {
+            title: 'Cadastrar Imóvel'
         },
         brokers: { 
             endpoint: '/admin/brokers', 
@@ -130,7 +146,13 @@
     async function fetchData() {
         isLoading = true;
 
-        if (activeView === 'properties' || activeView === 'property_requests' || activeView === 'brokers' || activeView === 'broker_requests') {
+        if (
+            activeView === 'properties' ||
+            activeView === 'property_requests' ||
+            activeView === 'brokers' ||
+            activeView === 'broker_requests' ||
+            activeView === 'create_property'
+        ) {
             headers = [];
             allData = [];
             totalItems = 0;
@@ -231,6 +253,44 @@
             authToken.set(null);
         } finally {
             isLoading = false;
+        }
+    }
+
+    async function fetchPendingCounts() {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            pendingCounts = { propertyRequests: 0, brokerRequests: 0, verificationRequests: 0 };
+            authToken.set(null);
+            return;
+        }
+
+        async function fetchCount(endpoint: string): Promise<number> {
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (handleUnauthorizedResponse(response.status)) {
+                authToken.set(null);
+                return 0;
+            }
+            if (!response.ok) {
+                return 0;
+            }
+            const payload = await response.json();
+            if (Array.isArray(payload)) return payload.length;
+            if (payload && Array.isArray(payload.data)) return payload.data.length;
+            if (payload && typeof payload.total === 'number') return payload.total;
+            return 0;
+        }
+
+        try {
+            const [propertyRequests, brokerRequests, verificationRequests] = await Promise.all([
+                fetchCount('/admin/properties-with-brokers?status=pending_approval&limit=1&page=1'),
+                fetchCount('/admin/brokers?status=pending_verification&limit=1&page=1'),
+                fetchCount('/admin/brokers/pending')
+            ]);
+            pendingCounts = { propertyRequests, brokerRequests, verificationRequests };
+        } catch (error) {
+            console.error('Erro ao buscar contagem de solicitacoes:', error);
         }
     }
 
@@ -413,6 +473,14 @@
     onMount(() => {
         fetchData();
         fetchChartData();
+        fetchPendingCounts();
+        pendingCountsInterval = setInterval(fetchPendingCounts, 60000);
+    });
+
+    onDestroy(() => {
+        if (pendingCountsInterval) {
+            clearInterval(pendingCountsInterval);
+        }
     });
 
     function applyFilters() {
@@ -459,7 +527,7 @@
 </script>
 
 <div class="relative flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-white">
-    <Sidebar bind:isOpen={isSidebarOpen} {activeView} onNavigate={changeView} />
+    <Sidebar bind:isOpen={isSidebarOpen} {activeView} {pendingCounts} onNavigate={changeView} />
 
     <div class="flex-1 flex flex-col overflow-hidden lg:pl-64">
         <Header pageTitle={getViewConfig(activeView).title} onToggleSidebar={() => isSidebarOpen = !isSidebarOpen} />
@@ -589,6 +657,8 @@
                 <PropertyManagement />
             {:else if activeView === 'property_requests'}
                 <PropertyManagement initialStatus="pending_approval" allowApproval={true} />
+            {:else if activeView === 'create_property'}
+                <CreateProperty />
             {:else if activeView === 'brokers'}
                 <BrokerManagement />
             {:else if activeView === 'broker_requests'}

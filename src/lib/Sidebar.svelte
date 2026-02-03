@@ -7,11 +7,17 @@
   export let isOpen = false;
   export let activeView: View;
   export let onNavigate: (view: View) => void = () => {};
+  export let pendingCounts: {
+    propertyRequests: number;
+    brokerRequests: number;
+    verificationRequests: number;
+  } = { propertyRequests: 0, brokerRequests: 0, verificationRequests: 0 };
 
   const validViews: View[] = [
     'dashboard',
     'properties',
     'property_requests',
+    'create_property',
     'brokers',
     'broker_requests',
     'clients',
@@ -87,6 +93,15 @@
       Imóveis
     </button>
     <button
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'create_property' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
+      on:click={() => handleNavigation('create_property')}
+    >
+      <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Cadastrar Imóvel
+    </button>
+    <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'property_requests' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
       on:click={() => handleNavigation('property_requests')}
     >
@@ -99,6 +114,11 @@
         ></path>
       </svg>
       Solicitações (Imóveis)
+      {#if pendingCounts.propertyRequests > 0}
+        <span class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+          {pendingCounts.propertyRequests}
+        </span>
+      {/if}
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'brokers' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
@@ -113,6 +133,25 @@
         ></path>
       </svg>
       Corretores
+    </button>
+    <button
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'broker_requests' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
+      on:click={() => handleNavigation('broker_requests')}
+    >
+      <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+        ></path>
+      </svg>
+      Solicitações de Corretores
+      {#if pendingCounts.brokerRequests > 0}
+        <span class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+          {pendingCounts.brokerRequests}
+        </span>
+      {/if}
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'clients' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
@@ -141,6 +180,11 @@
         />
       </svg>
       Solicitações de Verificação
+      {#if pendingCounts.verificationRequests > 0}
+        <span class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+          {pendingCounts.verificationRequests}
+        </span>
+      {/if}
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'notifications' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
