@@ -1514,14 +1514,20 @@
                 {#each selectedPropertyImages() as image, index (image.id)}
                 <div class="relative flex flex-col gap-2 items-center">
                   {#if !brokenPreviewImages.has(image.url)}
-                    <img
-                      src={image.url}
-                      alt="Foto do imóvel"
-                      class="h-32 w-auto cursor-pointer rounded-md object-cover shadow"
-                      loading="lazy"
-                      on:error={() => markImageAsBroken(image.url)}
+                    <button
+                      type="button"
+                      class="rounded-md p-0 shadow focus:outline-none focus:ring-2 focus:ring-green-500"
+                      aria-label="Abrir imagem do imóvel"
                       on:click={() => openImagePreview(image.url, index)}
-                    />
+                    >
+                      <img
+                        src={image.url}
+                        alt="Foto do imóvel"
+                        class="h-32 w-auto rounded-md object-cover"
+                        loading="lazy"
+                        on:error={() => markImageAsBroken(image.url)}
+                      />
+                    </button>
                   {/if}
                   {#if isEditMode && image.id != null}
                     <Button variant="destructive" size="sm" on:click={() => handleImageDelete(image.id!)}>
@@ -1689,7 +1695,7 @@
                 />
                 <datalist id="property-cities-list">
                   {#each cities as cityOption}
-                    <option value={cityOption} />
+                    <option value={cityOption}></option>
                   {/each}
                 </datalist>
               </label>
@@ -1954,15 +1960,26 @@
 
 <svelte:window on:keydown={handlePreviewKeydown} />
 
-{#if isImagePreviewOpen}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center"
-    on:click={closeImagePreview}
-  >
+  {#if isImagePreviewOpen}
     <div
-      class="relative"
-      on:click|stopPropagation
+      class="fixed inset-0 z-50 flex items-center justify-center"
+      role="button"
+      tabindex="0"
+      aria-label="Fechar visualização da imagem"
+      on:click={closeImagePreview}
+      on:keydown={handlePreviewKeydown}
     >
+      <div
+        class="relative"
+        role="dialog"
+        aria-modal="true"
+        tabindex="0"
+        on:click|stopPropagation
+        on:keydown={(event) => {
+          handlePreviewKeydown(event);
+          event.stopPropagation();
+        }}
+      >
       {#if previewTotal > 1}
         <button
           type="button"

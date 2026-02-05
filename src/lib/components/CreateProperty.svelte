@@ -54,6 +54,8 @@
   let status = 'pending_approval';
   let priceSale = '';
   let priceRent = '';
+  let ownerName = '';
+  let ownerPhone = '';
   let address = '';
   let city = '';
   let state = 'GO';
@@ -70,6 +72,8 @@
   let areaConstruida = '';
   let areaTerreno = '';
   let brokerId = '';
+  let brokerPhone = '';
+  let selectedBroker: Broker | null = null;
 
   let imagesInput: HTMLInputElement | null = null;
   let videoInput: HTMLInputElement | null = null;
@@ -266,6 +270,8 @@
     form.append('city', city.trim());
     form.append('state', state);
     form.append('cep', onlyDigits(cep));
+    if (ownerName.trim()) form.append('owner_name', ownerName.trim());
+    if (ownerPhone.trim()) form.append('owner_phone', ownerPhone.trim());
     if (description.trim()) form.append('description', description.trim());
     if (bairro.trim()) form.append('bairro', bairro.trim());
     if (numero.trim()) form.append('numero', numero.trim());
@@ -306,6 +312,22 @@
 
     isSubmitting = true;
     try {
+      if (brokerId) {
+        const broker =
+          selectedBroker ?? brokers.find((item) => item.id === Number(brokerId)) ?? null;
+        if (broker && brokerPhone.trim() !== (broker.phone ?? '')) {
+          await api.put(`/admin/brokers/${brokerId}`, {
+            name: broker.name,
+            email: broker.email,
+            phone: brokerPhone.trim(),
+          });
+          brokers = brokers.map((entry) =>
+            entry.id === Number(brokerId)
+              ? { ...entry, phone: brokerPhone.trim() }
+              : entry
+          );
+        }
+      }
       await apiClient.post('/admin/properties', form, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -317,6 +339,8 @@
       status = 'pending_approval';
       priceSale = '';
       priceRent = '';
+      ownerName = '';
+      ownerPhone = '';
       address = '';
       city = '';
       state = 'GO';
@@ -333,6 +357,8 @@
       areaConstruida = '';
       areaTerreno = '';
       brokerId = '';
+      brokerPhone = '';
+      selectedBroker = null;
       images = null;
       video = null;
       if (imagesInput) imagesInput.value = '';
@@ -349,6 +375,13 @@
     fetchBrokers();
     fetchCitiesForState(state);
   });
+
+  function handleBrokerChange(value: string) {
+    brokerId = value;
+    const broker = brokers.find((item) => item.id === Number(value)) ?? null;
+    selectedBroker = broker;
+    brokerPhone = broker?.phone ?? '';
+  }
 </script>
 
 <div class="space-y-6">
@@ -400,6 +433,64 @@
             <option value="pending_approval">Pendente</option>
             <option value="approved">Aprovado</option>
           </select>
+        </label>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Proprietário do imóvel
+          <input
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={ownerName}
+            placeholder="Nome do proprietário"
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Telefone do proprietário
+          <input
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={ownerPhone}
+            inputmode="numeric"
+            placeholder="Telefone do proprietário"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              ownerPhone = sanitizeDigitsInput(target.value);
+            }}
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Corretor responsável
+            <select
+              class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              bind:value={brokerId}
+              on:change={(event) => handleBrokerChange((event.target as HTMLSelectElement).value)}
+            >
+              <option value="">Sem corretor</option>
+              {#if brokersLoading}
+                <option disabled>Carregando...</option>
+              {:else}
+                {#each brokers as broker}
+                  <option value={broker.id}>{broker.name}</option>
+                {/each}
+              {/if}
+            </select>
+            {#if brokersError}
+              <span class="text-xs text-red-500 dark:text-red-400">{brokersError}</span>
+            {/if}
+          </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Telefone do corretor responsável
+          <input
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={brokerPhone}
+            inputmode="numeric"
+            placeholder="Telefone do corretor"
+            disabled={!brokerId}
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              brokerPhone = sanitizeDigitsInput(target.value);
+            }}
+          />
         </label>
       </div>
 
@@ -586,28 +677,6 @@
           {/if}
           {#if cepLookupError}
             <span class="text-xs text-red-500 dark:text-red-400">{cepLookupError}</span>
-          {/if}
-        </label>
-      </div>
-
-      <div class="grid gap-4 md:grid-cols-2">
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Corretor responsável (opcional)
-          <select
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={brokerId}
-          >
-            <option value="">Sem corretor</option>
-            {#if brokersLoading}
-              <option disabled>Carregando...</option>
-            {:else}
-              {#each brokers as broker}
-                <option value={broker.id}>{broker.name}</option>
-              {/each}
-            {/if}
-          </select>
-          {#if brokersError}
-            <span class="text-xs text-red-500 dark:text-red-400">{brokersError}</span>
           {/if}
         </label>
       </div>
