@@ -122,6 +122,7 @@
   let previewImageUrl: string | null = null;
   let previewImageIndex = 0;
   let previewImagesSnapshot: NormalizedImage[] = [];
+  let brokenPreviewImages = new Set<string>();
 
   $: previewImages = previewImagesSnapshot.length
     ? previewImagesSnapshot
@@ -134,12 +135,17 @@
   $: if (previewTotal > 0) {
     previewImages.forEach((image) => {
       if (!image?.url) return;
+      if (brokenPreviewImages.has(image.url)) return;
       const img = new Image();
       img.src = image.url;
     });
   }
 
   function openImagePreview(url: string, index = 0) {
+    if (brokenPreviewImages.has(url)) {
+      toast.error('Imagem corrompida ou indisponível.');
+      return;
+    }
     previewImagesSnapshot = selectedPropertyImages();
     previewImageIndex = index;
     previewImageUrl = url;
@@ -152,16 +158,61 @@
     previewImagesSnapshot = [];
   }
 
+  function markImageAsBroken(url?: string | null) {
+    if (!url) return;
+    if (brokenPreviewImages.has(url)) return;
+    brokenPreviewImages = new Set(brokenPreviewImages);
+    brokenPreviewImages.add(url);
+    toast.error('Imagem corrompida ou indisponível.');
+  }
+
+  function findValidIndex(fromIndex: number, direction: 1 | -1) {
+    let idx = fromIndex + direction;
+    while (idx >= 0 && idx < previewImagesSnapshot.length) {
+      const url = previewImagesSnapshot[idx]?.url;
+      if (url && !brokenPreviewImages.has(url)) return idx;
+      idx += direction;
+    }
+    return -1;
+  }
+
+  function hasPrevImage() {
+    return findValidIndex(previewImageIndex, -1) !== -1;
+  }
+
+  function hasNextImage() {
+    return findValidIndex(previewImageIndex, 1) !== -1;
+  }
+
   function goPrevImage() {
-    if (previewImageIndex <= 0) return;
-    previewImageIndex -= 1;
-    previewImageUrl = previewImages[previewImageIndex]?.url ?? null;
+    const idx = findValidIndex(previewImageIndex, -1);
+    if (idx === -1) return;
+    previewImageIndex = idx;
+    previewImageUrl = previewImagesSnapshot[previewImageIndex]?.url ?? null;
   }
 
   function goNextImage() {
-    if (previewImageIndex >= previewTotal - 1) return;
-    previewImageIndex += 1;
-    previewImageUrl = previewImages[previewImageIndex]?.url ?? null;
+    const idx = findValidIndex(previewImageIndex, 1);
+    if (idx === -1) return;
+    previewImageIndex = idx;
+    previewImageUrl = previewImagesSnapshot[previewImageIndex]?.url ?? null;
+  }
+
+  function handlePreviewImageError() {
+    markImageAsBroken(previewImageUrl);
+    const nextIdx = findValidIndex(previewImageIndex, 1);
+    if (nextIdx !== -1) {
+      previewImageIndex = nextIdx;
+      previewImageUrl = previewImagesSnapshot[previewImageIndex]?.url ?? null;
+      return;
+    }
+    const prevIdx = findValidIndex(previewImageIndex, -1);
+    if (prevIdx !== -1) {
+      previewImageIndex = prevIdx;
+      previewImageUrl = previewImagesSnapshot[previewImageIndex]?.url ?? null;
+      return;
+    }
+    closeImagePreview();
   }
 
   function handlePreviewKeydown(event: KeyboardEvent) {
@@ -548,6 +599,7 @@
     }
 
     isDetailLoading = true;
+    isEditMode = false;
     selectedProperty = property;
     editableProperty = sanitizeEditable({ ...property } as PropertyDetails);
 
@@ -1461,14 +1513,17 @@
             <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
                 {#each selectedPropertyImages() as image, index (image.id)}
                 <div class="relative flex flex-col gap-2 items-center">
-                  <img
-                    src={image.url}
-                    alt="Foto do imóvel"
-                    class="h-32 w-auto cursor-pointer rounded-md object-cover shadow"
-                    loading="lazy"
-                    on:click={() => openImagePreview(image.url, index)}
-                  />
-                  {#if image.id != null}
+                  {#if !brokenPreviewImages.has(image.url)}
+                    <img
+                      src={image.url}
+                      alt="Foto do imóvel"
+                      class="h-32 w-auto cursor-pointer rounded-md object-cover shadow"
+                      loading="lazy"
+                      on:error={() => markImageAsBroken(image.url)}
+                      on:click={() => openImagePreview(image.url, index)}
+                    />
+                  {/if}
+                  {#if isEditMode && image.id != null}
                     <Button variant="destructive" size="sm" on:click={() => handleImageDelete(image.id!)}>
                       Remover
                     </Button>
@@ -1480,7 +1535,8 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
           {/if}
         </div>
-        <div class="space-y-2">
+        {#if isEditMode}
+          <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
           <input
             id="upload-images-input"
@@ -1520,7 +1576,8 @@
           {#if imageUploadError}
             <p class="text-xs text-red-500 dark:text-red-400">{imageUploadError}</p>
           {/if}
-        </div>
+          </div>
+        {/if}
 
           {#if selectedProperty.video_url}
             <div>
@@ -1535,19 +1592,21 @@
                   <track kind="captions" srclang="pt" label="Portugues" />
                 </video>
               </div>
-              <div class="mt-2 flex flex-wrap items-center gap-2">
-                <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
-                  {#if videoDeleting}
-                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+              {#if isEditMode}
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
+                    {#if videoDeleting}
+                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                    {/if}
+                    Remover vídeo
+                  </Button>
+                  {#if videoDeleteError}
+                    <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
                   {/if}
-                  Remover vídeo
-                </Button>
-                {#if videoDeleteError}
-                  <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
-                {/if}
-              </div>
+                </div>
+              {/if}
             </div>
-          {:else if isEditMode || isReviewOnly}
+          {:else if isEditMode}
             <div class="space-y-2">
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-video-input">Enviar vídeo</label>
               <input
@@ -1862,14 +1921,14 @@
             Excluir
           </Button>
         {/if}
-        {#if isEditMode && editableProperty}
-          <Button
-            className={allowApproval
-              ? 'bg-green-400 text-black hover:bg-green-500'
-              : 'bg-emerald-400 text-white hover:bg-emerald-500'}
-            on:click={saveEdits}
-            disabled={isSavingEdit || isProcessing}
-          >
+          {#if isEditMode && editableProperty}
+            <Button
+              className={allowApproval
+                ? 'bg-green-500 text-black hover:bg-green-600'
+                : 'bg-emerald-400 text-white hover:bg-emerald-500'}
+              on:click={saveEdits}
+              disabled={isSavingEdit || isProcessing}
+            >
             {#if isSavingEdit}
               <Loader2 class="mr-2 h-4 w-4 animate-spin" />
             {/if}
@@ -1909,7 +1968,7 @@
           type="button"
           class="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
           on:click={goPrevImage}
-          disabled={previewImageIndex <= 0}
+          disabled={!hasPrevImage()}
           aria-label="Imagem anterior"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1920,7 +1979,7 @@
           type="button"
           class="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white shadow transition hover:bg-black/50"
           on:click={goNextImage}
-          disabled={previewImageIndex >= previewTotal - 1}
+          disabled={!hasNextImage()}
           aria-label="Próxima imagem"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1931,9 +1990,10 @@
       {#if previewImageUrl}
         <img
           src={previewImageUrl}
-          alt="Imagem do imóvel"
+          alt=""
           class="max-h-[85vh] max-w-[95vw] select-none"
           draggable="false"
+          on:error={handlePreviewImageError}
         />
       {/if}
       <button
