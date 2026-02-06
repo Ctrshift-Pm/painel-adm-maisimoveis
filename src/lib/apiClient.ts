@@ -4,6 +4,55 @@ import { get } from 'svelte/store';
 import { baseURL, handleUnauthorizedResponse } from './api';
 import { authToken } from './store';
 
+const SENSITIVE_KEYS = ['authorization', 'token', 'password', 'senha', 'cookie', 'email', 'phone', 'telefone', 'cep'];
+const BEARER_REGEX = /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi;
+const JWT_REGEX = /eyJ[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\-]+/g;
+const EMAIL_REGEX = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+
+function shouldRedactKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  return SENSITIVE_KEYS.some((item) => lower.includes(item));
+}
+
+function redactString(value: string): string {
+  return value
+    .replace(BEARER_REGEX, 'Bearer ***')
+    .replace(JWT_REGEX, '***.***.***')
+    .replace(EMAIL_REGEX, '***@***');
+}
+
+function redactValue(value: unknown, depth = 0): unknown {
+  if (depth > 5) return '[redacted-depth]';
+  if (typeof value === 'string') return redactString(value);
+  if (Array.isArray(value)) return value.map((entry) => redactValue(entry, depth + 1));
+  if (!value || typeof value !== 'object') return value;
+
+  const source = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(source)) {
+    if (shouldRedactKey(key)) {
+      output[key] = '***';
+      continue;
+    }
+    output[key] = redactValue(entry, depth + 1);
+  }
+  return output;
+}
+
+function sanitizeErrorForLogging(error: unknown): unknown {
+  if (!error || typeof error !== 'object') return error;
+  const source = error as Record<string, unknown>;
+  for (const key of ['config', 'request', 'response']) {
+    if (source[key]) {
+      source[key] = redactValue(source[key]);
+    }
+  }
+  if (typeof source.message === 'string') {
+    source.message = redactString(source.message);
+  }
+  return source;
+}
+
 type RequestOptions = {
   token?: string | null;
   skipAuth?: boolean;
@@ -82,12 +131,15 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    sanitizeErrorForLogging(error);
+
     if (handleUnauthorizedResponse(error.response?.status)) {
       return Promise.reject(error);
     }
 
+    const safeResponseData = redactValue(error.response?.data) as Record<string, unknown> | undefined;
     const fallbackMessage =
-      error.response?.data?.message ||
+      (typeof safeResponseData?.message === 'string' ? safeResponseData.message : undefined) ||
       error.message ||
       'Erro ao se comunicar com o servidor.';
     toast.error(fallbackMessage);
@@ -96,7 +148,7 @@ apiClient.interceptors.response.use(
 );
 
 async function request<TResponse>(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   endpoint: string,
   body?: unknown,
   tokenOrOptions?: TokenOrOptions
@@ -117,6 +169,9 @@ export const api = {
   },
   post: async <T = unknown>(endpoint: string, body: unknown, tokenOrOptions?: TokenOrOptions) => {
     return request<T>('POST', endpoint, body, tokenOrOptions);
+  },
+  put: async <T = unknown>(endpoint: string, body: unknown, tokenOrOptions?: TokenOrOptions) => {
+    return request<T>('PUT', endpoint, body, tokenOrOptions);
   },
   patch: async <T = unknown>(endpoint: string, body: unknown, tokenOrOptions?: TokenOrOptions) => {
     return request<T>('PATCH', endpoint, body, tokenOrOptions);

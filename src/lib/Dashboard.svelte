@@ -7,14 +7,6 @@
     import FilterControls from './FilterControls.svelte';
     import KpiCard from './KpiCard.svelte';
     import VerificationTable from './VerificationTable.svelte';
-    import PropertyManagement from './PropertyManagement.svelte';
-    import ClientManagement from '../lib/components/ClientManagement.svelte';
-    import BrokerManagement from './BrokerManagement.svelte';
-    import CreateProperty from './components/CreateProperty.svelte';
-    import SendNotification from './components/SendNotification.svelte';
-    import AdminNotificationsPanel from './components/AdminNotificationsPanel.svelte';
-    import StatusPieChart from './components/charts/StatusPieChart.svelte';
-    import NewPropertiesLineChart from './components/charts/NewPropertiesLineChart.svelte';
     import { baseURL, handleUnauthorizedResponse } from './api';
     import { authToken } from './store';
     import { onMount, onDestroy } from 'svelte';
@@ -74,6 +66,72 @@
     let chartData: DashboardChartData | null = null;
     let isChartLoading = false;
     let chartError: string | null = null;
+    type LazySvelteComponent = any;
+
+    let PropertyManagementComponent: LazySvelteComponent | null = null;
+    let ClientManagementComponent: LazySvelteComponent | null = null;
+    let BrokerManagementComponent: LazySvelteComponent | null = null;
+    let CreatePropertyComponent: LazySvelteComponent | null = null;
+    let SendNotificationComponent: LazySvelteComponent | null = null;
+    let AdminNotificationsPanelComponent: LazySvelteComponent | null = null;
+    let StatusPieChartComponent: LazySvelteComponent | null = null;
+    let NewPropertiesLineChartComponent: LazySvelteComponent | null = null;
+
+    async function ensureDashboardCharts() {
+        if (!StatusPieChartComponent) {
+            const module = await import('./components/charts/StatusPieChart.svelte');
+            StatusPieChartComponent = module.default;
+        }
+        if (!NewPropertiesLineChartComponent) {
+            const module = await import('./components/charts/NewPropertiesLineChart.svelte');
+            NewPropertiesLineChartComponent = module.default;
+        }
+    }
+
+    async function ensureViewComponents(view: View) {
+        if (view === 'properties' || view === 'property_requests') {
+            if (!PropertyManagementComponent) {
+                const module = await import('./PropertyManagement.svelte');
+                PropertyManagementComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'create_property') {
+            if (!CreatePropertyComponent) {
+                const module = await import('./components/CreateProperty.svelte');
+                CreatePropertyComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'brokers') {
+            if (!BrokerManagementComponent) {
+                const module = await import('./BrokerManagement.svelte');
+                BrokerManagementComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'clients') {
+            if (!ClientManagementComponent) {
+                const module = await import('./components/ClientManagement.svelte');
+                ClientManagementComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'notifications') {
+            if (!SendNotificationComponent) {
+                const module = await import('./components/SendNotification.svelte');
+                SendNotificationComponent = module.default;
+            }
+            if (!AdminNotificationsPanelComponent) {
+                const module = await import('./components/AdminNotificationsPanel.svelte');
+                AdminNotificationsPanelComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'dashboard') {
+            await ensureDashboardCharts();
+        }
+    }
 
     // Estado para dados de verificacao
     let pendingBrokers: Broker[] = [];
@@ -136,7 +194,7 @@
         hasAppliedInitialView = true;
     }
 
-    let debounceTimer: NodeJS.Timeout;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     async function fetchData() {
         isLoading = true;
 
@@ -340,12 +398,13 @@
         }
     }
 
-    function changeView(newView: View) {
+    async function changeView(newView: View) {
         if (!isValidView(newView)) {
             console.error('Invalid view: ' + newView);
             newView = 'dashboard';
         }
 
+        await ensureViewComponents(newView);
         activeView = newView;
 
         isSidebarOpen = false;
@@ -462,9 +521,12 @@
         editableItemData = {};
     }
 
-    onMount(() => {
+    onMount(async () => {
+        await ensureViewComponents(activeView);
         fetchData();
-        fetchChartData();
+        if (activeView === 'dashboard') {
+            fetchChartData();
+        }
         fetchPendingCounts();
         pendingCountsInterval = setInterval(fetchPendingCounts, 60000);
     });
@@ -486,7 +548,7 @@
             activeView !== 'brokers' &&
             (searchTerm !== '' || sortBy !== 'id' || sortOrder !== 'desc')
         ) {
-            clearTimeout(debounceTimer);
+            if (debounceTimer) clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 currentPage = 1;
                 fetchData();
@@ -581,9 +643,15 @@
 
                                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
-                                    <StatusPieChart data={chartData.propertiesByStatus} />
-
-                                    <NewPropertiesLineChart data={chartData.newPropertiesOverTime} />
+                                    {#if StatusPieChartComponent && NewPropertiesLineChartComponent}
+                                        <svelte:component this={StatusPieChartComponent} data={chartData.propertiesByStatus} />
+                                        <svelte:component this={NewPropertiesLineChartComponent} data={chartData.newPropertiesOverTime} />
+                                    {:else}
+                                        <div class="col-span-full flex items-center gap-2 text-gray-500 dark:text-gray-300">
+                                            <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent dark:border-gray-600"></span>
+                                            Carregando componentes do gráfico...
+                                        </div>
+                                    {/if}
 
                                 </div>
 
@@ -646,15 +714,45 @@
                     </div>
                 </div>
             {:else if activeView === 'properties'}
-                <PropertyManagement />
+                {#if PropertyManagementComponent}
+                    <svelte:component this={PropertyManagementComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
             {:else if activeView === 'property_requests'}
-                <PropertyManagement initialStatus="pending_approval" allowApproval={true} />
+                {#if PropertyManagementComponent}
+                    <svelte:component this={PropertyManagementComponent} initialStatus="pending_approval" allowApproval={true} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
             {:else if activeView === 'create_property'}
-                <CreateProperty />
+                {#if CreatePropertyComponent}
+                    <svelte:component this={CreatePropertyComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
             {:else if activeView === 'brokers'}
-                <BrokerManagement />
+                {#if BrokerManagementComponent}
+                    <svelte:component this={BrokerManagementComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
             {:else if activeView === 'clients'}
-                <ClientManagement />
+                {#if ClientManagementComponent}
+                    <svelte:component this={ClientManagementComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
             {:else if activeView === 'notifications'}
                 <div class="space-y-6">
                     <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
@@ -663,10 +761,19 @@
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Envie mensagens manuais para usuários especifícos ou para todos os clientes e corretores da plataforma.</p>
                         </div>
                         <div class="p-6">
-                            <SendNotification />
+                            {#if SendNotificationComponent}
+                                <svelte:component this={SendNotificationComponent} />
+                            {:else}
+                                <div class="flex items-center gap-2 text-gray-500 dark:text-gray-300">
+                                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent dark:border-gray-600"></span>
+                                    Carregando...
+                                </div>
+                            {/if}
                         </div>
                     </div>
-                    <AdminNotificationsPanel />
+                    {#if AdminNotificationsPanelComponent}
+                        <svelte:component this={AdminNotificationsPanelComponent} />
+                    {/if}
                 </div>
             {:else}
                 {@const config = getViewConfig(activeView)}

@@ -14,8 +14,19 @@ if (!resolvedBase) {
   throw new Error('VITE_API_URL não configurado. Configure no .env do painel.');
 }
 
+let parsedBase: URL;
+try {
+  parsedBase = new URL(resolvedBase);
+} catch {
+  throw new Error('VITE_API_URL inválida. Use uma URL completa, ex: https://api.exemplo.com');
+}
+
+if (!isDev && parsedBase.protocol !== 'https:') {
+  throw new Error('VITE_API_URL deve usar HTTPS em produção.');
+}
+
 // Remove barras finais para evitar URLs com "//" quando os endpoints já começam com "/"
-export const baseURL = resolvedBase.replace(/\/+$/, '');
+export const baseURL = parsedBase.toString().replace(/\/+$/, '');
 
 export function handleUnauthorizedResponse(status?: number): boolean {
   if (status === 401) {

@@ -669,7 +669,7 @@
           />
           <datalist id="cities-list">
             {#each cities as option}
-              <option value={option} />
+              <option value={option}></option>
             {/each}
           </datalist>
           {#if citiesError}

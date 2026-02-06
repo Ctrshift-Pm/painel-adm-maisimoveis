@@ -1,9 +1,17 @@
 <script lang="ts">
   import Login from './lib/Login.svelte';
-  import Dashboard from './lib/Dashboard.svelte';
   import { Toaster } from '$lib/components/ui/sonner';
   import { authToken, theme } from './lib/store';
   import type { View } from './lib/types';
+
+  type LazySvelteComponent = any;
+  let DashboardComponent: LazySvelteComponent | null = null;
+
+  async function loadDashboard() {
+    if (DashboardComponent) return;
+    const module = await import('./lib/Dashboard.svelte');
+    DashboardComponent = module.default;
+  }
 
   $: {
     if (typeof window !== 'undefined') {
@@ -18,11 +26,21 @@
   if (typeof window !== 'undefined' && window.location.pathname === '/admin/properties') {
     initialView = 'properties';
   }
+
+  $: if ($authToken) {
+    loadDashboard();
+  }
 </script>
 
 <main class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white dark:bg-[radial-gradient(circle_at_top,_#1e293b,_#020617)]">
   {#if $authToken}
-    <Dashboard {initialView} />
+    {#if DashboardComponent}
+      <svelte:component this={DashboardComponent} {initialView} />
+    {:else}
+      <div class="flex min-h-screen items-center justify-center">
+        <div class="h-10 w-10 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent"></div>
+      </div>
+    {/if}
   {:else}
     <Login />
   {/if}
