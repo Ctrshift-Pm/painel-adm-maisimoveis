@@ -1,4 +1,4 @@
-import { authToken } from './store';
+import { authToken, clearStoredAuthToken } from './store';
 
 const metaEnv = (import.meta as { env?: Record<string, unknown> })?.env ?? {};
 const envBase = metaEnv.VITE_API_URL;
@@ -30,12 +30,8 @@ export const baseURL = parsedBase.toString().replace(/\/+$/, '');
 
 export function handleUnauthorizedResponse(status?: number): boolean {
   if (status === 401) {
+    clearStoredAuthToken();
     authToken.set(null);
-    try {
-      localStorage.removeItem('authToken');
-    } catch {
-      /* ignore */
-    }
     if (typeof window !== 'undefined') {
       window.location.href = '/';
     }

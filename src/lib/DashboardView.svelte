@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { baseURL } from './api';
     import { authToken } from './store';
+    import { get } from 'svelte/store';
     import KpiCard from './KpiCard.svelte';
 
     interface Stats {
@@ -16,7 +17,7 @@
     $: totalClients = stats ? Math.max(0, stats.totalUsers - stats.totalBrokers) : 0;
 
     onMount(async () => {
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
         if (!token) {
             authToken.set(null);
             return;

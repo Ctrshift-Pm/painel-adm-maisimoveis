@@ -5,6 +5,7 @@
     import Modal from './Modal.svelte';
     import { baseURL } from './api';
     import { authToken } from './store';
+    import { get } from 'svelte/store';
     import { onMount } from 'svelte';
     import type { Property, Broker, User, View } from './types';
 
@@ -72,7 +73,7 @@
     }
     async function fetchData() {
         isLoading = true;
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
         if (!token) {
             authToken.set(null);
             return;
@@ -106,7 +107,7 @@
 
     async function handleDeleteConfirm() {
         if (!itemToDelete) return;
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
         const { id, type } = itemToDelete;
         const endpoint = type === 'property' ? `/admin/properties/${id}` : `/admin/${type}s/${id}`;
         try {

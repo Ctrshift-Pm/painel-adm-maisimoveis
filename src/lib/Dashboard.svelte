@@ -9,6 +9,7 @@
     import VerificationTable from './VerificationTable.svelte';
     import { baseURL, handleUnauthorizedResponse } from './api';
     import { authToken } from './store';
+    import { get } from 'svelte/store';
     import { onMount, onDestroy } from 'svelte';
     import type { Property, Broker, User, View, DataItem, ViewConfig } from './types';
     
@@ -211,7 +212,7 @@
             return;
         }
 
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
         if (!token) {
             authToken.set(null);
             return;
@@ -308,7 +309,7 @@
     }
 
     async function fetchPendingCounts() {
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
         if (!token) {
             pendingCounts = { propertyRequests: 0, brokerRequests: 0 };
             authToken.set(null);
@@ -348,7 +349,7 @@
         isChartLoading = true;
         chartError = null;
 
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
         if (!token) {
             authToken.set(null);
             isChartLoading = false;
@@ -445,7 +446,7 @@
 
     async function handleDeleteConfirm() {
         if (!itemToDelete) return;
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
         const { id, type } = itemToDelete;
         
         const endpoint = type === 'property' 
@@ -468,7 +469,7 @@
 
     async function handleSave(event: CustomEvent<{ id: number; data: Partial<DataItem>, type: string }>) {
         const { id, data, type } = event.detail;
-        const token = localStorage.getItem('authToken');
+        const token = get(authToken);
 
         isSaving = true;
 

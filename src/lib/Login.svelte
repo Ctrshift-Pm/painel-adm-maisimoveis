@@ -40,7 +40,6 @@
 
             const data = await response.json();
             authToken.set(data.token);
-            localStorage.setItem('authToken', data.token);
             
         } catch (err) {
             error = 'Erro de conexão. Verifique sua internet.';
