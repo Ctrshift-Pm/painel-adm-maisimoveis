@@ -1,12 +1,18 @@
 import { authToken } from './store';
 
-const DEFAULT_BASE_URL = 'https://backend-production-6acc.up.railway.app';
-
-const envBase = (import.meta as { env?: Record<string, unknown> })?.env?.VITE_API_URL;
+const metaEnv = (import.meta as { env?: Record<string, unknown> })?.env ?? {};
+const envBase = metaEnv.VITE_API_URL;
+const isDev = Boolean(metaEnv.DEV);
 const resolvedBase =
   typeof envBase === 'string' && envBase.trim().length > 0
     ? envBase.trim()
-    : DEFAULT_BASE_URL;
+    : isDev
+      ? 'http://localhost:3333'
+      : '';
+
+if (!resolvedBase) {
+  throw new Error('VITE_API_URL não configurado. Configure no .env do painel.');
+}
 
 // Remove barras finais para evitar URLs com "//" quando os endpoints já começam com "/"
 export const baseURL = resolvedBase.replace(/\/+$/, '');

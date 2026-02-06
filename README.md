@@ -75,6 +75,20 @@ Antes de começar, certifique-se de ter instalado em sua máquina:
 
 ## Instalação e Execução
 
+### Configuração de ambiente
+
+Crie um arquivo `.env` na raiz a partir do exemplo:
+
+```bash
+copy .env.example .env
+```
+
+E defina a URL da API:
+
+```
+VITE_API_URL=http://localhost:3333
+```
+
 1. **Clone o repositório:**
    ```bash
    git clone https://github.com/Ctrshift-Pm/painel-adm-encontreaquiimoveis.git
