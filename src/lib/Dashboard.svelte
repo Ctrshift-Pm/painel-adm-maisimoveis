@@ -328,9 +328,9 @@
                 return 0;
             }
             const payload = await response.json();
+            if (payload && typeof payload.total === 'number') return payload.total;
             if (Array.isArray(payload)) return payload.length;
             if (payload && Array.isArray(payload.data)) return payload.data.length;
-            if (payload && typeof payload.total === 'number') return payload.total;
             return 0;
         }
 
@@ -416,6 +416,7 @@
         sortBy = 'id';
         sortOrder = 'desc';
         fetchData();
+        fetchPendingCounts();
         if (newView === 'dashboard') {
             fetchChartData();
         }
@@ -459,6 +460,7 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             fetchData();
+            fetchPendingCounts();
         } catch (error) {
             console.error(`Erro ao deletar item:`, error);
         } finally {
@@ -494,6 +496,7 @@
             
             showSaveMessage('Dados salvos com sucesso!', 'success');
             await fetchData();
+            await fetchPendingCounts();
 
         } catch (error: any) {
             console.error(`Erro ao salvar o ${type}:`, error);
@@ -529,7 +532,7 @@
             fetchChartData();
         }
         fetchPendingCounts();
-        pendingCountsInterval = setInterval(fetchPendingCounts, 60000);
+        pendingCountsInterval = setInterval(fetchPendingCounts, 15000);
     });
 
     onDestroy(() => {

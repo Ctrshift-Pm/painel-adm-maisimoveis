@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
   import { api, apiClient } from '$lib/apiClient';
   import { Button } from '$lib/components/ui/button';
@@ -82,6 +82,9 @@
   let areaTerreno = '';
   let brokerId = '';
   let brokerPhone = '';
+  let brokerQuery = '';
+  let brokerSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  let brokerDropdownOpen = false;
   let selectedBroker: Broker | null = null;
 
   let imagesInput: HTMLInputElement | null = null;
@@ -97,14 +100,18 @@
   let cepLookupError: string | null = null;
   let lastCepLookup = '';
 
-  async function fetchBrokers() {
+  async function fetchBrokers(searchTerm = '') {
     brokersLoading = true;
     brokersError = null;
     try {
       const params = new URLSearchParams();
       params.append('status', 'approved');
       params.append('page', '1');
-      params.append('limit', '200');
+      params.append('limit', '20');
+      const trimmedSearch = searchTerm.trim();
+      if (trimmedSearch.length >= 2) {
+        params.append('search', trimmedSearch);
+      }
       const response = await api.get<{ data?: Broker[]; total?: number } | Broker[]>(
         `/admin/brokers?${params.toString()}`
       );
@@ -116,6 +123,37 @@
     } finally {
       brokersLoading = false;
     }
+  }
+
+  function clearBrokerSelection() {
+    brokerId = '';
+    brokerPhone = '';
+    selectedBroker = null;
+    brokerQuery = '';
+  }
+
+  function selectBroker(broker: Broker) {
+    selectedBroker = broker;
+    brokerId = String(broker.id);
+    brokerPhone = broker.phone ?? '';
+    brokerQuery = broker.name ?? '';
+    brokerDropdownOpen = false;
+  }
+
+  function handleBrokerQueryInput(value: string) {
+    brokerQuery = value;
+    brokerDropdownOpen = true;
+    if (selectedBroker && value.trim() !== (selectedBroker.name ?? '').trim()) {
+      brokerId = '';
+      selectedBroker = null;
+      brokerPhone = '';
+    }
+    if (brokerSearchTimer) {
+      clearTimeout(brokerSearchTimer);
+    }
+    brokerSearchTimer = setTimeout(() => {
+      fetchBrokers(value);
+    }, 300);
   }
 
   async function fetchCitiesForState(uf: string) {
@@ -307,16 +345,15 @@
   }
 
   onMount(() => {
-    fetchBrokers();
+    fetchBrokers('');
     fetchCitiesForState(state);
   });
 
-  function handleBrokerChange(value: string) {
-    brokerId = value;
-    const broker = brokers.find((item) => item.id === Number(value)) ?? null;
-    selectedBroker = broker;
-    brokerPhone = broker?.phone ?? '';
-  }
+  onDestroy(() => {
+    if (brokerSearchTimer) {
+      clearTimeout(brokerSearchTimer);
+    }
+  });
 </script>
 
 <div class="space-y-6">
@@ -395,24 +432,58 @@
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Corretor responsável
-            <select
-              class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              bind:value={brokerId}
-              on:change={(event) => handleBrokerChange((event.target as HTMLSelectElement).value)}
-            >
-              <option value="">Sem corretor</option>
-              {#if brokersLoading}
-                <option disabled>Carregando...</option>
-              {:else}
-                {#each brokers as broker}
-                  <option value={broker.id}>{broker.name}</option>
-                {/each}
-              {/if}
-            </select>
-            {#if brokersError}
-              <span class="text-xs text-red-500 dark:text-red-400">{brokersError}</span>
+          <div class="relative">
+            <input
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              bind:value={brokerQuery}
+              placeholder="Digite ao menos 2 letras para buscar corretor"
+              on:focus={() => (brokerDropdownOpen = true)}
+              on:blur={() =>
+                setTimeout(() => {
+                  brokerDropdownOpen = false;
+                }, 120)}
+              on:input={(event) => {
+                const target = event.target as HTMLInputElement;
+                handleBrokerQueryInput(target.value);
+              }}
+            />
+            {#if brokerDropdownOpen}
+              <div class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                <button
+                  type="button"
+                  class="w-full border-b border-gray-200 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                  on:click={clearBrokerSelection}
+                >
+                  Sem corretor
+                </button>
+                {#if brokersLoading}
+                  <p class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">Buscando corretores...</p>
+                {:else if brokers.length === 0}
+                  <p class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">Nenhum corretor encontrado.</p>
+                {:else}
+                  {#each brokers as broker}
+                    <button
+                      type="button"
+                      class="w-full border-t border-gray-100 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
+                      on:click={() => selectBroker(broker)}
+                    >
+                      <span class="block font-medium text-gray-900 dark:text-gray-100">{broker.name}</span>
+                      <span class="block text-xs text-gray-500 dark:text-gray-400">{broker.email} {broker.phone ? `· ${broker.phone}` : ''}</span>
+                    </button>
+                  {/each}
+                {/if}
+              </div>
             {/if}
-          </label>
+          </div>
+          {#if selectedBroker}
+            <span class="text-xs text-emerald-600 dark:text-emerald-400">
+              Selecionado: {selectedBroker.name} (ID {selectedBroker.id})
+            </span>
+          {/if}
+          {#if brokersError}
+            <span class="text-xs text-red-500 dark:text-red-400">{brokersError}</span>
+          {/if}
+        </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Telefone do corretor responsável
           <input
