@@ -7,6 +7,8 @@
   import {
     formatCep,
     formatCurrencyInput,
+    formatPhoneBr,
+    hasValidPhoneBr,
     normalizeDecimal,
     onlyDigits,
     resolveCreatePropertyPrices,
@@ -61,7 +63,7 @@
   let description = '';
   let type = 'Casa';
   let purpose = 'Venda';
-  let status = 'pending_approval';
+  let status = 'approved';
   let priceSale = '';
   let priceRent = '';
   let ownerName = '';
@@ -136,7 +138,7 @@
   function selectBroker(broker: Broker) {
     selectedBroker = broker;
     brokerId = String(broker.id);
-    brokerPhone = broker.phone ?? '';
+    brokerPhone = formatPhoneBr(broker.phone ?? '');
     brokerQuery = broker.name ?? '';
     brokerDropdownOpen = false;
   }
@@ -214,8 +216,57 @@
 
   async function handleSubmit() {
     if (isSubmitting) return;
-    if (!title.trim() || !type || !purpose || !address.trim() || !city.trim() || !state || !cep.trim()) {
-      toast.error('Preencha título, tipo, finalidade, endereço, CEP, cidade e estado.');
+    const requiredMessage =
+      !title.trim()
+        ? 'Informe o título do imóvel.'
+        : !description.trim()
+          ? 'Informe a descrição do imóvel.'
+          : !type
+            ? 'Informe o tipo do imóvel.'
+            : !purpose
+              ? 'Informe a finalidade do imóvel.'
+              : !ownerName.trim()
+                ? 'Informe o nome do proprietário.'
+                : !hasValidPhoneBr(ownerPhone)
+                  ? 'Informe o telefone do proprietário no formato (00)00000-0000.'
+                  : !address.trim()
+                    ? 'Informe o endereço.'
+                    : !numero.trim()
+                      ? 'Informe o número do endereço.'
+                      : !onlyDigits(numero)
+                        ? 'Número do endereço deve conter apenas dígitos.'
+                        : !bairro.trim()
+                          ? 'Informe o bairro.'
+                          : onlyDigits(cep).length !== 8
+                            ? 'Informe um CEP válido.'
+                            : !city.trim()
+                              ? 'Informe a cidade.'
+                              : !state.trim()
+                                ? 'Informe o estado.'
+                                : !quadra.trim()
+                                  ? 'Informe a quadra.'
+                                  : !lote.trim()
+                                    ? 'Informe o lote.'
+                                    : !tipoLote.trim()
+                                      ? 'Informe o tipo do lote.'
+                                      : !bedrooms.trim()
+                                        ? 'Informe a quantidade de quartos.'
+                                        : !bathrooms.trim()
+                                          ? 'Informe a quantidade de banheiros.'
+                                          : !garageSpots.trim()
+                                            ? 'Informe a quantidade de garagens.'
+                                            : !areaConstruida.trim()
+                                              ? 'Informe a área construída.'
+                                              : !areaTerreno.trim()
+                                                ? 'Informe a área do terreno.'
+                                                : null;
+    if (requiredMessage) {
+      toast.error(requiredMessage);
+      return;
+    }
+
+    if (images == null || images.length < 2) {
+      toast.error('Envie pelo menos 2 imagens do imóvel.');
       return;
     }
 
@@ -239,15 +290,15 @@
     form.append('city', city.trim());
     form.append('state', state);
     form.append('cep', onlyDigits(cep));
-    if (ownerName.trim()) form.append('owner_name', ownerName.trim());
-    if (ownerPhone.trim()) form.append('owner_phone', ownerPhone.trim());
-    form.append('description', description.trim() || 'Sem descrição informada.');
-    if (bairro.trim()) form.append('bairro', bairro.trim());
-    if (numero.trim()) form.append('numero', numero.trim());
-    if (quadra.trim()) form.append('quadra', quadra.trim());
-    if (lote.trim()) form.append('lote', lote.trim());
+    form.append('owner_name', ownerName.trim());
+    form.append('owner_phone', onlyDigits(ownerPhone));
+    form.append('description', description.trim());
+    form.append('bairro', bairro.trim());
+    form.append('numero', onlyDigits(numero));
+    form.append('quadra', quadra.trim());
+    form.append('lote', lote.trim());
     if (complemento.trim()) form.append('complemento', complemento.trim());
-    if (tipoLote.trim()) form.append('tipo_lote', tipoLote.trim());
+    form.append('tipo_lote', tipoLote.trim());
     if (brokerId) form.append('broker_id', brokerId);
 
     if (price != null) form.append('price', String(price));
@@ -284,16 +335,16 @@
       if (brokerId) {
         const broker =
           selectedBroker ?? brokers.find((item) => item.id === Number(brokerId)) ?? null;
-        if (broker && brokerPhone.trim() !== (broker.phone ?? '')) {
+        if (broker && onlyDigits(brokerPhone) !== onlyDigits(broker.phone ?? '')) {
           try {
             await api.put(`/admin/brokers/${brokerId}`, {
               name: broker.name,
               email: broker.email,
-              phone: brokerPhone.trim(),
+              phone: onlyDigits(brokerPhone),
             });
             brokers = brokers.map((entry) =>
               entry.id === Number(brokerId)
-                ? { ...entry, phone: brokerPhone.trim() }
+                ? { ...entry, phone: onlyDigits(brokerPhone) }
                 : entry
             );
           } catch (updateBrokerError) {
@@ -308,7 +359,7 @@
       description = '';
       purpose = 'Venda';
       type = 'Casa';
-      status = 'pending_approval';
+      status = 'approved';
       priceSale = '';
       priceRent = '';
       ownerName = '';
@@ -403,8 +454,8 @@
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={status}
           >
-            <option value="pending_approval">Pendente</option>
             <option value="approved">Aprovado</option>
+            <option value="pending_approval">Pendente</option>
           </select>
         </label>
       </div>
@@ -424,10 +475,10 @@
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={ownerPhone}
             inputmode="numeric"
-            placeholder="Telefone do proprietário"
+            placeholder="(00)00000-0000"
             on:input={(event) => {
               const target = event.target as HTMLInputElement;
-              ownerPhone = sanitizeDigitsInput(target.value);
+              ownerPhone = formatPhoneBr(target.value);
             }}
           />
         </label>
@@ -491,11 +542,11 @@
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={brokerPhone}
             inputmode="numeric"
-            placeholder="Telefone do corretor"
+            placeholder="(00)00000-0000"
             disabled={!brokerId}
             on:input={(event) => {
               const target = event.target as HTMLInputElement;
-              brokerPhone = sanitizeDigitsInput(target.value);
+              brokerPhone = formatPhoneBr(target.value);
             }}
           />
         </label>
@@ -626,6 +677,11 @@
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={numero}
+            inputmode="numeric"
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              numero = sanitizeDigitsInput(target.value);
+            }}
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -634,18 +690,6 @@
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bairro}
           />
-        </label>
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Estado
-          <select
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={state}
-            on:change={() => fetchCitiesForState(state)}
-          >
-            {#each states as uf}
-              <option value={uf}>{uf}</option>
-            {/each}
-          </select>
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           CEP
@@ -662,6 +706,38 @@
               }
             }}
           />
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Cidade
+          <input
+            list="cities-list"
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={city}
+            placeholder={citiesLoading ? 'Carregando cidades...' : 'Digite ou selecione'}
+          />
+          <datalist id="cities-list">
+            {#each cities as option}
+              <option value={option}></option>
+            {/each}
+          </datalist>
+          {#if citiesError}
+            <span class="text-xs text-red-500 dark:text-red-400">{citiesError}</span>
+          {/if}
+          {#if cepLookupError}
+            <span class="text-xs text-red-500 dark:text-red-400">{cepLookupError}</span>
+          {/if}
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Estado
+          <select
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={state}
+            on:change={() => fetchCitiesForState(state)}
+          >
+            {#each states as uf}
+              <option value={uf}>{uf}</option>
+            {/each}
+          </select>
         </label>
       </div>
 
@@ -691,29 +767,6 @@
               <option value={lotType}>{lotType}</option>
             {/each}
           </select>
-        </label>
-      </div>
-
-      <div class="grid gap-4 md:grid-cols-2">
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Cidade
-          <input
-            list="cities-list"
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={city}
-            placeholder={citiesLoading ? 'Carregando cidades...' : 'Digite ou selecione'}
-          />
-          <datalist id="cities-list">
-            {#each cities as option}
-              <option value={option}></option>
-            {/each}
-          </datalist>
-          {#if citiesError}
-            <span class="text-xs text-red-500 dark:text-red-400">{citiesError}</span>
-          {/if}
-          {#if cepLookupError}
-            <span class="text-xs text-red-500 dark:text-red-400">{cepLookupError}</span>
-          {/if}
         </label>
       </div>
 

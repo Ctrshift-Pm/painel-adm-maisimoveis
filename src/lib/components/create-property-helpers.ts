@@ -2,6 +2,32 @@ export function onlyDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+export function formatPhoneBr(value: string): string {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)})${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)})${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)})${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+export function hasValidPhoneBr(value: string): boolean {
+  return onlyDigits(value).length === 11;
+}
+
+export function sanitizeCreciInput(value: string): string {
+  return onlyDigits(value).slice(0, 8);
+}
+
+export function hasValidCreci(value: string): boolean {
+  const length = onlyDigits(value).length;
+  return length >= 4 && length <= 8;
+}
+
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 export function formatCep(value: string): string {
   const digits = onlyDigits(value).slice(0, 8);
   if (digits.length <= 5) return digits;

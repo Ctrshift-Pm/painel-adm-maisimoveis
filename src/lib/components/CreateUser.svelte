@@ -1,7 +1,17 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
   import { api } from '$lib/apiClient';
-  import { formatCep, onlyDigits } from './create-property-helpers';
+  import {
+    formatCep,
+    formatPhoneBr,
+    hasValidCreci,
+    hasValidPhoneBr,
+    isValidEmail,
+    onlyDigits,
+    sanitizeCreciInput,
+    sanitizeDigitsInput,
+  } from './create-property-helpers';
 
   type UserKind = 'client' | 'broker';
 
@@ -13,6 +23,7 @@
 
   let isSubmitting = false;
   let userKind: UserKind = 'client';
+  let brokerStatus = 'approved';
 
   let name = '';
   let email = '';
@@ -27,6 +38,12 @@
   let city = '';
   let state = 'GO';
   let cep = '';
+  let cities: string[] = [];
+  let citiesLoading = false;
+  let citiesError: string | null = null;
+  let cepLookupError: string | null = null;
+  let lastCepLookup = '';
+  const cityCache: Record<string, string[]> = {};
 
   let creciFrontFile: File | null = null;
   let creciBackFile: File | null = null;
@@ -45,9 +62,14 @@
     city = '';
     state = 'GO';
     cep = '';
+    brokerStatus = 'approved';
     creciFrontFile = null;
     creciBackFile = null;
     selfieFile = null;
+    cities = [];
+    citiesError = null;
+    cepLookupError = null;
+    lastCepLookup = '';
   }
 
   function readFile(event: Event): File | null {
@@ -58,13 +80,73 @@
   function validateCommonFields(): string | null {
     if (!name.trim()) return 'Informe o nome.';
     if (!email.trim()) return 'Informe o email.';
+    if (!isValidEmail(email)) return 'Informe um email válido (exemplo: nome@dominio.com).';
+    if (!hasValidPhoneBr(phone)) return 'Informe telefone no formato (00)00000-0000.';
+    if (!password.trim()) return 'Informe a senha.';
     if (!street.trim()) return 'Informe o endereço.';
     if (!number.trim()) return 'Informe o número.';
+    if (!onlyDigits(number)) return 'Número deve conter apenas dígitos.';
     if (!bairro.trim()) return 'Informe o bairro.';
+    if (!onlyDigits(cep).trim()) return 'Informe o CEP.';
+    if (onlyDigits(cep).length !== 8) return 'CEP inválido.';
     if (!city.trim()) return 'Informe a cidade.';
     if (!state.trim()) return 'Informe o estado.';
-    if (!onlyDigits(cep).trim()) return 'Informe o CEP.';
     return null;
+  }
+
+  async function fetchCitiesForState(uf: string) {
+    if (!uf) {
+      cities = [];
+      return;
+    }
+    if (cityCache[uf]) {
+      cities = cityCache[uf];
+      return;
+    }
+    citiesLoading = true;
+    citiesError = null;
+    try {
+      const response = await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`
+      );
+      if (!response.ok) throw new Error('Falha ao carregar cidades.');
+      const payload = await response.json();
+      const names = Array.isArray(payload)
+        ? payload.map((item) => String(item?.nome ?? '')).filter(Boolean)
+        : [];
+      cities = names.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      cityCache[uf] = cities;
+    } catch (error) {
+      console.error('Erro ao carregar cidades:', error);
+      citiesError = 'Não foi possível carregar cidades.';
+      cities = [];
+    } finally {
+      citiesLoading = false;
+    }
+  }
+
+  async function lookupCep(value: string) {
+    const digits = onlyDigits(value);
+    if (digits.length !== 8) return;
+    if (digits === lastCepLookup) return;
+    lastCepLookup = digits;
+    cepLookupError = null;
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      if (!response.ok) throw new Error('Falha ao consultar CEP.');
+      const data = await response.json();
+      if (data?.erro) return;
+      if (data?.uf) {
+        state = String(data.uf);
+        await fetchCitiesForState(state);
+      }
+      if (data?.localidade) {
+        city = String(data.localidade);
+      }
+    } catch (error) {
+      console.error('Erro ao consultar CEP:', error);
+      cepLookupError = 'CEP não encontrado.';
+    }
   }
 
   async function handleSubmit() {
@@ -81,9 +163,9 @@
           name: name.trim(),
           email: email.trim(),
           phone: onlyDigits(phone),
-          password: password.trim() || undefined,
+          password: password.trim(),
           street: street.trim(),
-          number: number.trim(),
+          number: onlyDigits(number),
           complement: complement.trim() || undefined,
           bairro: bairro.trim(),
           city: city.trim(),
@@ -95,8 +177,8 @@
         return;
       }
 
-      if (!creci.trim()) {
-        toast.error('Informe o CRECI para o corretor.');
+      if (!hasValidCreci(creci)) {
+        toast.error('CRECI deve conter entre 4 e 8 números.');
         return;
       }
       if (!creciFrontFile || !creciBackFile || !selfieFile) {
@@ -108,12 +190,11 @@
       formData.append('name', name.trim());
       formData.append('email', email.trim());
       formData.append('phone', onlyDigits(phone));
-      if (password.trim()) {
-        formData.append('password', password.trim());
-      }
-      formData.append('creci', creci.trim());
+      formData.append('password', password.trim());
+      formData.append('creci', onlyDigits(creci));
+      formData.append('status', brokerStatus);
       formData.append('street', street.trim());
-      formData.append('number', number.trim());
+      formData.append('number', onlyDigits(number));
       if (complement.trim()) {
         formData.append('complement', complement.trim());
       }
@@ -134,6 +215,10 @@
       isSubmitting = false;
     }
   }
+
+  onMount(() => {
+    fetchCitiesForState(state);
+  });
 </script>
 
 <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -181,11 +266,11 @@
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={phone}
         inputmode="numeric"
+        placeholder="(00)00000-0000"
         on:input={(event) => {
           const target = event.target as HTMLInputElement;
-          phone = onlyDigits(target.value);
+          phone = formatPhoneBr(target.value);
         }}
-        placeholder="Somente números"
       />
     </label>
 
@@ -205,8 +290,24 @@
         <input
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={creci}
-          placeholder="Número do CRECI"
+          inputmode="numeric"
+          placeholder="4 a 8 números"
+          on:input={(event) => {
+            const target = event.target as HTMLInputElement;
+            creci = sanitizeCreciInput(target.value);
+          }}
         />
+      </label>
+
+      <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+        Status inicial do corretor
+        <select
+          class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          bind:value={brokerStatus}
+        >
+          <option value="approved">Aprovado</option>
+          <option value="pending_verification">Pendente</option>
+        </select>
       </label>
     {/if}
   </div>
@@ -224,6 +325,11 @@
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={number}
+        inputmode="numeric"
+        on:input={(event) => {
+          const target = event.target as HTMLInputElement;
+          number = sanitizeDigitsInput(target.value);
+        }}
       />
     </label>
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -241,24 +347,6 @@
       />
     </label>
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Cidade
-      <input
-        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-        bind:value={city}
-      />
-    </label>
-    <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Estado
-      <select
-        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-        bind:value={state}
-      >
-        {#each states as uf}
-          <option value={uf}>{uf}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       CEP
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
@@ -268,8 +356,43 @@
         on:input={(event) => {
           const target = event.target as HTMLInputElement;
           cep = formatCep(target.value);
+          if (onlyDigits(cep).length === 8) {
+            lookupCep(cep);
+          }
         }}
       />
+    </label>
+    <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+      Cidade
+      <input
+        list="cities-list-user"
+        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+        bind:value={city}
+        placeholder={citiesLoading ? 'Carregando cidades...' : 'Digite ou selecione'}
+      />
+      <datalist id="cities-list-user">
+        {#each cities as option}
+          <option value={option}></option>
+        {/each}
+      </datalist>
+      {#if citiesError}
+        <span class="text-xs text-red-500 dark:text-red-400">{citiesError}</span>
+      {/if}
+      {#if cepLookupError}
+        <span class="text-xs text-red-500 dark:text-red-400">{cepLookupError}</span>
+      {/if}
+    </label>
+    <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+      Estado
+      <select
+        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+        bind:value={state}
+        on:change={() => fetchCitiesForState(state)}
+      >
+        {#each states as uf}
+          <option value={uf}>{uf}</option>
+        {/each}
+      </select>
     </label>
   </div>
 
