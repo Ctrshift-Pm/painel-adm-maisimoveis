@@ -16,6 +16,7 @@
     'dashboard',
     'properties',
     'property_requests',
+    'sold_properties',
     'create_property',
     'create_user',
     'brokers',
@@ -90,6 +91,15 @@
         ></path>
       </svg>
       Imóveis
+    </button>
+    <button
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'sold_properties' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
+      on:click={() => handleNavigation('sold_properties')}
+    >
+      <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      Imóveis vendidos
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'create_property' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"

@@ -119,6 +119,7 @@ export type View =
   | 'dashboard'
   | 'properties'
   | 'property_requests'
+  | 'sold_properties'
   | 'create_property'
   | 'create_user'
   | 'brokers'

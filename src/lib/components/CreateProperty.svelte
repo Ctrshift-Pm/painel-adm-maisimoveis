@@ -109,13 +109,21 @@
 
   let imagesInput: HTMLInputElement | null = null;
   let videoInput: HTMLInputElement | null = null;
-  let images: FileList | null = null;
+  let selectedImages: File[] = [];
+  let imagePreviewUrls: string[] = [];
   let video: File | null = null;
+  let videoPreviewUrl: string | null = null;
   let isSubmitting = false;
   let isPromoted = false;
   let promotionPercentage = '';
   let promotionStart = '';
   let promotionEnd = '';
+  let hasWifi = false;
+  let temPiscina = false;
+  let temEnergiaSolar = false;
+  let temAutomacao = false;
+  let temArCondicionado = false;
+  let ehMobiliada = false;
 
   const cityCache: Record<string, string[]> = {};
   let cities: string[] = [];
@@ -241,6 +249,80 @@
     }
   }
 
+  function revokeImagePreviews() {
+    imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    imagePreviewUrls = [];
+  }
+
+  function refreshImagePreviews() {
+    revokeImagePreviews();
+    imagePreviewUrls = selectedImages.map((file) => URL.createObjectURL(file));
+  }
+
+  function handleImagesChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const files = Array.from(target.files ?? []);
+    if (files.length === 0) return;
+
+    const current = [...selectedImages];
+    const maxImages = 20;
+    let ignoredCount = 0;
+
+    for (const file of files) {
+      if (current.length >= maxImages) {
+        ignoredCount++;
+        continue;
+      }
+      const alreadySelected = current.some(
+        (selected) =>
+          selected.name === file.name &&
+          selected.size === file.size &&
+          selected.lastModified === file.lastModified
+      );
+      if (alreadySelected) {
+        ignoredCount++;
+        continue;
+      }
+      current.push(file);
+    }
+
+    selectedImages = current;
+    refreshImagePreviews();
+    target.value = '';
+
+    if (ignoredCount > 0) {
+      toast.warning('Algumas imagens foram ignoradas por duplicidade ou limite de 20 arquivos.');
+    }
+  }
+
+  function removeSelectedImage(index: number) {
+    selectedImages = selectedImages.filter((_, fileIndex) => fileIndex !== index);
+    refreshImagePreviews();
+  }
+
+  function revokeVideoPreview() {
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+      videoPreviewUrl = null;
+    }
+  }
+
+  function handleVideoChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files && target.files.length > 0 ? target.files[0] : null;
+    revokeVideoPreview();
+    video = file;
+    videoPreviewUrl = file ? URL.createObjectURL(file) : null;
+  }
+
+  function clearVideoSelection() {
+    video = null;
+    revokeVideoPreview();
+    if (videoInput) {
+      videoInput.value = '';
+    }
+  }
+
   async function handleSubmit() {
     if (isSubmitting) return;
     const requiredMessage =
@@ -311,11 +393,15 @@
       }
     }
 
-    if (images == null || images.length < 2) {
-      toast.error('Envie pelo menos 2 imagens do imóvel.');
+    if (selectedImages.length < 1) {
+      toast.error('Envie pelo menos 1 imagem do imóvel.');
       return;
     }
-    const oversizedImage = Array.from(images).find((file) => file.size > MAX_IMAGE_SIZE_BYTES);
+    if (selectedImages.length > 20) {
+      toast.error('Limite máximo de 20 imagens por imóvel.');
+      return;
+    }
+    const oversizedImage = selectedImages.find((file) => file.size > MAX_IMAGE_SIZE_BYTES);
     if (oversizedImage) {
       toast.error(
         `A imagem "${oversizedImage.name}" excede ${MAX_IMAGE_SIZE_MB}MB. Reduza o arquivo e tente novamente.`
@@ -375,6 +461,12 @@
     if (price != null) form.append('price', String(price));
     if (resolvedSale != null) form.append('price_sale', String(resolvedSale));
     if (resolvedRent != null) form.append('price_rent', String(resolvedRent));
+    form.append('has_wifi', hasWifi ? '1' : '0');
+    form.append('tem_piscina', temPiscina ? '1' : '0');
+    form.append('tem_energia_solar', temEnergiaSolar ? '1' : '0');
+    form.append('tem_automacao', temAutomacao ? '1' : '0');
+    form.append('tem_ar_condicionado', temArCondicionado ? '1' : '0');
+    form.append('eh_mobiliada', ehMobiliada ? '1' : '0');
 
     const parsedBedrooms = bedrooms ? Number(bedrooms) : null;
     if (parsedBedrooms != null && Number.isFinite(parsedBedrooms)) {
@@ -394,8 +486,8 @@
     const parsedAreaTerreno = normalizeDecimal(areaTerreno);
     if (parsedAreaTerreno != null) form.append('area_terreno', String(parsedAreaTerreno));
 
-    if (images && images.length > 0) {
-      Array.from(images).forEach((file) => form.append('images', file));
+    if (selectedImages.length > 0) {
+      selectedImages.forEach((file) => form.append('images', file));
     }
     if (video) {
       form.append('video', video);
@@ -458,10 +550,17 @@
       brokerId = '';
       brokerPhone = '';
       selectedBroker = null;
-      images = null;
+      selectedImages = [];
+      revokeImagePreviews();
       video = null;
+      hasWifi = false;
+      temPiscina = false;
+      temEnergiaSolar = false;
+      temAutomacao = false;
+      temArCondicionado = false;
+      ehMobiliada = false;
       if (imagesInput) imagesInput.value = '';
-      if (videoInput) videoInput.value = '';
+      clearVideoSelection();
     } catch (error) {
       console.error('Erro ao criar imóvel:', error);
       const apiError = error as { response?: { data?: { error?: string; message?: string } } };
@@ -481,6 +580,8 @@
     if (brokerSearchTimer) {
       clearTimeout(brokerSearchTimer);
     }
+    revokeImagePreviews();
+    revokeVideoPreview();
   });
 </script>
 
@@ -910,9 +1011,39 @@
         </label>
       </div>
 
+      <div class="rounded-md border border-gray-200 p-4 dark:border-gray-700">
+        <p class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-100">Comodidades</p>
+        <div class="grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={hasWifi} />
+            Wi-Fi
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temPiscina} />
+            Piscina
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temEnergiaSolar} />
+            Energia solar
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temAutomacao} />
+            Automação
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temArCondicionado} />
+            Ar condicionado
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={ehMobiliada} />
+            Mobiliada
+          </label>
+        </div>
+      </div>
+
       <div class="space-y-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="create-images-input">
-          Fotos do imóvel
+          Fotos do imóvel *
         </label>
         <input
           id="create-images-input"
@@ -921,14 +1052,37 @@
           type="file"
           accept="image/*"
           multiple
-          on:change={(e) => {
-            const target = e.target as HTMLInputElement;
-            images = target.files;
-          }}
+          on:change={handleImagesChange}
         />
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          Mínimo de 2 imagens. Tamanho máximo por imagem: {MAX_IMAGE_SIZE_MB}MB.
+          Mínimo de 1 imagem e máximo de 20. Tamanho máximo por imagem: {MAX_IMAGE_SIZE_MB}MB.
         </p>
+        {#if selectedImages.length > 0}
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {#each selectedImages as file, index}
+              <div class="rounded-md border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
+                <div class="aspect-[4/3] overflow-hidden rounded">
+                  {#if imagePreviewUrls[index]}
+                    <img
+                      src={imagePreviewUrls[index]}
+                      alt={file.name}
+                      class="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  {/if}
+                </div>
+                <p class="mt-2 truncate text-xs text-gray-600 dark:text-gray-300">{file.name}</p>
+                <button
+                  type="button"
+                  class="mt-2 w-full rounded-md bg-red-500 px-2 py-1 text-xs font-semibold text-white hover:bg-red-600"
+                  on:click={() => removeSelectedImage(index)}
+                >
+                  Remover
+                </button>
+              </div>
+            {/each}
+          </div>
+        {/if}
       </div>
 
       <div class="space-y-2">
@@ -941,14 +1095,25 @@
           class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           type="file"
           accept="video/*"
-          on:change={(e) => {
-            const target = e.target as HTMLInputElement;
-            video = target.files && target.files.length > 0 ? target.files[0] : null;
-          }}
+          on:change={handleVideoChange}
         />
         <p class="text-xs text-gray-500 dark:text-gray-400">
           Tamanho máximo do vídeo: {MAX_VIDEO_SIZE_MB}MB.
         </p>
+        {#if videoPreviewUrl}
+          <div class="rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+            <video src={videoPreviewUrl} controls class="max-h-64 w-full rounded-md bg-black">
+              <track kind="captions" srclang="pt-BR" label="Sem legendas disponíveis" />
+            </video>
+            <button
+              type="button"
+              class="mt-3 rounded-md bg-red-500 px-3 py-1 text-sm font-semibold text-white hover:bg-red-600"
+              on:click={clearVideoSelection}
+            >
+              Remover vídeo
+            </button>
+          </div>
+        {/if}
       </div>
 
       <div class="flex justify-end">

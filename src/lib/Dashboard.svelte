@@ -91,7 +91,7 @@
     }
 
     async function ensureViewComponents(view: View) {
-        if (view === 'properties' || view === 'property_requests') {
+        if (view === 'properties' || view === 'property_requests' || view === 'sold_properties') {
             if (!PropertyManagementComponent) {
                 const module = await import('./PropertyManagement.svelte');
                 PropertyManagementComponent = module.default;
@@ -161,6 +161,9 @@
         property_requests: {
             title: 'Solicitações de Imóveis'
         },
+        sold_properties: {
+            title: 'Imóveis vendidos'
+        },
         create_property: {
             title: 'Cadastrar Imóvel'
         },
@@ -213,6 +216,7 @@
         if (
             activeView === 'properties' ||
             activeView === 'property_requests' ||
+            activeView === 'sold_properties' ||
             activeView === 'brokers' ||
             activeView === 'create_property' ||
             activeView === 'create_user'
@@ -740,6 +744,14 @@
             {:else if activeView === 'property_requests'}
                 {#if PropertyManagementComponent}
                     <svelte:component this={PropertyManagementComponent} initialStatus="pending_approval" allowApproval={true} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
+            {:else if activeView === 'sold_properties'}
+                {#if PropertyManagementComponent}
+                    <svelte:component this={PropertyManagementComponent} initialStatus="sold" />
                 {:else}
                     <div class="flex justify-center items-center h-64">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>

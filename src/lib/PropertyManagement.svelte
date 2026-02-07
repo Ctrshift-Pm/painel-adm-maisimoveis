@@ -115,6 +115,9 @@
   let stagedImages: File[] = [];
   let stagedImagePreviews: string[] = [];
   let imageInputEl: HTMLInputElement | null = null;
+  let stagedVideo: File | null = null;
+  let stagedVideoPreview: string | null = null;
+  let videoUploading = false;
   let videoDeleting = false;
   let videoDeleteError: string | null = null;
   let videoInputEl: HTMLInputElement | null = null;
@@ -123,6 +126,7 @@
   let previewImageIndex = 0;
   let previewImagesSnapshot: NormalizedImage[] = [];
   let brokenPreviewImages = new Set<string>();
+  const MAX_TOTAL_IMAGES = 20;
 
   $: previewImages = previewImagesSnapshot.length
     ? previewImagesSnapshot
@@ -249,6 +253,7 @@
 
   onDestroy(() => {
     clearStagedImages();
+    clearStagedVideo();
   });
 
   $: if (hasMounted) {
@@ -638,6 +643,7 @@
   function closeModal() {
     if (isProcessing) return;
     clearStagedImages();
+    clearStagedVideo();
     isModalOpen = false;
     selectedProperty = null;
     editableProperty = null;
@@ -665,6 +671,7 @@
       }
       isModalOpen = false;
       clearStagedImages();
+      clearStagedVideo();
       selectedProperty = null;
       await fetchProperties();
     } catch (err) {
@@ -694,6 +701,7 @@
       toast.success('Imóvel excluido com sucesso.');
       isModalOpen = false;
       clearStagedImages();
+      clearStagedVideo();
       selectedProperty = null;
       await fetchProperties();
     } catch (err) {
@@ -955,6 +963,19 @@
     }
   }
 
+  function removeStagedImage(index: number) {
+    if (index < 0 || index >= stagedImages.length) return;
+    const preview = stagedImagePreviews[index];
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+    stagedImages = stagedImages.filter((_, i) => i !== index);
+    stagedImagePreviews = stagedImagePreviews.filter((_, i) => i !== index);
+    if (stagedImages.length === 0 && imageInputEl) {
+      imageInputEl.value = '';
+    }
+  }
+
   function handleImageSelection(event: Event) {
     const input = event.target as HTMLInputElement;
     const files = input.files;
@@ -963,8 +984,24 @@
       return;
     }
 
+    const existingCount = selectedPropertyImages().length;
+    const availableSlots = Math.max(0, MAX_TOTAL_IMAGES - existingCount);
+    if (availableSlots <= 0) {
+      imageUploadError = `Este imóvel já possui ${MAX_TOTAL_IMAGES} imagens. Remova alguma imagem para adicionar novas.`;
+      if (imageInputEl) {
+        imageInputEl.value = '';
+      }
+      return;
+    }
+
     clearStagedImages();
-    stagedImages = Array.from(files);
+    const selectedFiles = Array.from(files).slice(0, availableSlots);
+    if (selectedFiles.length < files.length) {
+      imageUploadError = `Você selecionou mais imagens do que o limite permitido. Apenas ${selectedFiles.length} serão consideradas.`;
+    } else {
+      imageUploadError = null;
+    }
+    stagedImages = selectedFiles;
     stagedImagePreviews = stagedImages.map((file) => URL.createObjectURL(file));
   }
 
@@ -1001,6 +1038,11 @@
 
   async function handleImageDelete(imageId: number) {
     if (!selectedProperty) return;
+    if (selectedPropertyImages().length <= 1) {
+      imageDeleteError = 'O imóvel precisa manter ao menos 1 imagem.';
+      toast.error(imageDeleteError);
+      return;
+    }
     imageDeleteError = null;
     try {
       await api.delete(`/admin/properties/${selectedProperty.id}/images/${imageId}`);
@@ -1029,6 +1071,7 @@
       await api.delete(`/admin/properties/${selectedProperty.id}/video`);
       toast.success('Vídeo removido com sucesso.');
       await reviewProperty(selectedProperty as PropertySummary);
+      clearStagedVideo();
       if (videoInputEl) {
         videoInputEl.value = '';
       }
@@ -1044,6 +1087,53 @@
         (err instanceof Error ? err.message : 'Falha ao remover vídeo.');
     } finally {
       videoDeleting = false;
+    }
+  }
+
+  function clearStagedVideo() {
+    if (stagedVideoPreview) {
+      URL.revokeObjectURL(stagedVideoPreview);
+    }
+    stagedVideoPreview = null;
+    stagedVideo = null;
+    if (videoInputEl) {
+      videoInputEl.value = '';
+    }
+  }
+
+  function handleVideoSelection(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      clearStagedVideo();
+      return;
+    }
+    clearStagedVideo();
+    stagedVideo = file;
+    stagedVideoPreview = URL.createObjectURL(file);
+    videoDeleteError = null;
+  }
+
+  async function uploadStagedVideo() {
+    if (!selectedProperty || !stagedVideo) return;
+    videoUploading = true;
+    videoDeleteError = null;
+    try {
+      const form = new FormData();
+      form.append('video', stagedVideo);
+      await apiClient.post(`/admin/properties/${selectedProperty.id}/video`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Vídeo enviado com sucesso.');
+      clearStagedVideo();
+      await reviewProperty(selectedProperty as PropertySummary);
+    } catch (err: any) {
+      console.error('Erro ao enviar video:', err);
+      videoDeleteError =
+        err?.response?.data?.error ||
+        (err instanceof Error ? err.message : 'Falha ao enviar video.');
+    } finally {
+      videoUploading = false;
     }
   }
 
@@ -1544,6 +1634,9 @@
         {#if isEditMode}
           <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-images-input">Enviar novas imagens</label>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Limite total: 20 imagens por imóvel.
+          </p>
           <input
             id="upload-images-input"
             bind:this={imageInputEl}
@@ -1556,12 +1649,22 @@
           />
           {#if stagedImages.length > 0}
             <div class="mt-3 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
-              {#each stagedImagePreviews as preview}
-                <img
-                  src={preview}
-                  alt="Prévia da imagem"
-                  class="h-24 w-auto rounded-md object-cover shadow"
-                />
+              {#each stagedImagePreviews as preview, index}
+                <div class="relative flex-shrink-0">
+                  <img
+                    src={preview}
+                    alt="Prévia da imagem"
+                    class="h-24 w-auto rounded-md object-cover shadow"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs font-semibold text-white hover:bg-black/80"
+                    on:click={() => removeStagedImage(index)}
+                    aria-label="Remover imagem selecionada"
+                  >
+                    X
+                  </button>
+                </div>
               {/each}
             </div>
             <div class="flex flex-wrap gap-2">
@@ -1572,7 +1675,7 @@
                 Salvar
               </Button>
               <Button variant="outline" on:click={clearStagedImages} disabled={imageUploading}>
-                Cancelar
+                Sair
               </Button>
             </div>
           {/if}
@@ -1585,66 +1688,81 @@
           </div>
         {/if}
 
-          {#if selectedProperty.video_url}
+          {#if selectedProperty.video_url || isEditMode}
             <div>
               <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Video</h3>
-              <div class="mt-2 overflow-hidden rounded-lg bg-black/10 dark:bg-gray-800">
-                <video
-                  class="h-64 w-full rounded-lg object-cover"
-                  src={selectedProperty.video_url}
-                  controls
-                  preload="metadata"
-                >
-                  <track kind="captions" srclang="pt" label="Portugues" />
-                </video>
-              </div>
+
+              {#if selectedProperty.video_url}
+                <div class="mt-2 overflow-hidden rounded-lg bg-black/10 dark:bg-gray-800">
+                  <video
+                    class="h-64 w-full rounded-lg object-cover"
+                    src={selectedProperty.video_url}
+                    controls
+                    preload="metadata"
+                  >
+                    <track kind="captions" srclang="pt" label="Portugues" />
+                  </video>
+                </div>
+              {:else}
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Nenhum video cadastrado.</p>
+              {/if}
+
               {#if isEditMode}
-                <div class="mt-2 flex flex-wrap items-center gap-2">
-                  <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting}>
-                    {#if videoDeleting}
-                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                    {/if}
-                    Remover vídeo
-                  </Button>
+                <div class="mt-3 space-y-2">
+                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-video-input">Enviar vídeo</label>
+                  <input
+                    id="upload-video-input"
+                    bind:this={videoInputEl}
+                    class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    type="file"
+                    accept="video/*"
+                    on:change={handleVideoSelection}
+                    disabled={videoUploading || videoDeleting}
+                  />
+
+                  {#if stagedVideoPreview}
+                    <div class="mt-2 overflow-hidden rounded-lg bg-black/10 dark:bg-gray-800">
+                      <video
+                        class="h-64 w-full rounded-lg object-cover"
+                        src={stagedVideoPreview}
+                        controls
+                        preload="metadata"
+                      >
+                        <track kind="captions" srclang="pt" label="Portugues" />
+                      </video>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <Button on:click={uploadStagedVideo} disabled={videoUploading || videoDeleting}>
+                        {#if videoUploading}
+                          <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                        {/if}
+                        Salvar
+                      </Button>
+                      <Button variant="outline" on:click={clearStagedVideo} disabled={videoUploading || videoDeleting}>
+                        Sair
+                      </Button>
+                    </div>
+                  {/if}
+
+                  {#if selectedProperty.video_url}
+                    <div class="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" on:click={handleVideoDelete} disabled={videoDeleting || videoUploading}>
+                        {#if videoDeleting}
+                          <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                        {/if}
+                        Remover vídeo
+                      </Button>
+                    </div>
+                  {/if}
+
+                  {#if videoUploading}
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Enviando video...</p>
+                  {/if}
                   {#if videoDeleteError}
-                    <span class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</span>
+                    <p class="text-xs text-red-500 dark:text-red-400">{videoDeleteError}</p>
                   {/if}
                 </div>
               {/if}
-            </div>
-          {:else if isEditMode}
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-video-input">Enviar vídeo</label>
-              <input
-                id="upload-video-input"
-                bind:this={videoInputEl}
-                class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                type="file"
-                accept="video/*"
-                on:change={(e) => {
-                  const target = e.target as HTMLInputElement;
-                  if (!target.files || target.files.length === 0 || !selectedProperty) return;
-                  const form = new FormData();
-                  form.append('video', target.files[0]);
-                  apiClient
-                    .post(`/admin/properties/${selectedProperty.id}/video`, form, {
-                      headers: { 'Content-Type': 'multipart/form-data' },
-                    })
-                    .then(() => {
-                      toast.success('Video enviado com sucesso.');
-                      return reviewProperty(selectedProperty as PropertySummary);
-                    })
-                    .catch((err) => {
-                      console.error('Erro ao enviar video:', err);
-                      videoDeleteError =
-                        err?.response?.data?.error ||
-                        (err instanceof Error ? err.message : 'Falha ao enviar video.');
-                    })
-                    .finally(() => {
-                      if (videoInputEl) videoInputEl.value = '';
-                    });
-                }}
-              />
             </div>
           {/if}
 
@@ -1908,7 +2026,7 @@
 
       <Dialog.Footer>
         <Button variant="outline" on:click={closeModal} disabled={isProcessing}>
-          Cancelar
+          Sair
         </Button>
         {#if allowApproval}
           {#if selectedProperty.status !== 'rejected'}
