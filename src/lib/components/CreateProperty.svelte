@@ -4,6 +4,15 @@
   import { api, apiClient } from '$lib/apiClient';
   import { Button } from '$lib/components/ui/button';
   import type { Broker } from '$lib/types';
+  import {
+    formatCep,
+    formatCurrencyInput,
+    normalizeDecimal,
+    onlyDigits,
+    resolveCreatePropertyPrices,
+    sanitizeDecimalInput,
+    sanitizeDigitsInput,
+  } from '$lib/components/create-property-helpers';
 
   const propertyTypes = [
     'Casa',
@@ -88,90 +97,6 @@
   let cepLookupError: string | null = null;
   let lastCepLookup = '';
 
-  function onlyDigits(value: string) {
-    return value.replace(/\D/g, '');
-  }
-
-  function formatCep(value: string) {
-    const digits = onlyDigits(value).slice(0, 8);
-    if (digits.length <= 5) return digits;
-    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-  }
-
-  function sanitizeDigitsInput(value: string) {
-    return onlyDigits(value);
-  }
-
-  function sanitizeDecimalInput(value: string) {
-    const cleaned = value.replace(/[^\d.,]/g, '');
-    const parts = cleaned.split(/[.,]/);
-    const integer = parts.shift() ?? '';
-    const decimal = parts.join('');
-    if (!decimal) return integer;
-    return `${integer},${decimal}`;
-  }
-
-  function normalizeDecimal(value: string) {
-    if (!value) return null;
-    const normalized = value.replace(/\./g, '').replace(',', '.');
-    const parsed = Number(normalized);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-
-  function formatCurrencyInput(raw: string) {
-    const digits = onlyDigits(raw);
-    if (!digits) {
-      return '';
-    }
-    const numberValue = Number(digits) / 100;
-    return numberValue.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-    });
-  }
-
-  function parseCurrency(value: string) {
-    const digits = onlyDigits(value);
-    if (!digits) return null;
-    const parsed = Number(digits) / 100;
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-
-  function resolvePrices() {
-    const normalizedPurpose = purpose.toLowerCase();
-    const supportsSale = normalizedPurpose.includes('vend');
-    const supportsRent = normalizedPurpose.includes('alug');
-    const saleValue = parseCurrency(priceSale);
-    const rentValue = parseCurrency(priceRent);
-
-    if (supportsSale && (!saleValue || saleValue <= 0)) {
-      return { error: 'Informe o preço de venda.' };
-    }
-    if (supportsRent && (!rentValue || rentValue <= 0)) {
-      return { error: 'Informe o preço do aluguel.' };
-    }
-
-    if (supportsSale && supportsRent) {
-      if (!saleValue || !rentValue) {
-        return { error: 'Informe os preços de venda e aluguel.' };
-      }
-      return {
-        price: saleValue,
-        priceSale: saleValue,
-        priceRent: rentValue
-      };
-    }
-
-    if (supportsSale) {
-      return { price: saleValue, priceSale: saleValue };
-    }
-    if (supportsRent) {
-      return { price: rentValue, priceRent: rentValue };
-    }
-    return { error: 'Finalidade inválida.' };
-  }
-
   async function fetchBrokers() {
     brokersLoading = true;
     brokersError = null;
@@ -255,7 +180,12 @@
       return;
     }
 
-    const { error, price, priceSale: resolvedSale, priceRent: resolvedRent } = resolvePrices();
+    const {
+      error,
+      price,
+      priceSale: resolvedSale,
+      priceRent: resolvedRent,
+    } = resolveCreatePropertyPrices(purpose, priceSale, priceRent);
     if (error) {
       toast.error(error);
       return;
@@ -272,7 +202,7 @@
     form.append('cep', onlyDigits(cep));
     if (ownerName.trim()) form.append('owner_name', ownerName.trim());
     if (ownerPhone.trim()) form.append('owner_phone', ownerPhone.trim());
-    if (description.trim()) form.append('description', description.trim());
+    form.append('description', description.trim() || 'Sem descrição informada.');
     if (bairro.trim()) form.append('bairro', bairro.trim());
     if (numero.trim()) form.append('numero', numero.trim());
     if (quadra.trim()) form.append('quadra', quadra.trim());
@@ -316,21 +246,24 @@
         const broker =
           selectedBroker ?? brokers.find((item) => item.id === Number(brokerId)) ?? null;
         if (broker && brokerPhone.trim() !== (broker.phone ?? '')) {
-          await api.put(`/admin/brokers/${brokerId}`, {
-            name: broker.name,
-            email: broker.email,
-            phone: brokerPhone.trim(),
-          });
-          brokers = brokers.map((entry) =>
-            entry.id === Number(brokerId)
-              ? { ...entry, phone: brokerPhone.trim() }
-              : entry
-          );
+          try {
+            await api.put(`/admin/brokers/${brokerId}`, {
+              name: broker.name,
+              email: broker.email,
+              phone: brokerPhone.trim(),
+            });
+            brokers = brokers.map((entry) =>
+              entry.id === Number(brokerId)
+                ? { ...entry, phone: brokerPhone.trim() }
+                : entry
+            );
+          } catch (updateBrokerError) {
+            console.error('Erro ao atualizar telefone do corretor:', updateBrokerError);
+            toast.warning('Não foi possível atualizar o telefone do corretor. O imóvel será enviado mesmo assim.');
+          }
         }
       }
-      await apiClient.post('/admin/properties', form, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await apiClient.post('/admin/properties', form);
       toast.success('Imóvel criado com sucesso.');
       title = '';
       description = '';
@@ -365,7 +298,9 @@
       if (videoInput) videoInput.value = '';
     } catch (error) {
       console.error('Erro ao criar imóvel:', error);
-      toast.error('Não foi possível criar o imóvel.');
+      const apiError = error as { response?: { data?: { error?: string; message?: string } } };
+      const backendMessage = apiError?.response?.data?.error ?? apiError?.response?.data?.message;
+      toast.error(backendMessage || 'Não foi possível criar o imóvel.');
     } finally {
       isSubmitting = false;
     }
