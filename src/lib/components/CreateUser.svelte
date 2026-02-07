@@ -29,6 +29,7 @@
   let email = '';
   let phone = '';
   let password = '';
+  let showPassword = false;
   let creci = '';
 
   let street = '';
@@ -54,6 +55,7 @@
     email = '';
     phone = '';
     password = '';
+    showPassword = false;
     creci = '';
     street = '';
     number = '';
@@ -139,6 +141,12 @@
       if (data?.uf) {
         state = String(data.uf);
         await fetchCitiesForState(state);
+      }
+      if (data?.logradouro) {
+        street = String(data.logradouro);
+      }
+      if (data?.bairro) {
+        bairro = String(data.bairro);
       }
       if (data?.localidade) {
         city = String(data.localidade);
@@ -231,7 +239,7 @@
 
   <div class="grid gap-4 md:grid-cols-2">
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Tipo de usuário
+      Tipo de usuário *
       <select
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={userKind}
@@ -242,7 +250,7 @@
     </label>
 
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Nome
+      Nome *
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={name}
@@ -251,7 +259,7 @@
     </label>
 
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Email
+      Email *
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         type="email"
@@ -261,7 +269,7 @@
     </label>
 
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Telefone
+      Telefone *
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={phone}
@@ -275,18 +283,28 @@
     </label>
 
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Senha (opcional)
-      <input
-        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-        type="password"
-        bind:value={password}
-        placeholder="Senha inicial"
-      />
+      Senha *
+      <div class="relative">
+        <input
+          class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 pr-10 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          type={showPassword ? 'text' : 'password'}
+          bind:value={password}
+          placeholder="Senha inicial"
+        />
+        <button
+          type="button"
+          class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+          on:click={() => (showPassword = !showPassword)}
+          aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+        >
+          {showPassword ? 'Ocultar' : 'Mostrar'}
+        </button>
+      </div>
     </label>
 
     {#if userKind === 'broker'}
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-        CRECI
+        CRECI *
         <input
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={creci}
@@ -300,7 +318,7 @@
       </label>
 
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-        Status inicial do corretor
+        Status inicial do corretor *
         <select
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={brokerStatus}
@@ -314,14 +332,14 @@
 
   <div class="mt-6 grid gap-4 md:grid-cols-2">
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Endereço
+      Endereço *
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={street}
       />
     </label>
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Número
+      Número *
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={number}
@@ -340,14 +358,14 @@
       />
     </label>
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Bairro
+      Bairro *
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={bairro}
       />
     </label>
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      CEP
+      CEP *
       <input
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={cep}
@@ -363,7 +381,7 @@
       />
     </label>
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Cidade
+      Cidade *
       <input
         list="cities-list-user"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
@@ -383,7 +401,7 @@
       {/if}
     </label>
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-      Estado
+      Estado *
       <select
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={state}

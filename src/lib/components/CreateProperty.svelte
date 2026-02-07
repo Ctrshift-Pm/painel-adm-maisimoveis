@@ -20,8 +20,20 @@
     'Casa',
     'Apartamento',
     'Terreno',
-    'Propriedade Rural',
-    'Propriedade Comercial'
+    'Flat',
+    'Condomínio Fechado',
+    'Área rural',
+    'Rancho',
+    'Galpão / Barracão',
+    'Chácara',
+    'Imóvel comercial',
+    'Área comercial',
+    'Cobertura / Penthouse',
+    'Sobrado',
+    'Kitnet',
+    'Sala comercial',
+    'Empresa',
+    'Prédio',
   ];
   const purposes = ['Venda', 'Aluguel', 'Venda e Aluguel'];
   const lotTypes = ['meio', 'inteiro'];
@@ -78,6 +90,7 @@
   let cep = '';
   let bairro = '';
   let numero = '';
+  let semNumero = false;
   let quadra = '';
   let lote = '';
   let complemento = '';
@@ -99,6 +112,10 @@
   let images: FileList | null = null;
   let video: File | null = null;
   let isSubmitting = false;
+  let isPromoted = false;
+  let promotionPercentage = '';
+  let promotionStart = '';
+  let promotionEnd = '';
 
   const cityCache: Record<string, string[]> = {};
   let cities: string[] = [];
@@ -209,6 +226,12 @@
         state = String(data.uf);
         await fetchCitiesForState(state);
       }
+      if (data?.logradouro) {
+        address = String(data.logradouro);
+      }
+      if (data?.bairro) {
+        bairro = String(data.bairro);
+      }
       if (data?.localidade) {
         city = String(data.localidade);
       }
@@ -229,19 +252,17 @@
             ? 'Informe o tipo do imóvel.'
             : !purpose
               ? 'Informe a finalidade do imóvel.'
-              : !ownerName.trim()
-                ? 'Informe o nome do proprietário.'
-                : !hasValidPhoneBr(ownerPhone)
-                  ? 'Informe o telefone do proprietário no formato (00)00000-0000.'
-                  : !address.trim()
+              : ownerPhone.trim() && !hasValidPhoneBr(ownerPhone)
+                ? 'Informe o telefone do proprietário no formato (00)00000-0000.'
+                : !address.trim()
                     ? 'Informe o endereço.'
-                    : !numero.trim()
-                      ? 'Informe o número do endereço.'
-                      : !onlyDigits(numero)
+                    : !semNumero && !numero.trim()
+                      ? 'Informe o número do endereço ou marque "Sem número".'
+                      : !semNumero && !onlyDigits(numero)
                         ? 'Número do endereço deve conter apenas dígitos.'
                         : !bairro.trim()
                           ? 'Informe o bairro.'
-                          : onlyDigits(cep).length !== 8
+                          : cep.trim() && onlyDigits(cep).length !== 8
                             ? 'Informe um CEP válido.'
                             : !city.trim()
                               ? 'Informe a cidade.'
@@ -261,12 +282,33 @@
                                             ? 'Informe a quantidade de garagens.'
                                             : !areaConstruida.trim()
                                               ? 'Informe a área construída.'
-                                              : !areaTerreno.trim()
-                                                ? 'Informe a área do terreno.'
-                                                : null;
+                                    : !areaTerreno.trim()
+                                        ? 'Informe a área do terreno.'
+                                        : null;
     if (requiredMessage) {
       toast.error(requiredMessage);
       return;
+    }
+
+    if (isPromoted) {
+      if (promotionPercentage.trim()) {
+        const normalizedPercentage = Number(
+          promotionPercentage.replace(',', '.').trim()
+        );
+        if (!Number.isFinite(normalizedPercentage) || normalizedPercentage <= 0 || normalizedPercentage > 100) {
+          toast.error('Percentual de promoção deve ser maior que 0 e no máximo 100.');
+          return;
+        }
+      }
+
+      if (promotionStart && promotionEnd) {
+        const start = new Date(promotionStart).getTime();
+        const end = new Date(promotionEnd).getTime();
+        if (Number.isFinite(start) && Number.isFinite(end) && start > end) {
+          toast.error('A data inicial da promoção não pode ser maior que a data final.');
+          return;
+        }
+      }
     }
 
     if (images == null || images.length < 2) {
@@ -305,16 +347,30 @@
     form.append('city', city.trim());
     form.append('state', state);
     form.append('cep', onlyDigits(cep));
-    form.append('owner_name', ownerName.trim());
-    form.append('owner_phone', onlyDigits(ownerPhone));
+    if (ownerName.trim()) form.append('owner_name', ownerName.trim());
+    if (ownerPhone.trim()) form.append('owner_phone', onlyDigits(ownerPhone));
     form.append('description', description.trim());
     form.append('bairro', bairro.trim());
-    form.append('numero', onlyDigits(numero));
+    if (semNumero) {
+      form.append('numero', '');
+    } else {
+      form.append('numero', onlyDigits(numero));
+    }
     form.append('quadra', quadra.trim());
     form.append('lote', lote.trim());
     if (complemento.trim()) form.append('complemento', complemento.trim());
     form.append('tipo_lote', tipoLote.trim());
     if (brokerId) form.append('broker_id', brokerId);
+    form.append('is_promoted', isPromoted ? '1' : '0');
+    if (isPromoted && promotionPercentage.trim()) {
+      form.append('promotion_percentage', promotionPercentage.replace(',', '.').trim());
+    }
+    if (isPromoted && promotionStart.trim()) {
+      form.append('promotion_start', promotionStart.trim());
+    }
+    if (isPromoted && promotionEnd.trim()) {
+      form.append('promotion_end', promotionEnd.trim());
+    }
 
     if (price != null) form.append('price', String(price));
     if (resolvedSale != null) form.append('price_sale', String(resolvedSale));
@@ -385,10 +441,15 @@
       cep = '';
       bairro = '';
       numero = '';
+      semNumero = false;
       quadra = '';
       lote = '';
       complemento = '';
       tipoLote = '';
+      isPromoted = false;
+      promotionPercentage = '';
+      promotionStart = '';
+      promotionEnd = '';
       bedrooms = '';
       bathrooms = '';
       garageSpots = '';
@@ -434,7 +495,7 @@
     <div class="space-y-6 p-6">
       <div class="grid gap-4 md:grid-cols-2">
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Título
+          Título *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={title}
@@ -442,7 +503,7 @@
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Tipo
+          Tipo *
           <select
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={type}
@@ -453,7 +514,7 @@
           </select>
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Finalidade
+          Finalidade *
           <select
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={purpose}
@@ -464,7 +525,7 @@
           </select>
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Status inicial
+          Status inicial *
           <select
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={status}
@@ -477,7 +538,7 @@
 
       <div class="grid gap-4 md:grid-cols-2">
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Proprietário do imóvel
+          Proprietário do imóvel (opcional)
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={ownerName}
@@ -485,7 +546,7 @@
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Telefone do proprietário
+          Telefone do proprietário (opcional)
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={ownerPhone}
@@ -568,7 +629,7 @@
       </div>
 
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-        Descrição
+        Descrição *
         <textarea
           class="min-h-[110px] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={description}
@@ -579,7 +640,7 @@
       <div class="grid gap-4 md:grid-cols-2">
         {#if purpose !== 'Aluguel'}
           <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            Preço de venda
+            Preço de venda *
             <input
               class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               bind:value={priceSale}
@@ -594,7 +655,7 @@
         {/if}
         {#if purpose !== 'Venda'}
           <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            Preço do aluguel
+            Preço do aluguel *
             <input
               class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               bind:value={priceRent}
@@ -609,9 +670,52 @@
         {/if}
       </div>
 
+      <div class="rounded-md border border-gray-200 p-4 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Promoção</p>
+          <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              bind:checked={isPromoted}
+            />
+            Ativar promoção
+          </label>
+        </div>
+        {#if isPromoted}
+          <div class="mt-4 grid gap-4 md:grid-cols-3">
+            <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Percentual de desconto (opcional)
+              <input
+                class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                bind:value={promotionPercentage}
+                inputmode="decimal"
+                placeholder="Ex: 10"
+              />
+            </label>
+            <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Início (opcional)
+              <input
+                type="datetime-local"
+                class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                bind:value={promotionStart}
+              />
+            </label>
+            <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Fim (opcional)
+              <input
+                type="datetime-local"
+                class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                bind:value={promotionEnd}
+              />
+            </label>
+          </div>
+        {/if}
+      </div>
+
       <div class="grid gap-4 md:grid-cols-3">
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Quartos
+          Quartos *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bedrooms}
@@ -624,7 +728,7 @@
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Banheiros
+          Banheiros *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bathrooms}
@@ -637,7 +741,7 @@
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Garagens
+          Garagens *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={garageSpots}
@@ -653,7 +757,7 @@
 
       <div class="grid gap-4 md:grid-cols-2">
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Área construída (m²)
+          Área construída (m²) *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={areaConstruida}
@@ -665,7 +769,7 @@
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Área do terreno (m²)
+          Área do terreno (m²) *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={areaTerreno}
@@ -680,34 +784,7 @@
 
       <div class="grid gap-4 md:grid-cols-2">
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Endereço
-          <input
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={address}
-            placeholder="Rua, avenida, etc."
-          />
-        </label>
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Número
-          <input
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={numero}
-            inputmode="numeric"
-            on:input={(event) => {
-              const target = event.target as HTMLInputElement;
-              numero = sanitizeDigitsInput(target.value);
-            }}
-          />
-        </label>
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Bairro
-          <input
-            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={bairro}
-          />
-        </label>
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          CEP
+          CEP (opcional)
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={cep}
@@ -721,9 +798,24 @@
               }
             }}
           />
+          {#if cepLookupError}
+            <span class="text-xs text-red-500 dark:text-red-400">{cepLookupError}</span>
+          {/if}
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Cidade
+          Estado *
+          <select
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={state}
+            on:change={() => fetchCitiesForState(state)}
+          >
+            {#each states as uf}
+              <option value={uf}>{uf}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Cidade *
           <input
             list="cities-list"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
@@ -738,41 +830,66 @@
           {#if citiesError}
             <span class="text-xs text-red-500 dark:text-red-400">{citiesError}</span>
           {/if}
-          {#if cepLookupError}
-            <span class="text-xs text-red-500 dark:text-red-400">{cepLookupError}</span>
-          {/if}
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Estado
-          <select
+          Endereço *
+          <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            bind:value={state}
-            on:change={() => fetchCitiesForState(state)}
-          >
-            {#each states as uf}
-              <option value={uf}>{uf}</option>
-            {/each}
-          </select>
+            bind:value={address}
+            placeholder="Rua, avenida, etc."
+          />
         </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Bairro *
+          <input
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={bairro}
+          />
+        </label>
+        <div class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label for="numero-input">Número {semNumero ? '(opcional)' : '*'}</label>
+          <input
+            id="numero-input"
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:disabled:bg-gray-900"
+            bind:value={numero}
+            inputmode="numeric"
+            disabled={semNumero}
+            on:input={(event) => {
+              const target = event.target as HTMLInputElement;
+              numero = sanitizeDigitsInput(target.value);
+            }}
+          />
+          <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+            <input
+              type="checkbox"
+              class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              bind:checked={semNumero}
+              on:change={() => {
+                if (semNumero) numero = '';
+              }}
+            />
+            Sem número
+          </label>
+        </div>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-3">
+      <div class="grid gap-4 md:grid-cols-4">
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Quadra
+          Quadra *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={quadra}
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Lote
+          Lote *
           <input
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={lote}
           />
         </label>
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Tipo do lote
+          Tipo do lote *
           <select
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={tipoLote}
@@ -782,6 +899,14 @@
               <option value={lotType}>{lotType}</option>
             {/each}
           </select>
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Complemento (opcional)
+          <input
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={complemento}
+            placeholder="Apartamento, bloco, referência..."
+          />
         </label>
       </div>
 
