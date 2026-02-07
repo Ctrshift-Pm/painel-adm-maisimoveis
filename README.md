@@ -65,6 +65,11 @@ Configuração flexível de parâmetros financeiros.
 - **Design Responsivo:** Layout 100% adaptável para desktops, tablets e smartphones.
 --- 
 
+## Creditos
+Desenvolvido por Ctrshift. GitHub: https://github.com/Ctrshift-Pm
+
+Aviso formal de autoria em `NOTICE.md`.
+
 ## Pré-requisitos
 
 Antes de começar, certifique-se de ter instalado em sua máquina:
