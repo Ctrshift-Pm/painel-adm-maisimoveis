@@ -25,6 +25,10 @@
   ];
   const purposes = ['Venda', 'Aluguel', 'Venda e Aluguel'];
   const lotTypes = ['meio', 'inteiro'];
+  const MAX_IMAGE_SIZE_MB = 15;
+  const MAX_VIDEO_SIZE_MB = 100;
+  const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+  const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
   const states = [
     'AC',
     'AL',
@@ -267,6 +271,17 @@
 
     if (images == null || images.length < 2) {
       toast.error('Envie pelo menos 2 imagens do imóvel.');
+      return;
+    }
+    const oversizedImage = Array.from(images).find((file) => file.size > MAX_IMAGE_SIZE_BYTES);
+    if (oversizedImage) {
+      toast.error(
+        `A imagem "${oversizedImage.name}" excede ${MAX_IMAGE_SIZE_MB}MB. Reduza o arquivo e tente novamente.`
+      );
+      return;
+    }
+    if (video && video.size > MAX_VIDEO_SIZE_BYTES) {
+      toast.error(`O vídeo excede ${MAX_VIDEO_SIZE_MB}MB. Reduza o arquivo e tente novamente.`);
       return;
     }
 
@@ -786,6 +801,9 @@
             images = target.files;
           }}
         />
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Mínimo de 2 imagens. Tamanho máximo por imagem: {MAX_IMAGE_SIZE_MB}MB.
+        </p>
       </div>
 
       <div class="space-y-2">
@@ -803,6 +821,9 @@
             video = target.files && target.files.length > 0 ? target.files[0] : null;
           }}
         />
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Tamanho máximo do vídeo: {MAX_VIDEO_SIZE_MB}MB.
+        </p>
       </div>
 
       <div class="flex justify-end">
