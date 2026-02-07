@@ -17,6 +17,7 @@
     'properties',
     'property_requests',
     'create_property',
+    'create_user',
     'brokers',
     'clients',
     'verification',
@@ -98,6 +99,15 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
       </svg>
       Cadastrar Imóvel
+    </button>
+    <button
+      class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'create_user' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
+      on:click={() => handleNavigation('create_user')}
+    >
+      <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v6m3-3h-6M5 7a4 4 0 118 0 4 4 0 01-8 0zm-2 14a6 6 0 0112 0"></path>
+      </svg>
+      Cadastrar Usuário
     </button>
     <button
       class="w-full text-left flex items-center px-4 py-2 rounded-lg transition {activeView === 'property_requests' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"

@@ -120,6 +120,7 @@ export type View =
   | 'properties'
   | 'property_requests'
   | 'create_property'
+  | 'create_user'
   | 'brokers'
   | 'clients'
   | 'verification'

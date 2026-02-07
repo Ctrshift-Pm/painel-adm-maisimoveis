@@ -73,6 +73,7 @@
     let ClientManagementComponent: LazySvelteComponent | null = null;
     let BrokerManagementComponent: LazySvelteComponent | null = null;
     let CreatePropertyComponent: LazySvelteComponent | null = null;
+    let CreateUserComponent: LazySvelteComponent | null = null;
     let SendNotificationComponent: LazySvelteComponent | null = null;
     let AdminNotificationsPanelComponent: LazySvelteComponent | null = null;
     let StatusPieChartComponent: LazySvelteComponent | null = null;
@@ -101,6 +102,13 @@
             if (!CreatePropertyComponent) {
                 const module = await import('./components/CreateProperty.svelte');
                 CreatePropertyComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'create_user') {
+            if (!CreateUserComponent) {
+                const module = await import('./components/CreateUser.svelte');
+                CreateUserComponent = module.default;
             }
             return;
         }
@@ -156,6 +164,9 @@
         create_property: {
             title: 'Cadastrar Imóvel'
         },
+        create_user: {
+            title: 'Cadastrar Usuário'
+        },
         brokers: { 
             endpoint: '/admin/brokers', 
             title: 'Gerenciamento de Corretores', 
@@ -203,7 +214,8 @@
             activeView === 'properties' ||
             activeView === 'property_requests' ||
             activeView === 'brokers' ||
-            activeView === 'create_property'
+            activeView === 'create_property' ||
+            activeView === 'create_user'
         ) {
             headers = [];
             allData = [];
@@ -736,6 +748,14 @@
             {:else if activeView === 'create_property'}
                 {#if CreatePropertyComponent}
                     <svelte:component this={CreatePropertyComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
+            {:else if activeView === 'create_user'}
+                {#if CreateUserComponent}
+                    <svelte:component this={CreateUserComponent} />
                 {:else}
                     <div class="flex justify-center items-center h-64">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>

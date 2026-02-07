@@ -22,6 +22,7 @@
     'Propriedade Comercial'
   ];
   const purposes = ['Venda', 'Aluguel', 'Venda e Aluguel'];
+  const lotTypes = ['meio', 'inteiro'];
   const states = [
     'AC',
     'AL',
@@ -661,6 +662,35 @@
               }
             }}
           />
+        </label>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-3">
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Quadra
+          <input
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={quadra}
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Lote
+          <input
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={lote}
+          />
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          Tipo do lote
+          <select
+            class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            bind:value={tipoLote}
+          >
+            <option value="">Selecione</option>
+            {#each lotTypes as lotType}
+              <option value={lotType}>{lotType}</option>
+            {/each}
+          </select>
         </label>
       </div>
 
