@@ -41,6 +41,12 @@
   const MAX_VIDEO_SIZE_MB = 100;
   const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
   const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+  const IMAGE_OPTIMIZATION_MIN_BYTES = 1024 * 1024;
+  const IMAGE_OPTIMIZATION_MAX_DIMENSION = 1920;
+  const IMAGE_OPTIMIZATION_QUALITY = 0.82;
+  const IMAGE_UPLOAD_BATCH_SIZE = 4;
+  const CREATE_REQUEST_TIMEOUT_MS = 420000;
+  const VIDEO_REQUEST_TIMEOUT_MS = 600000;
   const states = [
     'AC',
     'AL',
@@ -259,7 +265,73 @@
     imagePreviewUrls = selectedImages.map((file) => URL.createObjectURL(file));
   }
 
-  function addSelectedImages(files: File[]) {
+  function loadImageFromObjectUrl(objectUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Falha ao processar imagem.'));
+      image.src = objectUrl;
+    });
+  }
+
+  async function optimizeImageForUpload(file: File): Promise<File> {
+    const isImage = file.type.startsWith('image/');
+    const isOptimizableType = !['image/gif', 'image/svg+xml'].includes(file.type);
+
+    if (!isImage || !isOptimizableType || file.size < IMAGE_OPTIMIZATION_MIN_BYTES) {
+      return file;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = await loadImageFromObjectUrl(objectUrl);
+      const originalWidth = image.naturalWidth || image.width;
+      const originalHeight = image.naturalHeight || image.height;
+
+      if (!originalWidth || !originalHeight) {
+        return file;
+      }
+
+      const resizeRatio = Math.min(
+        1,
+        IMAGE_OPTIMIZATION_MAX_DIMENSION / originalWidth,
+        IMAGE_OPTIMIZATION_MAX_DIMENSION / originalHeight
+      );
+      const targetWidth = Math.max(1, Math.round(originalWidth * resizeRatio));
+      const targetHeight = Math.max(1, Math.round(originalHeight * resizeRatio));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return file;
+      }
+
+      context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', IMAGE_OPTIMIZATION_QUALITY);
+      });
+
+      if (!blob || blob.size >= file.size * 0.98) {
+        return file;
+      }
+
+      return new File([blob], file.name, {
+        type: 'image/jpeg',
+        lastModified: file.lastModified,
+      });
+    } catch (error) {
+      console.warn('Falha ao otimizar imagem, enviando original:', error);
+      return file;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  async function addSelectedImages(files: File[]) {
     const imageFiles = files.filter((file) => file.type.startsWith('image/'));
     if (imageFiles.length === 0) {
       toast.error('Selecione apenas arquivos de imagem.');
@@ -267,25 +339,33 @@
     }
 
     const current = [...selectedImages];
+    const existingKeys = new Set(current.map((file) => `${file.name}:${file.lastModified}`));
+    const candidates: File[] = [];
     const maxImages = 20;
     let ignoredCount = 0;
 
     for (const file of imageFiles) {
-      if (current.length >= maxImages) {
+      if (current.length + candidates.length >= maxImages) {
         ignoredCount++;
         continue;
       }
-      const alreadySelected = current.some(
-        (selected) =>
-          selected.name === file.name &&
-          selected.size === file.size &&
-          selected.lastModified === file.lastModified
-      );
-      if (alreadySelected) {
+      const fileKey = `${file.name}:${file.lastModified}`;
+      if (existingKeys.has(fileKey)) {
         ignoredCount++;
         continue;
       }
-      current.push(file);
+      existingKeys.add(fileKey);
+      candidates.push(file);
+    }
+
+    const optimizedImages = await Promise.all(candidates.map((file) => optimizeImageForUpload(file)));
+    const compressedCount = optimizedImages.reduce((count, optimized, index) => {
+      const original = candidates[index];
+      return optimized.size < original.size ? count + 1 : count;
+    }, 0);
+
+    for (const optimizedFile of optimizedImages) {
+      current.push(optimizedFile);
     }
 
     selectedImages = current;
@@ -294,22 +374,25 @@
     if (ignoredCount > 0) {
       toast.warning('Algumas imagens foram ignoradas por duplicidade ou limite de 20 arquivos.');
     }
+    if (compressedCount > 0) {
+      toast.success(`${compressedCount} imagem(ns) foram otimizadas para acelerar o envio.`);
+    }
   }
 
-  function handleImagesChange(event: Event) {
+  async function handleImagesChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const files = Array.from(target.files ?? []);
     if (files.length === 0) return;
-    addSelectedImages(files);
+    await addSelectedImages(files);
     target.value = '';
   }
 
-  function handleImagesDrop(event: DragEvent) {
+  async function handleImagesDrop(event: DragEvent) {
     event.preventDefault();
     isImageDropActive = false;
     const files = Array.from(event.dataTransfer?.files ?? []);
     if (files.length === 0) return;
-    addSelectedImages(files);
+    await addSelectedImages(files);
   }
 
   function removeSelectedImage(index: number) {
@@ -489,55 +572,114 @@
     const parsedAreaTerreno = normalizeDecimal(areaTerreno);
     if (parsedAreaTerreno != null) form.append('area_terreno', String(parsedAreaTerreno));
 
-    if (selectedImages.length > 0) {
-      selectedImages.forEach((file) => form.append('images', file));
-    }
-    if (video) {
-      form.append('video', video);
+    const primaryImage = selectedImages[0] ?? null;
+    const remainingImages = selectedImages.slice(1);
+    if (primaryImage) {
+      form.append('images', primaryImage);
     }
 
     isSubmitting = true;
     uploadProgress = 0;
     uploadStatus = 'Enviando...';
     try {
-      const brokerUpdate =
-        brokerId
-          ? (async () => {
-              const broker =
-                selectedBroker ?? brokers.find((item) => item.id === Number(brokerId)) ?? null;
-              if (broker && onlyDigits(brokerPhone) !== onlyDigits(broker.phone ?? '')) {
-                try {
-                  await api.put(`/admin/brokers/${brokerId}`, {
-                    name: broker.name,
-                    email: broker.email,
-                    phone: onlyDigits(brokerPhone),
-                  });
-                  brokers = brokers.map((entry) =>
-                    entry.id === Number(brokerId)
-                      ? { ...entry, phone: onlyDigits(brokerPhone) }
-                      : entry
-                  );
-                } catch (updateBrokerError) {
-                  console.error('Erro ao atualizar telefone do corretor:', updateBrokerError);
-                  toast.warning(
-                    'Não foi possível atualizar o telefone do corretor. O imóvel será enviado mesmo assim.'
-                  );
-                }
-              }
-            })()
-          : Promise.resolve();
+      const syncBrokerPhoneIfNeeded = async () => {
+        if (!brokerId) return;
+        const broker =
+          selectedBroker ?? brokers.find((item) => item.id === Number(brokerId)) ?? null;
+        if (!broker || onlyDigits(brokerPhone) === onlyDigits(broker.phone ?? '')) {
+          return;
+        }
+        try {
+          await api.put(`/admin/brokers/${brokerId}`, {
+            name: broker.name,
+            email: broker.email,
+            phone: onlyDigits(brokerPhone),
+          });
+          brokers = brokers.map((entry) =>
+            entry.id === Number(brokerId)
+              ? { ...entry, phone: onlyDigits(brokerPhone) }
+              : entry
+          );
+        } catch (updateBrokerError) {
+          console.error('Erro ao atualizar telefone do corretor:', updateBrokerError);
+          toast.warning(
+            'Não foi possível atualizar o telefone do corretor. O imóvel será enviado mesmo assim.'
+          );
+        }
+      };
 
-      const createRequest = apiClient.post('/admin/properties', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 180000,
+      const createResponse = await apiClient.post<{ propertyId?: number }>('/admin/properties', form, {
+        timeout: CREATE_REQUEST_TIMEOUT_MS,
         onUploadProgress: (event) => {
-          if (!event.total) return;
+          if (!event.total) {
+            uploadStatus = 'Criando imóvel...';
+            return;
+          }
           uploadProgress = Math.round((event.loaded / event.total) * 100);
-          uploadStatus = `Enviando midias... ${uploadProgress}%`;
+          uploadStatus = `Criando imóvel... ${uploadProgress}%`;
         },
       });
 
-      await Promise.all([brokerUpdate, createRequest]);
+      const propertyId = Number(createResponse?.data?.propertyId ?? 0);
+      if (remainingImages.length > 0 && Number.isFinite(propertyId) && propertyId > 0) {
+        uploadStatus = 'Enviando fotos adicionais...';
+        uploadProgress = 0;
+        let uploadedImages = 0;
+        let failedImages = 0;
+        for (let index = 0; index < remainingImages.length; index += IMAGE_UPLOAD_BATCH_SIZE) {
+          const batch = remainingImages.slice(index, index + IMAGE_UPLOAD_BATCH_SIZE);
+          const batchForm = new FormData();
+          batch.forEach((file) => batchForm.append('images', file));
+          try {
+            await apiClient.post(`/admin/properties/${propertyId}/images`, batchForm, {
+              timeout: CREATE_REQUEST_TIMEOUT_MS,
+              onUploadProgress: (event) => {
+                if (!event.total) {
+                  return;
+                }
+                const batchProgress = event.loaded / event.total;
+                const totalProgress = (uploadedImages + batch.length * batchProgress) / remainingImages.length;
+                uploadProgress = Math.round(totalProgress * 100);
+                uploadStatus = `Enviando fotos adicionais... ${uploadProgress}%`;
+              },
+            });
+            uploadedImages += batch.length;
+          } catch (imageUploadError) {
+            failedImages += batch.length;
+            console.error('Erro ao enviar lote de imagens:', imageUploadError);
+          }
+        }
+        if (failedImages > 0) {
+          toast.warning(
+            `${failedImages} foto(s) não foram enviadas. Abra o imóvel e tente enviar novamente as pendentes.`
+          );
+        }
+      }
+
+      if (video && Number.isFinite(propertyId) && propertyId > 0) {
+        const videoForm = new FormData();
+        videoForm.append('video', video);
+        uploadStatus = 'Enviando vídeo...';
+        uploadProgress = 0;
+        try {
+          await apiClient.post(`/admin/properties/${propertyId}/video`, videoForm, {
+            timeout: VIDEO_REQUEST_TIMEOUT_MS,
+            onUploadProgress: (event) => {
+              if (!event.total) {
+                uploadStatus = 'Enviando vídeo...';
+                return;
+              }
+              uploadProgress = Math.round((event.loaded / event.total) * 100);
+              uploadStatus = `Enviando vídeo... ${uploadProgress}%`;
+            },
+          });
+        } catch (videoUploadError) {
+          console.error('Erro ao enviar vídeo do imóvel:', videoUploadError);
+          toast.warning('Imóvel criado, mas o vídeo não foi enviado. Edite o imóvel para tentar novamente.');
+        }
+      }
+
+      void syncBrokerPhoneIfNeeded();
       toast.success('Imóvel criado com sucesso.');
       title = '';
       description = '';
@@ -616,6 +758,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Título *
           <input
+            id="create-property-title"
+            name="title"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={title}
             placeholder="Ex: Casa no Canaã 2"
@@ -624,6 +768,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Tipo *
           <select
+            id="create-property-type"
+            name="type"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={type}
           >
@@ -635,6 +781,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Finalidade *
           <select
+            id="create-property-purpose"
+            name="purpose"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={purpose}
           >
@@ -646,6 +794,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Status inicial *
           <select
+            id="create-property-status"
+            name="status"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={status}
           >
@@ -659,6 +809,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Proprietário do imóvel (opcional)
           <input
+            id="create-property-owner-name"
+            name="owner_name"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={ownerName}
             placeholder="Nome do proprietário"
@@ -667,6 +819,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Telefone do proprietário (opcional)
           <input
+            id="create-property-owner-phone"
+            name="owner_phone"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={ownerPhone}
             inputmode="numeric"
@@ -681,6 +835,8 @@
           Corretor responsável
           <div class="relative">
             <input
+              id="create-property-broker-query"
+              name="broker_query"
               class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               bind:value={brokerQuery}
               placeholder="Digite ao menos 2 letras para buscar corretor"
@@ -734,6 +890,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Telefone do corretor responsável
           <input
+            id="create-property-broker-phone"
+            name="broker_phone"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={brokerPhone}
             inputmode="numeric"
@@ -750,6 +908,8 @@
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         Descrição *
         <textarea
+          id="create-property-description"
+          name="description"
           class="min-h-[110px] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={description}
           placeholder="Descreva o imóvel"
@@ -761,6 +921,8 @@
           <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
             Preço de venda *
             <input
+              id="create-property-price-sale"
+              name="price_sale_display"
               class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               bind:value={priceSale}
               inputmode="numeric"
@@ -776,6 +938,8 @@
           <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
             Preço do aluguel *
             <input
+              id="create-property-price-rent"
+              name="price_rent_display"
               class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               bind:value={priceRent}
               inputmode="numeric"
@@ -793,6 +957,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Quartos *
           <input
+            id="create-property-bedrooms"
+            name="bedrooms"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bedrooms}
             inputmode="numeric"
@@ -806,6 +972,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Banheiros *
           <input
+            id="create-property-bathrooms"
+            name="bathrooms"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bathrooms}
             inputmode="numeric"
@@ -819,6 +987,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Garagens *
           <input
+            id="create-property-garage-spots"
+            name="garage_spots"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={garageSpots}
             inputmode="numeric"
@@ -835,6 +1005,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Área construída (m²) *
           <input
+            id="create-property-area-construida"
+            name="area_construida"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={areaConstruida}
             inputmode="decimal"
@@ -847,6 +1019,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Área do terreno (m²) *
           <input
+            id="create-property-area-terreno"
+            name="area_terreno"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={areaTerreno}
             inputmode="decimal"
@@ -862,6 +1036,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           CEP (opcional)
           <input
+            id="create-property-cep"
+            name="cep"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={cep}
             placeholder="00000-000"
@@ -881,6 +1057,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Estado *
           <select
+            id="create-property-state"
+            name="state"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={state}
             on:change={() => fetchCitiesForState(state)}
@@ -893,6 +1071,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Cidade *
           <input
+            id="create-property-city"
+            name="city"
             list="cities-list"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={city}
@@ -910,6 +1090,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Endereço *
           <input
+            id="create-property-address"
+            name="address"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={address}
             placeholder="Rua, avenida, etc."
@@ -918,6 +1100,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Bairro *
           <input
+            id="create-property-bairro"
+            name="bairro"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={bairro}
           />
@@ -926,6 +1110,7 @@
           <label for="numero-input">Número {semNumero ? '(opcional)' : '*'}</label>
           <input
             id="numero-input"
+            name="numero"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:disabled:bg-gray-900"
             bind:value={numero}
             inputmode="numeric"
@@ -938,6 +1123,8 @@
           <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <input
               type="checkbox"
+              id="create-property-sem-numero"
+              name="sem_numero"
               class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               bind:checked={semNumero}
               on:change={() => {
@@ -953,6 +1140,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Quadra *
           <input
+            id="create-property-quadra"
+            name="quadra"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={quadra}
           />
@@ -960,6 +1149,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Lote *
           <input
+            id="create-property-lote"
+            name="lote"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={lote}
           />
@@ -967,6 +1158,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Tipo do lote *
           <select
+            id="create-property-tipo-lote"
+            name="tipo_lote"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={tipoLote}
           >
@@ -979,6 +1172,8 @@
         <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           Complemento (opcional)
           <input
+            id="create-property-complemento"
+            name="complemento"
             class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             bind:value={complemento}
             placeholder="Apartamento, bloco, referência..."
@@ -990,27 +1185,27 @@
         <p class="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-100">Comodidades</p>
         <div class="grid gap-3 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2 lg:grid-cols-3">
           <label class="inline-flex items-center gap-2">
-            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={hasWifi} />
+            <input id="create-property-has-wifi" name="has_wifi" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={hasWifi} />
             Wi-Fi
           </label>
           <label class="inline-flex items-center gap-2">
-            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temPiscina} />
+            <input id="create-property-tem-piscina" name="tem_piscina" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temPiscina} />
             Piscina
           </label>
           <label class="inline-flex items-center gap-2">
-            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temEnergiaSolar} />
+            <input id="create-property-tem-energia-solar" name="tem_energia_solar" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temEnergiaSolar} />
             Energia solar
           </label>
           <label class="inline-flex items-center gap-2">
-            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temAutomacao} />
+            <input id="create-property-tem-automacao" name="tem_automacao" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temAutomacao} />
             Automação
           </label>
           <label class="inline-flex items-center gap-2">
-            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temArCondicionado} />
+            <input id="create-property-tem-ar-condicionado" name="tem_ar_condicionado" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={temArCondicionado} />
             Ar condicionado
           </label>
           <label class="inline-flex items-center gap-2">
-            <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={ehMobiliada} />
+            <input id="create-property-eh-mobiliada" name="eh_mobiliada" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" bind:checked={ehMobiliada} />
             Mobiliada
           </label>
         </div>
@@ -1035,6 +1230,7 @@
         >
           <input
             id="create-images-input"
+            name="images"
             bind:this={imagesInput}
             class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             type="file"
@@ -1096,6 +1292,7 @@
         >
           <input
             id="create-video-input"
+            name="video"
             bind:this={videoInput}
             class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             type="file"

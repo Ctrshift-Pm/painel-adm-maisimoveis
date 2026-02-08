@@ -219,36 +219,36 @@
                             {#if view === 'properties'}
                                 {@const prop = editableItemData as Partial<Property>}
                                 <td class="px-6 py-4 whitespace-nowrap"><span class="font-mono text-gray-500 dark:text-gray-400">{prop.id}</span></td>
-                                <td class="px-2 py-2 whitespace-nowrap"><input type="text" value={prop.code || ''} class="w-24 p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm font-mono" disabled></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={prop.title} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={prop.type} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
+                                <td class="px-2 py-2 whitespace-nowrap"><input name="code" type="text" value={prop.code || ''} class="w-24 p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm font-mono" disabled></td>
+                                <td class="px-2 py-2"><input name="title" type="text" bind:value={prop.title} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
+                                <td class="px-2 py-2"><input name="type" type="text" bind:value={prop.type} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
                                 <td class="px-2 py-2">
-                                    <select bind:value={prop.status} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white">
+                                    <select name="status" bind:value={prop.status} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white">
                                         {#each PROPERTY_STATUS_OPTIONS as option}
                                             <option value={option.value}>{option.label}</option>
                                         {/each}
                                     </select>
                                 </td>
-                                <td class="px-2 py-2"><input type="number" step="1" bind:value={prop.price} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={prop.city} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
-                                <td class="px-2 py-2"><input type="text" value={prop.broker_name || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
+                                <td class="px-2 py-2"><input name="price" type="number" step="1" bind:value={prop.price} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
+                                <td class="px-2 py-2"><input name="city" type="text" bind:value={prop.city} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white" disabled={isApprovedReadOnly}></td>
+                                <td class="px-2 py-2"><input name="broker_name" type="text" value={prop.broker_name || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
                             
                             {:else if view === 'brokers'}
                                 {@const broker = editableItemData as Partial<Broker>}
                                 <td class="px-6 py-4 whitespace-nowrap"><span class="font-mono text-gray-500 dark:text-gray-400">{broker.id}</span></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={broker.name} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="email" bind:value={broker.email} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={broker.creci} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="text" value={broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
-                                <td class="px-2 py-2"><input type="text" value={broker.property_count || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
+                                <td class="px-2 py-2"><input name="broker_name" type="text" bind:value={broker.name} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input name="broker_email" type="email" bind:value={broker.email} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input name="broker_creci" type="text" bind:value={broker.creci} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input name="broker_created_at" type="text" value={broker.created_at ? new Date(broker.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
+                                <td class="px-2 py-2"><input name="broker_property_count" type="text" value={broker.property_count || ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
 
                             {:else if view === 'clients'}
                                 {@const client = editableItemData as Partial<User>}
                                 <td class="px-6 py-4 whitespace-nowrap"><span class="font-mono text-gray-500 dark:text-gray-400">{client.id}</span></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={client.name} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="email" bind:value={client.email} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="text" bind:value={client.phone} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
-                                <td class="px-2 py-2"><input type="text" value={client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
+                                <td class="px-2 py-2"><input name="client_name" type="text" bind:value={client.name} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input name="client_email" type="email" bind:value={client.email} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input name="client_phone" type="text" bind:value={client.phone} class="w-full p-2 border rounded-md bg-white dark:bg-gray-700 text-sm focus:ring-green-500 focus:border-green-500 text-gray-900 dark:text-white"></td>
+                                <td class="px-2 py-2"><input name="client_created_at" type="text" value={client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : ''} class="w-full p-2 border rounded-md bg-gray-100 dark:bg-gray-700 text-sm" disabled></td>
                             {/if}
                         {:else}
                             {#if view === 'properties'}
@@ -313,11 +313,11 @@
                                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div>
                                                     <label for="sale_value_{item.id}" class="block text-xs font-medium text-gray-500 mb-1">Valor da Venda (R$)</label>
-                                                    <input id="sale_value_{item.id}" type="number" step="1" bind:value={prop.sale_value} placeholder="550000" class="w-full p-2 border rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" on:input={() => updateCommissionDisplay(prop.sale_value, prop.commission_rate)}>
+                                                    <input id="sale_value_{item.id}" name="sale_value" type="number" step="1" bind:value={prop.sale_value} placeholder="550000" class="w-full p-2 border rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" on:input={() => updateCommissionDisplay(prop.sale_value, prop.commission_rate)}>
                                                 </div>
                                                 <div>
                                                     <label for="commission_rate_{item.id}" class="block text-xs font-medium text-gray-500 mb-1">Comisso (%)</label>
-                                                    <input id="commission_rate_{item.id}" type="number" step="1" bind:value={prop.commission_rate} placeholder="5" class="w-full p-2 border rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" on:input={() => updateCommissionDisplay(prop.sale_value, prop.commission_rate)}>
+                                                    <input id="commission_rate_{item.id}" name="commission_rate" type="number" step="1" bind:value={prop.commission_rate} placeholder="5" class="w-full p-2 border rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white" on:input={() => updateCommissionDisplay(prop.sale_value, prop.commission_rate)}>
                                                 </div>
                                                 <div>
                                                     <p class="block text-xs font-medium text-gray-500 mb-1">Valor Final da Comisso</p>

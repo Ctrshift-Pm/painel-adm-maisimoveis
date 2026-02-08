@@ -1585,6 +1585,7 @@
                 <label class="text-xs text-gray-500 dark:text-gray-400" for="purpose-select">Finalidade</label>
                 <select
                   id="purpose-select"
+                  name="purpose"
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:border-green-500 focus:ring-2 focus:ring-green-500"
                   bind:value={editableProperty.purpose}
                 >
@@ -1597,6 +1598,7 @@
               {#if flags.isDual}
                 <div class="grid gap-3 md:grid-cols-2">
                   <input
+                    name="price_sale_display"
                     class="w-full rounded-md border border-gray-300 px-3 py-2 text-xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
                     type="text"
                     inputmode="numeric"
@@ -1612,6 +1614,7 @@
                     }}
                   />
                   <input
+                    name="price_rent_display"
                     class="w-full rounded-md border border-gray-300 px-3 py-2 text-xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
                     type="text"
                     inputmode="numeric"
@@ -1629,6 +1632,7 @@
                 </div>
               {:else if flags.supportsRent}
                 <input
+                  name="price_rent_display"
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
                   type="text"
                   inputmode="numeric"
@@ -1645,6 +1649,7 @@
                 />
               {:else}
                 <input
+                  name="price_sale_display"
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-2xl font-bold text-green-700 dark:border-gray-700 dark:bg-gray-800 dark:text-green-300"
                   type="text"
                   inputmode="numeric"
@@ -1681,6 +1686,7 @@
                     <label class="text-xs text-gray-500 dark:text-gray-400" for="status-select">Status</label>
                     <select
                       id="status-select"
+                      name="status"
                       class="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:border-green-500 focus:ring-2 focus:ring-green-500"
                       bind:value={editableProperty.status}
                     >
@@ -1748,6 +1754,7 @@
           >
             <input
               id="upload-images-input"
+              name="images"
               bind:this={imageInputEl}
               class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               type="file"
@@ -1838,6 +1845,7 @@
                   >
                     <input
                       id="upload-video-input"
+                      name="video"
                       bind:this={videoInputEl}
                       class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                       type="file"
@@ -1900,6 +1908,7 @@
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Descrição</h3>
           {#if isEditMode && editableProperty}
             <textarea
+              name="description"
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
               rows="3"
               bind:value={editableProperty.description}
@@ -1918,11 +1927,12 @@
             <div class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300 md:grid-cols-2">
               <label class="flex flex-col gap-1">
                 <strong>Estado:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.state} />
+                <input name="state" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.state} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>CEP:</strong>
                 <input
+                  name="cep"
                   class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
                   bind:value={editableProperty.cep}
                   inputmode="numeric"
@@ -1937,6 +1947,7 @@
               <label class="flex flex-col gap-1">
                 <strong>Cidade:</strong>
                 <input
+                  name="city"
                   list="property-cities-list"
                   class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
                   bind:value={editableProperty.city}
@@ -1949,35 +1960,36 @@
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Bairro:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bairro} />
+                <input name="bairro" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.bairro} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Endereço:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.address} />
+                <input name="address" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.address} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Número:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.numero} />
+                <input name="numero" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.numero} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Complemento:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.complemento} />
+                <input name="complemento" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.complemento} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Quadra:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.quadra} />
+                <input name="quadra" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.quadra} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Lote:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.lote} />
+                <input name="lote" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.lote} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Tipo do lote:</strong>
-                <input class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.tipo_lote} />
+                <input name="tipo_lote" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.tipo_lote} />
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Quartos:</strong>
                 <input
+                  name="bedrooms"
                   type="text"
                   inputmode="numeric"
                   class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
@@ -1994,6 +2006,7 @@
               <label class="flex flex-col gap-1">
                 <strong>Banheiros:</strong>
                 <input
+                  name="bathrooms"
                   type="text"
                   inputmode="numeric"
                   class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
@@ -2010,6 +2023,7 @@
               <label class="flex flex-col gap-1">
                 <strong>Garagens:</strong>
                 <input
+                  name="garage_spots"
                   type="text"
                   inputmode="numeric"
                   class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
@@ -2026,6 +2040,7 @@
               <label class="flex flex-col gap-1">
                 <strong>Área construida:</strong>
                 <input
+                  name="area_construida"
                   type="text"
                   inputmode="decimal"
                   class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
@@ -2044,6 +2059,7 @@
               <label class="flex flex-col gap-1">
                 <strong>Área do terreno:</strong>
                 <input
+                  name="area_terreno"
                   type="text"
                   inputmode="decimal"
                   class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
@@ -2102,27 +2118,27 @@
           <div class="mt-2 flex flex-wrap gap-2 text-sm">
             {#if isEditMode && editableProperty}
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                <input type="checkbox" bind:checked={editableProperty.has_wifi} />
+                <input type="checkbox" name="has_wifi" bind:checked={editableProperty.has_wifi} />
                 Wi-Fi
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                <input type="checkbox" bind:checked={editableProperty.tem_piscina} />
+                <input type="checkbox" name="tem_piscina" bind:checked={editableProperty.tem_piscina} />
                 Piscina
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                <input type="checkbox" bind:checked={editableProperty.tem_energia_solar} />
+                <input type="checkbox" name="tem_energia_solar" bind:checked={editableProperty.tem_energia_solar} />
                 Energia solar
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                <input type="checkbox" bind:checked={editableProperty.tem_automacao} />
+                <input type="checkbox" name="tem_automacao" bind:checked={editableProperty.tem_automacao} />
                 Automação
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                <input type="checkbox" bind:checked={editableProperty.tem_ar_condicionado} />
+                <input type="checkbox" name="tem_ar_condicionado" bind:checked={editableProperty.tem_ar_condicionado} />
                 Ar-condicionado
               </label>
               <label class="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1 text-xs dark:border-gray-700">
-                <input type="checkbox" bind:checked={editableProperty.eh_mobiliada} />
+                <input type="checkbox" name="eh_mobiliada" bind:checked={editableProperty.eh_mobiliada} />
                 Mobiliada
               </label>
             {:else}

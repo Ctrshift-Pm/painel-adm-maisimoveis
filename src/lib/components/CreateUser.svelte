@@ -241,6 +241,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Tipo de usuário *
       <select
+        id="create-user-kind"
+        name="user_kind"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={userKind}
       >
@@ -252,6 +254,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Nome *
       <input
+        id="create-user-name"
+        name="name"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={name}
         placeholder="Nome completo"
@@ -261,6 +265,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Email *
       <input
+        id="create-user-email"
+        name="email"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         type="email"
         bind:value={email}
@@ -271,6 +277,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Telefone *
       <input
+        id="create-user-phone"
+        name="phone"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={phone}
         inputmode="numeric"
@@ -286,6 +294,8 @@
       Senha *
       <div class="relative">
         <input
+          id="create-user-password"
+          name="password"
           class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 pr-10 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           type={showPassword ? 'text' : 'password'}
           bind:value={password}
@@ -306,6 +316,8 @@
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         CRECI *
         <input
+          id="create-user-creci"
+          name="creci"
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={creci}
           inputmode="numeric"
@@ -320,6 +332,8 @@
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         Status inicial do corretor *
         <select
+          id="create-user-broker-status"
+          name="broker_status"
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           bind:value={brokerStatus}
         >
@@ -334,6 +348,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Endereço *
       <input
+        id="create-user-street"
+        name="street"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={street}
       />
@@ -341,6 +357,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Número *
       <input
+        id="create-user-number"
+        name="number"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={number}
         inputmode="numeric"
@@ -353,6 +371,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Complemento
       <input
+        id="create-user-complement"
+        name="complement"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={complement}
       />
@@ -360,6 +380,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Bairro *
       <input
+        id="create-user-bairro"
+        name="bairro"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={bairro}
       />
@@ -367,6 +389,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       CEP *
       <input
+        id="create-user-cep"
+        name="cep"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={cep}
         inputmode="numeric"
@@ -383,6 +407,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Cidade *
       <input
+        id="create-user-city"
+        name="city"
         list="cities-list-user"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={city}
@@ -403,6 +429,8 @@
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
       Estado *
       <select
+        id="create-user-state"
+        name="state"
         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         bind:value={state}
         on:change={() => fetchCitiesForState(state)}
@@ -419,6 +447,8 @@
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         Documento CRECI (frente)
         <input
+          id="create-user-creci-front"
+          name="creci_front"
           type="file"
           accept="image/*"
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
@@ -430,6 +460,8 @@
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         Documento CRECI (verso)
         <input
+          id="create-user-creci-back"
+          name="creci_back"
           type="file"
           accept="image/*"
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
@@ -441,6 +473,8 @@
       <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         Selfie
         <input
+          id="create-user-selfie"
+          name="selfie"
           type="file"
           accept="image/*"
           class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
