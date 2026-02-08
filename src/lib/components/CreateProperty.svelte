@@ -45,6 +45,7 @@
   const IMAGE_OPTIMIZATION_MAX_DIMENSION = 1920;
   const IMAGE_OPTIMIZATION_QUALITY = 0.82;
   const IMAGE_UPLOAD_BATCH_SIZE = 4;
+  const CREATE_INITIAL_IMAGE_COUNT = 2;
   const CREATE_REQUEST_TIMEOUT_MS = 420000;
   const VIDEO_REQUEST_TIMEOUT_MS = 600000;
   const states = [
@@ -583,11 +584,9 @@
     const parsedAreaTerreno = normalizeDecimal(areaTerreno);
     if (parsedAreaTerreno != null) form.append('area_terreno', String(parsedAreaTerreno));
 
-    const primaryImage = selectedImages[0] ?? null;
-    const remainingImages = selectedImages.slice(1);
-    if (primaryImage) {
-      form.append('images', primaryImage);
-    }
+    const initialImages = selectedImages.slice(0, CREATE_INITIAL_IMAGE_COUNT);
+    const remainingImages = selectedImages.slice(initialImages.length);
+    initialImages.forEach((file) => form.append('images', file));
 
     isSubmitting = true;
     uploadProgress = 0;
@@ -620,6 +619,7 @@
       };
 
       const createResponse = await apiClient.post<{ propertyId?: number }>('/admin/properties', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
         timeout: CREATE_REQUEST_TIMEOUT_MS,
         onUploadProgress: (event) => {
           if (!event.total) {
@@ -643,6 +643,7 @@
           batch.forEach((file) => batchForm.append('images', file));
           try {
             await apiClient.post(`/admin/properties/${propertyId}/images`, batchForm, {
+              headers: { 'Content-Type': 'multipart/form-data' },
               timeout: CREATE_REQUEST_TIMEOUT_MS,
               onUploadProgress: (event) => {
                 if (!event.total) {
@@ -674,6 +675,7 @@
         uploadProgress = 0;
         try {
           await apiClient.post(`/admin/properties/${propertyId}/video`, videoForm, {
+            headers: { 'Content-Type': 'multipart/form-data' },
             timeout: VIDEO_REQUEST_TIMEOUT_MS,
             onUploadProgress: (event) => {
               if (!event.total) {
