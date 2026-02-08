@@ -1026,6 +1026,10 @@
     stageImages(files);
   }
 
+  function openImagePicker() {
+    imageInputEl?.click();
+  }
+
   async function uploadStagedImages() {
     if (!selectedProperty || stagedImages.length === 0) return;
     const stagedImagesSnapshot = [...stagedImages];
@@ -1154,6 +1158,10 @@
       return;
     }
     setStagedVideo(videoFile);
+  }
+
+  function openVideoPicker() {
+    videoInputEl?.click();
   }
 
   async function uploadStagedVideo() {
@@ -1756,17 +1764,19 @@
             on:dragleave={() => (isImageDropActive = false)}
             on:drop={handleImageDrop}
           >
-            <input
-              id="upload-images-input"
-              name="images"
-              bind:this={imageInputEl}
-              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              type="file"
-              accept="image/*"
-              multiple
-              on:change={handleImageSelection}
-              disabled={imageUploading}
-            />
+            <input id="upload-images-input" name="images" bind:this={imageInputEl} class="sr-only" type="file" accept="image/*" multiple on:change={handleImageSelection} disabled={imageUploading} />
+            <div class="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" on:click={openImagePicker} disabled={imageUploading}>
+                Escolher imagens
+              </Button>
+              <span class="text-sm text-gray-600 dark:text-gray-300">
+                {#if stagedImages.length > 0}
+                  {stagedImages.length} imagem(ns) selecionada(s)
+                {:else}
+                  Nenhuma imagem selecionada
+                {/if}
+              </span>
+            </div>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
               Arraste e solte imagens aqui ou clique para selecionar.
             </p>
@@ -1847,16 +1857,15 @@
                     on:dragleave={() => (isVideoDropActive = false)}
                     on:drop={handleVideoDrop}
                   >
-                    <input
-                      id="upload-video-input"
-                      name="video"
-                      bind:this={videoInputEl}
-                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                      type="file"
-                      accept="video/*"
-                      on:change={handleVideoSelection}
-                      disabled={videoUploading || videoDeleting}
-                    />
+                    <input id="upload-video-input" name="video" bind:this={videoInputEl} class="sr-only" type="file" accept="video/*" on:change={handleVideoSelection} disabled={videoUploading || videoDeleting} />
+                    <div class="flex flex-wrap items-center gap-3">
+                      <Button type="button" variant="outline" on:click={openVideoPicker} disabled={videoUploading || videoDeleting}>
+                        Escolher vídeo
+                      </Button>
+                      <span class="text-sm text-gray-600 dark:text-gray-300">
+                        {stagedVideo ? stagedVideo.name : 'Nenhum vídeo selecionado'}
+                      </span>
+                    </div>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                       Arraste e solte um vídeo aqui ou clique para selecionar.
                     </p>

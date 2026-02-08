@@ -440,6 +440,14 @@
     }
   }
 
+  function openImagesPicker() {
+    imagesInput?.click();
+  }
+
+  function openVideoPicker() {
+    videoInput?.click();
+  }
+
   async function handleSubmit() {
     if (isSubmitting) return;
     const numeroDigits = onlyDigits(numero);
@@ -1237,16 +1245,19 @@
           on:dragleave={() => (isImageDropActive = false)}
           on:drop={handleImagesDrop}
         >
-          <input
-            id="create-images-input"
-            name="images"
-            bind:this={imagesInput}
-            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            type="file"
-            accept="image/*"
-            multiple
-            on:change={handleImagesChange}
-          />
+          <input id="create-images-input" name="images" bind:this={imagesInput} class="sr-only" type="file" accept="image/*" multiple on:change={handleImagesChange} />
+          <div class="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" on:click={openImagesPicker} disabled={isSubmitting}>
+              Escolher imagens
+            </Button>
+            <span class="text-sm text-gray-600 dark:text-gray-300">
+              {#if selectedImages.length > 0}
+                {selectedImages.length} imagem(ns) selecionada(s)
+              {:else}
+                Nenhuma imagem selecionada
+              {/if}
+            </span>
+          </div>
           <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Arraste e solte imagens aqui ou clique para selecionar.
           </p>
@@ -1299,15 +1310,15 @@
           on:dragleave={() => (isVideoDropActive = false)}
           on:drop={handleVideoDrop}
         >
-          <input
-            id="create-video-input"
-            name="video"
-            bind:this={videoInput}
-            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            type="file"
-            accept="video/*"
-            on:change={handleVideoChange}
-          />
+          <input id="create-video-input" name="video" bind:this={videoInput} class="sr-only" type="file" accept="video/*" on:change={handleVideoChange} />
+          <div class="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" on:click={openVideoPicker} disabled={isSubmitting}>
+              Escolher vídeo
+            </Button>
+            <span class="text-sm text-gray-600 dark:text-gray-300">
+              {video ? video.name : 'Nenhum vídeo selecionado'}
+            </span>
+          </div>
           <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Arraste e solte um video aqui ou clique para selecionar.
           </p>
