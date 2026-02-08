@@ -1367,8 +1367,66 @@
       <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Ajuste os filtros para visualizar outros resultados.</p>
     </div>
   {:else}
+    <div class="space-y-3 md:hidden">
+      {#each properties as property}
+        <button
+          type="button"
+          class={`w-full rounded-lg border p-4 text-left shadow-sm transition ${
+            isReviewOnly
+              ? 'border-green-200 bg-green-50/40 dark:border-green-800/60 dark:bg-gray-900/70'
+              : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
+          }`}
+          on:click={(event) => reviewProperty(property, event)}
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-base font-semibold text-gray-900 dark:text-gray-100">
+                {property.title}
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">ID: {property.id}</div>
+            </div>
+            <span class={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClasses(property.status)}`}>
+              {humanizeStatus(property.status, property.purpose)}
+            </span>
+          </div>
+          <div class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+            {property.city ?? '-'}{#if property.state} / {property.state}{/if}
+          </div>
+          <div class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+            {#each resolvePriceLines(property) as line}
+              <div>{line.label}: {formatCurrency(line.value)}</div>
+            {/each}
+          </div>
+          <div class="mt-2 text-xs text-gray-600 dark:text-gray-300">
+            Anunciante: {property.broker_name ?? '-'}
+          </div>
+          <div class="mt-1 text-xs text-gray-600 dark:text-gray-300">
+            Telefone: {property.broker_phone ?? '-'}
+          </div>
+          <div class="mt-3 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-green-500 text-green-700 hover:bg-green-50 dark:border-green-400 dark:text-green-200 dark:hover:bg-green-900/40"
+              on:click={(event) => {
+                event.stopPropagation();
+                reviewProperty(property, event);
+              }}
+              disabled={isDetailLoading && selectedProperty?.id === property.id}
+            >
+              {#if isDetailLoading && selectedProperty?.id === property.id}
+                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                Carregando...
+              {:else}
+                Revisar
+              {/if}
+            </Button>
+          </div>
+        </button>
+      {/each}
+    </div>
     <div
-      class={`overflow-x-auto rounded-lg border shadow-sm ${
+      class={`hidden md:block overflow-x-auto rounded-lg border shadow-sm ${
         isReviewOnly
           ? 'border-green-200 bg-green-50/40 dark:border-green-800/60 dark:bg-gray-900/70'
           : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
