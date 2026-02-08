@@ -116,10 +116,8 @@
   let isImageDropActive = false;
   let isVideoDropActive = false;
   let isSubmitting = false;
-  let isPromoted = false;
-  let promotionPercentage = '';
-  let promotionStart = '';
-  let promotionEnd = '';
+  let uploadProgress = 0;
+  let uploadStatus = '';
   let hasWifi = false;
   let temPiscina = false;
   let temEnergiaSolar = false;
@@ -408,27 +406,6 @@
       return;
     }
 
-    if (isPromoted) {
-      if (promotionPercentage.trim()) {
-        const normalizedPercentage = Number(
-          promotionPercentage.replace(',', '.').trim()
-        );
-        if (!Number.isFinite(normalizedPercentage) || normalizedPercentage <= 0 || normalizedPercentage > 100) {
-          toast.error('Percentual de promoção deve ser maior que 0 e no máximo 100.');
-          return;
-        }
-      }
-
-      if (promotionStart && promotionEnd) {
-        const start = new Date(promotionStart).getTime();
-        const end = new Date(promotionEnd).getTime();
-        if (Number.isFinite(start) && Number.isFinite(end) && start > end) {
-          toast.error('A data inicial da promoção não pode ser maior que a data final.');
-          return;
-        }
-      }
-    }
-
     if (selectedImages.length < 1) {
       toast.error('Envie pelo menos 1 imagem do imóvel.');
       return;
@@ -483,16 +460,6 @@
     if (complemento.trim()) form.append('complemento', complemento.trim());
     form.append('tipo_lote', tipoLote.trim());
     if (brokerId) form.append('broker_id', brokerId);
-    form.append('is_promoted', isPromoted ? '1' : '0');
-    if (isPromoted && promotionPercentage.trim()) {
-      form.append('promotion_percentage', promotionPercentage.replace(',', '.').trim());
-    }
-    if (isPromoted && promotionStart.trim()) {
-      form.append('promotion_start', promotionStart.trim());
-    }
-    if (isPromoted && promotionEnd.trim()) {
-      form.append('promotion_end', promotionEnd.trim());
-    }
 
     if (price != null) form.append('price', String(price));
     if (resolvedSale != null) form.append('price_sale', String(resolvedSale));
@@ -530,29 +497,47 @@
     }
 
     isSubmitting = true;
+    uploadProgress = 0;
+    uploadStatus = 'Enviando...';
     try {
-      if (brokerId) {
-        const broker =
-          selectedBroker ?? brokers.find((item) => item.id === Number(brokerId)) ?? null;
-        if (broker && onlyDigits(brokerPhone) !== onlyDigits(broker.phone ?? '')) {
-          try {
-            await api.put(`/admin/brokers/${brokerId}`, {
-              name: broker.name,
-              email: broker.email,
-              phone: onlyDigits(brokerPhone),
-            });
-            brokers = brokers.map((entry) =>
-              entry.id === Number(brokerId)
-                ? { ...entry, phone: onlyDigits(brokerPhone) }
-                : entry
-            );
-          } catch (updateBrokerError) {
-            console.error('Erro ao atualizar telefone do corretor:', updateBrokerError);
-            toast.warning('Não foi possível atualizar o telefone do corretor. O imóvel será enviado mesmo assim.');
-          }
-        }
-      }
-      await apiClient.post('/admin/properties', form);
+      const brokerUpdate =
+        brokerId
+          ? (async () => {
+              const broker =
+                selectedBroker ?? brokers.find((item) => item.id === Number(brokerId)) ?? null;
+              if (broker && onlyDigits(brokerPhone) !== onlyDigits(broker.phone ?? '')) {
+                try {
+                  await api.put(`/admin/brokers/${brokerId}`, {
+                    name: broker.name,
+                    email: broker.email,
+                    phone: onlyDigits(brokerPhone),
+                  });
+                  brokers = brokers.map((entry) =>
+                    entry.id === Number(brokerId)
+                      ? { ...entry, phone: onlyDigits(brokerPhone) }
+                      : entry
+                  );
+                } catch (updateBrokerError) {
+                  console.error('Erro ao atualizar telefone do corretor:', updateBrokerError);
+                  toast.warning(
+                    'Não foi possível atualizar o telefone do corretor. O imóvel será enviado mesmo assim.'
+                  );
+                }
+              }
+            })()
+          : Promise.resolve();
+
+      const createRequest = apiClient.post('/admin/properties', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000,
+        onUploadProgress: (event) => {
+          if (!event.total) return;
+          uploadProgress = Math.round((event.loaded / event.total) * 100);
+          uploadStatus = `Enviando midias... ${uploadProgress}%`;
+        },
+      });
+
+      await Promise.all([brokerUpdate, createRequest]);
       toast.success('Imóvel criado com sucesso.');
       title = '';
       description = '';
@@ -574,10 +559,6 @@
       lote = '';
       complemento = '';
       tipoLote = '';
-      isPromoted = false;
-      promotionPercentage = '';
-      promotionStart = '';
-      promotionEnd = '';
       bedrooms = '';
       bathrooms = '';
       garageSpots = '';
@@ -604,6 +585,7 @@
       toast.error(backendMessage || 'Não foi possível criar o imóvel.');
     } finally {
       isSubmitting = false;
+      uploadStatus = '';
     }
   }
 
@@ -804,49 +786,6 @@
               }}
             />
           </label>
-        {/if}
-      </div>
-
-      <div class="rounded-md border border-gray-200 p-4 dark:border-gray-700">
-        <div class="flex items-center justify-between">
-          <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Promoção</p>
-          <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-              bind:checked={isPromoted}
-            />
-            Ativar promoção
-          </label>
-        </div>
-        {#if isPromoted}
-          <div class="mt-4 grid gap-4 md:grid-cols-3">
-            <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              Percentual de desconto (opcional)
-              <input
-                class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                bind:value={promotionPercentage}
-                inputmode="decimal"
-                placeholder="Ex: 10"
-              />
-            </label>
-            <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              Início (opcional)
-              <input
-                type="datetime-local"
-                class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                bind:value={promotionStart}
-              />
-            </label>
-            <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              Fim (opcional)
-              <input
-                type="datetime-local"
-                class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                bind:value={promotionEnd}
-              />
-            </label>
-          </div>
         {/if}
       </div>
 
@@ -1191,6 +1130,9 @@
           {isSubmitting ? 'Enviando...' : 'Cadastrar imóvel'}
         </Button>
       </div>
+      {#if uploadStatus}
+        <p class="text-xs text-gray-500 dark:text-gray-400">{uploadStatus}</p>
+      {/if}
     </div>
   </div>
 </div>
