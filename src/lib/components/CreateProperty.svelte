@@ -1,4 +1,5 @@
 <script lang="ts">
+  import axios from 'axios';
   import { onDestroy, onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
   import { api, apiClient } from '$lib/apiClient';
@@ -44,10 +45,9 @@
   const IMAGE_OPTIMIZATION_MIN_BYTES = 1024 * 1024;
   const IMAGE_OPTIMIZATION_MAX_DIMENSION = 1920;
   const IMAGE_OPTIMIZATION_QUALITY = 0.82;
-  const IMAGE_UPLOAD_BATCH_SIZE = 4;
-  const CREATE_INITIAL_IMAGE_COUNT = 2;
+  const DIRECT_UPLOAD_IMAGE_CONCURRENCY = 4;
   const CREATE_REQUEST_TIMEOUT_MS = 420000;
-  const VIDEO_REQUEST_TIMEOUT_MS = 600000;
+  const DIRECT_UPLOAD_TIMEOUT_MS = 240000;
   const states = [
     'AC',
     'AL',
@@ -449,6 +449,88 @@
     videoInput?.click();
   }
 
+  type UploadResourceType = 'image' | 'video';
+
+  interface CloudinarySignatureResponse {
+    apiKey: string;
+    cloudName: string;
+    signature: string;
+    timestamp: number;
+    folder: string;
+    maxFileSize: number;
+    allowedFormats: string[];
+    resourceType: UploadResourceType;
+    uploadUrl: string;
+  }
+
+  async function requestCloudinarySignature(
+    resourceType: UploadResourceType
+  ): Promise<CloudinarySignatureResponse> {
+    return api.post<CloudinarySignatureResponse>('/admin/uploads/sign', {
+      resource_type: resourceType,
+    });
+  }
+
+  async function uploadFileToCloudinaryDirect(
+    file: File,
+    signature: CloudinarySignatureResponse,
+    onProgress?: (progress: number) => void
+  ): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', signature.apiKey);
+    formData.append('timestamp', String(signature.timestamp));
+    formData.append('signature', signature.signature);
+    formData.append('folder', signature.folder);
+    formData.append('max_file_size', String(signature.maxFileSize));
+    formData.append('allowed_formats', signature.allowedFormats.join(','));
+
+    const response = await axios.post<{ secure_url?: string }>(signature.uploadUrl, formData, {
+      timeout: DIRECT_UPLOAD_TIMEOUT_MS,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (event) => {
+        if (!event.total || !onProgress) return;
+        onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      },
+    });
+
+    const secureUrl = response.data?.secure_url;
+    if (!secureUrl) {
+      throw new Error('Upload concluído sem URL de mídia.');
+    }
+
+    return secureUrl;
+  }
+
+  async function uploadImagesToCloudinary(
+    files: File[],
+    signature: CloudinarySignatureResponse
+  ): Promise<string[]> {
+    const results: string[] = new Array(files.length);
+    let nextIndex = 0;
+    let completed = 0;
+
+    const workerCount = Math.min(DIRECT_UPLOAD_IMAGE_CONCURRENCY, files.length);
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+        if (currentIndex >= files.length) {
+          break;
+        }
+
+        const url = await uploadFileToCloudinaryDirect(files[currentIndex], signature);
+        results[currentIndex] = url;
+        completed += 1;
+        uploadProgress = Math.round((completed / files.length) * 100);
+        uploadStatus = `Enviando imagens... ${uploadProgress}%`;
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
+  }
+
   async function handleSubmit() {
     if (isSubmitting) return;
     const numeroDigits = onlyDigits(numero);
@@ -530,67 +612,29 @@
       return;
     }
 
-    const form = new FormData();
-    form.append('title', title.trim());
-    form.append('type', type);
-    form.append('purpose', purpose);
-    form.append('status', status);
-    form.append('address', address.trim());
-    form.append('city', city.trim());
-    form.append('state', state);
-    form.append('cep', onlyDigits(cep));
-    if (ownerName.trim()) form.append('owner_name', ownerName.trim());
-    if (ownerPhone.trim()) form.append('owner_phone', onlyDigits(ownerPhone));
-    form.append('description', description.trim());
-    form.append('bairro', bairro.trim());
-    form.append('sem_numero', semNumero ? '1' : '0');
-    if (semNumero) {
-      // Compatibilidade com backends legados que exigem "numero" não vazio.
-      form.append('numero', '0');
-    } else {
-      form.append('numero', numeroDigits);
-    }
-    form.append('quadra', quadra.trim());
-    form.append('lote', lote.trim());
-    if (complemento.trim()) form.append('complemento', complemento.trim());
-    form.append('tipo_lote', tipoLote.trim());
-    if (brokerId) form.append('broker_id', brokerId);
-
-    if (price != null) form.append('price', String(price));
-    if (resolvedSale != null) form.append('price_sale', String(resolvedSale));
-    if (resolvedRent != null) form.append('price_rent', String(resolvedRent));
-    form.append('has_wifi', hasWifi ? '1' : '0');
-    form.append('tem_piscina', temPiscina ? '1' : '0');
-    form.append('tem_energia_solar', temEnergiaSolar ? '1' : '0');
-    form.append('tem_automacao', temAutomacao ? '1' : '0');
-    form.append('tem_ar_condicionado', temArCondicionado ? '1' : '0');
-    form.append('eh_mobiliada', ehMobiliada ? '1' : '0');
-
     const parsedBedrooms = bedrooms ? Number(bedrooms) : null;
-    if (parsedBedrooms != null && Number.isFinite(parsedBedrooms)) {
-      form.append('bedrooms', String(parsedBedrooms));
-    }
     const parsedBathrooms = bathrooms ? Number(bathrooms) : null;
-    if (parsedBathrooms != null && Number.isFinite(parsedBathrooms)) {
-      form.append('bathrooms', String(parsedBathrooms));
-    }
     const parsedGarage = garageSpots ? Number(garageSpots) : null;
-    if (parsedGarage != null && Number.isFinite(parsedGarage)) {
-      form.append('garage_spots', String(parsedGarage));
-    }
     const parsedAreaConstruida = normalizeDecimal(areaConstruida);
-    if (parsedAreaConstruida != null)
-      form.append('area_construida', String(parsedAreaConstruida));
     const parsedAreaTerreno = normalizeDecimal(areaTerreno);
-    if (parsedAreaTerreno != null) form.append('area_terreno', String(parsedAreaTerreno));
 
-    const initialImages = selectedImages.slice(0, CREATE_INITIAL_IMAGE_COUNT);
-    const remainingImages = selectedImages.slice(initialImages.length);
-    initialImages.forEach((file) => form.append('images', file));
+    if (
+      parsedBedrooms == null ||
+      !Number.isFinite(parsedBedrooms) ||
+      parsedBathrooms == null ||
+      !Number.isFinite(parsedBathrooms) ||
+      parsedGarage == null ||
+      !Number.isFinite(parsedGarage) ||
+      parsedAreaConstruida == null ||
+      parsedAreaTerreno == null
+    ) {
+      toast.error('Campos numéricos obrigatórios estão inválidos.');
+      return;
+    }
 
     isSubmitting = true;
     uploadProgress = 0;
-    uploadStatus = 'Enviando...';
+    uploadStatus = 'Preparando envio...';
     try {
       const syncBrokerPhoneIfNeeded = async () => {
         if (!brokerId) return;
@@ -618,78 +662,90 @@
         }
       };
 
-      const createResponse = await apiClient.post<{ propertyId?: number }>('/admin/properties', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      uploadStatus = 'Autorizando upload de imagens...';
+      const imageSignature = await requestCloudinarySignature('image');
+      const oversizedByCloudinary = selectedImages.find(
+        (file) => file.size > imageSignature.maxFileSize
+      );
+      if (oversizedByCloudinary) {
+        toast.error(
+          `A imagem "${oversizedByCloudinary.name}" excede o limite de ${Math.round(
+            imageSignature.maxFileSize / (1024 * 1024)
+          )}MB do Cloudinary.`
+        );
+        return;
+      }
+
+      uploadProgress = 0;
+      uploadStatus = 'Enviando imagens... 0%';
+      const uploadedImageUrls = await uploadImagesToCloudinary(selectedImages, imageSignature);
+
+      let uploadedVideoUrl: string | null = null;
+      if (video) {
+        uploadStatus = 'Autorizando upload de vídeo...';
+        const videoSignature = await requestCloudinarySignature('video');
+        if (video.size > videoSignature.maxFileSize) {
+          toast.error(
+            `O vídeo excede o limite de ${Math.round(videoSignature.maxFileSize / (1024 * 1024))}MB do Cloudinary.`
+          );
+          return;
+        }
+
+        uploadProgress = 0;
+        uploadStatus = 'Enviando vídeo... 0%';
+        uploadedVideoUrl = await uploadFileToCloudinaryDirect(video, videoSignature, (progress) => {
+          uploadProgress = progress;
+          uploadStatus = `Enviando vídeo... ${progress}%`;
+        });
+      }
+
+      const payload = {
+        broker_id: brokerId ? Number(brokerId) : null,
+        title: title.trim(),
+        description: description.trim(),
+        type,
+        purpose,
+        status,
+        price,
+        price_sale: resolvedSale,
+        price_rent: resolvedRent,
+        owner_name: ownerName.trim() || null,
+        owner_phone: ownerPhone.trim() ? onlyDigits(ownerPhone) : null,
+        address: address.trim(),
+        quadra: quadra.trim(),
+        lote: lote.trim(),
+        numero: semNumero ? null : numeroDigits,
+        sem_numero: semNumero ? 1 : 0,
+        bairro: bairro.trim(),
+        complemento: complemento.trim() || null,
+        tipo_lote: tipoLote.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        cep: cep.trim() ? onlyDigits(cep) : null,
+        bedrooms: parsedBedrooms,
+        bathrooms: parsedBathrooms,
+        area_construida: parsedAreaConstruida,
+        area_terreno: parsedAreaTerreno,
+        garage_spots: parsedGarage,
+        has_wifi: hasWifi ? 1 : 0,
+        tem_piscina: temPiscina ? 1 : 0,
+        tem_energia_solar: temEnergiaSolar ? 1 : 0,
+        tem_automacao: temAutomacao ? 1 : 0,
+        tem_ar_condicionado: temArCondicionado ? 1 : 0,
+        eh_mobiliada: ehMobiliada ? 1 : 0,
+        image_urls: uploadedImageUrls,
+        video_url: uploadedVideoUrl,
+      };
+
+      uploadProgress = 100;
+      uploadStatus = 'Criando imóvel...';
+      const createResponse = await apiClient.post<{ propertyId?: number }>('/admin/properties', payload, {
         timeout: CREATE_REQUEST_TIMEOUT_MS,
-        onUploadProgress: (event) => {
-          if (!event.total) {
-            uploadStatus = 'Criando imóvel...';
-            return;
-          }
-          uploadProgress = Math.round((event.loaded / event.total) * 100);
-          uploadStatus = `Criando imóvel... ${uploadProgress}%`;
-        },
       });
 
       const propertyId = Number(createResponse?.data?.propertyId ?? 0);
-      if (remainingImages.length > 0 && Number.isFinite(propertyId) && propertyId > 0) {
-        uploadStatus = 'Enviando fotos adicionais...';
-        uploadProgress = 0;
-        let uploadedImages = 0;
-        let failedImages = 0;
-        for (let index = 0; index < remainingImages.length; index += IMAGE_UPLOAD_BATCH_SIZE) {
-          const batch = remainingImages.slice(index, index + IMAGE_UPLOAD_BATCH_SIZE);
-          const batchForm = new FormData();
-          batch.forEach((file) => batchForm.append('images', file));
-          try {
-            await apiClient.post(`/admin/properties/${propertyId}/images`, batchForm, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-              timeout: CREATE_REQUEST_TIMEOUT_MS,
-              onUploadProgress: (event) => {
-                if (!event.total) {
-                  return;
-                }
-                const batchProgress = event.loaded / event.total;
-                const totalProgress = (uploadedImages + batch.length * batchProgress) / remainingImages.length;
-                uploadProgress = Math.round(totalProgress * 100);
-                uploadStatus = `Enviando fotos adicionais... ${uploadProgress}%`;
-              },
-            });
-            uploadedImages += batch.length;
-          } catch (imageUploadError) {
-            failedImages += batch.length;
-            console.error('Erro ao enviar lote de imagens:', imageUploadError);
-          }
-        }
-        if (failedImages > 0) {
-          toast.warning(
-            `${failedImages} foto(s) não foram enviadas. Abra o imóvel e tente enviar novamente as pendentes.`
-          );
-        }
-      }
-
-      if (video && Number.isFinite(propertyId) && propertyId > 0) {
-        const videoForm = new FormData();
-        videoForm.append('video', video);
-        uploadStatus = 'Enviando vídeo...';
-        uploadProgress = 0;
-        try {
-          await apiClient.post(`/admin/properties/${propertyId}/video`, videoForm, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            timeout: VIDEO_REQUEST_TIMEOUT_MS,
-            onUploadProgress: (event) => {
-              if (!event.total) {
-                uploadStatus = 'Enviando vídeo...';
-                return;
-              }
-              uploadProgress = Math.round((event.loaded / event.total) * 100);
-              uploadStatus = `Enviando vídeo... ${uploadProgress}%`;
-            },
-          });
-        } catch (videoUploadError) {
-          console.error('Erro ao enviar vídeo do imóvel:', videoUploadError);
-          toast.warning('Imóvel criado, mas o vídeo não foi enviado. Edite o imóvel para tentar novamente.');
-        }
+      if (!Number.isFinite(propertyId) || propertyId <= 0) {
+        throw new Error('Imóvel criado sem ID retornado pelo backend.');
       }
 
       void syncBrokerPhoneIfNeeded();
@@ -743,7 +799,11 @@
       if (video && !videoPreviewUrl) {
         videoPreviewUrl = URL.createObjectURL(video);
       }
-      toast.error(backendMessage || 'Não foi possível criar o imóvel.');
+      const errorMessage =
+        backendMessage ||
+        (error instanceof Error ? error.message : null) ||
+        'Não foi possível criar o imóvel.';
+      toast.error(errorMessage);
     } finally {
       isSubmitting = false;
       uploadStatus = '';
