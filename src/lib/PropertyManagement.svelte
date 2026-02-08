@@ -117,6 +117,8 @@
   let imageInputEl: HTMLInputElement | null = null;
   let stagedVideo: File | null = null;
   let stagedVideoPreview: string | null = null;
+  let isImageDropActive = false;
+  let isVideoDropActive = false;
   let videoUploading = false;
   let videoDeleting = false;
   let videoDeleteError: string | null = null;
@@ -976,11 +978,15 @@
     }
   }
 
-  function handleImageSelection(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const files = input.files;
-    if (!files || files.length === 0) {
+  function stageImages(files: File[]) {
+    if (files.length === 0) {
       clearStagedImages();
+      return;
+    }
+
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      imageUploadError = 'Selecione apenas arquivos de imagem.';
       return;
     }
 
@@ -995,14 +1001,30 @@
     }
 
     clearStagedImages();
-    const selectedFiles = Array.from(files).slice(0, availableSlots);
-    if (selectedFiles.length < files.length) {
+    const selectedFiles = imageFiles.slice(0, availableSlots);
+    if (selectedFiles.length < imageFiles.length) {
       imageUploadError = `Você selecionou mais imagens do que o limite permitido. Apenas ${selectedFiles.length} serão consideradas.`;
     } else {
       imageUploadError = null;
     }
     stagedImages = selectedFiles;
     stagedImagePreviews = stagedImages.map((file) => URL.createObjectURL(file));
+  }
+
+  function handleImageSelection(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    stageImages(files);
+    if (imageInputEl) {
+      imageInputEl.value = '';
+    }
+  }
+
+  function handleImageDrop(event: DragEvent) {
+    event.preventDefault();
+    isImageDropActive = false;
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    stageImages(files);
   }
 
   async function uploadStagedImages() {
@@ -1101,9 +1123,7 @@
     }
   }
 
-  function handleVideoSelection(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  function setStagedVideo(file: File | null) {
     if (!file) {
       clearStagedVideo();
       return;
@@ -1112,6 +1132,24 @@
     stagedVideo = file;
     stagedVideoPreview = URL.createObjectURL(file);
     videoDeleteError = null;
+  }
+
+  function handleVideoSelection(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    setStagedVideo(file);
+  }
+
+  function handleVideoDrop(event: DragEvent) {
+    event.preventDefault();
+    isVideoDropActive = false;
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    const videoFile = files.find((file) => file.type.startsWith('video/')) ?? null;
+    if (!videoFile) {
+      videoDeleteError = 'Selecione um arquivo de video valido.';
+      return;
+    }
+    setStagedVideo(videoFile);
   }
 
   async function uploadStagedVideo() {
@@ -1695,16 +1733,33 @@
           <p class="text-xs text-gray-500 dark:text-gray-400">
             Limite total: 20 imagens por imóvel.
           </p>
-          <input
-            id="upload-images-input"
-            bind:this={imageInputEl}
-            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-            type="file"
-            accept="image/*"
-            multiple
-            on:change={handleImageSelection}
-            disabled={imageUploading}
-          />
+          <div
+            class={`rounded-md border-2 border-dashed p-3 transition ${
+              isImageDropActive
+                ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                : 'border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800'
+            }`}
+            role="group"
+            aria-label="Envio de imagens do imóvel"
+            on:dragover|preventDefault={() => (isImageDropActive = true)}
+            on:dragenter|preventDefault={() => (isImageDropActive = true)}
+            on:dragleave={() => (isImageDropActive = false)}
+            on:drop={handleImageDrop}
+          >
+            <input
+              id="upload-images-input"
+              bind:this={imageInputEl}
+              class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              type="file"
+              accept="image/*"
+              multiple
+              on:change={handleImageSelection}
+              disabled={imageUploading}
+            />
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Arraste e solte imagens aqui ou clique para selecionar.
+            </p>
+          </div>
           {#if stagedImages.length > 0}
             <div class="mt-3 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
               {#each stagedImagePreviews as preview, index}
@@ -1768,15 +1823,32 @@
               {#if isEditMode}
                 <div class="mt-3 space-y-2">
                   <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="upload-video-input">Enviar vídeo</label>
-                  <input
-                    id="upload-video-input"
-                    bind:this={videoInputEl}
-                    class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                    type="file"
-                    accept="video/*"
-                    on:change={handleVideoSelection}
-                    disabled={videoUploading || videoDeleting}
-                  />
+                  <div
+                    class={`rounded-md border-2 border-dashed p-3 transition ${
+                      isVideoDropActive
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : 'border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800'
+                    }`}
+                    role="group"
+                    aria-label="Envio de video do imóvel"
+                    on:dragover|preventDefault={() => (isVideoDropActive = true)}
+                    on:dragenter|preventDefault={() => (isVideoDropActive = true)}
+                    on:dragleave={() => (isVideoDropActive = false)}
+                    on:drop={handleVideoDrop}
+                  >
+                    <input
+                      id="upload-video-input"
+                      bind:this={videoInputEl}
+                      class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                      type="file"
+                      accept="video/*"
+                      on:change={handleVideoSelection}
+                      disabled={videoUploading || videoDeleting}
+                    />
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Arraste e solte um vídeo aqui ou clique para selecionar.
+                    </p>
+                  </div>
 
                   {#if stagedVideoPreview}
                     <div class="mt-2 overflow-hidden rounded-lg bg-black/10 dark:bg-gray-800">

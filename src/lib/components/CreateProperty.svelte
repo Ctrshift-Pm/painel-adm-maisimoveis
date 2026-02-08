@@ -113,6 +113,8 @@
   let imagePreviewUrls: string[] = [];
   let video: File | null = null;
   let videoPreviewUrl: string | null = null;
+  let isImageDropActive = false;
+  let isVideoDropActive = false;
   let isSubmitting = false;
   let isPromoted = false;
   let promotionPercentage = '';
@@ -259,16 +261,18 @@
     imagePreviewUrls = selectedImages.map((file) => URL.createObjectURL(file));
   }
 
-  function handleImagesChange(event: Event) {
-    const target = event.target as HTMLInputElement;
-    const files = Array.from(target.files ?? []);
-    if (files.length === 0) return;
+  function addSelectedImages(files: File[]) {
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      toast.error('Selecione apenas arquivos de imagem.');
+      return;
+    }
 
     const current = [...selectedImages];
     const maxImages = 20;
     let ignoredCount = 0;
 
-    for (const file of files) {
+    for (const file of imageFiles) {
       if (current.length >= maxImages) {
         ignoredCount++;
         continue;
@@ -288,11 +292,26 @@
 
     selectedImages = current;
     refreshImagePreviews();
-    target.value = '';
 
     if (ignoredCount > 0) {
       toast.warning('Algumas imagens foram ignoradas por duplicidade ou limite de 20 arquivos.');
     }
+  }
+
+  function handleImagesChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const files = Array.from(target.files ?? []);
+    if (files.length === 0) return;
+    addSelectedImages(files);
+    target.value = '';
+  }
+
+  function handleImagesDrop(event: DragEvent) {
+    event.preventDefault();
+    isImageDropActive = false;
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    addSelectedImages(files);
   }
 
   function removeSelectedImage(index: number) {
@@ -307,12 +326,29 @@
     }
   }
 
-  function handleVideoChange(event: Event) {
-    const target = event.target as HTMLInputElement;
-    const file = target.files && target.files.length > 0 ? target.files[0] : null;
+  function setVideoFile(file: File | null) {
     revokeVideoPreview();
     video = file;
     videoPreviewUrl = file ? URL.createObjectURL(file) : null;
+  }
+
+  function handleVideoChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files && target.files.length > 0 ? target.files[0] : null;
+    setVideoFile(file);
+  }
+
+  function handleVideoDrop(event: DragEvent) {
+    event.preventDefault();
+    isVideoDropActive = false;
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    const videoFile = files.find((file) => file.type.startsWith('video/')) ?? null;
+    if (!videoFile) {
+      toast.error('Selecione um arquivo de video valido.');
+      return;
+    }
+    setVideoFile(videoFile);
   }
 
   function clearVideoSelection() {
@@ -1045,15 +1081,32 @@
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="create-images-input">
           Fotos do imóvel *
         </label>
-        <input
-          id="create-images-input"
-          bind:this={imagesInput}
-          class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-          type="file"
-          accept="image/*"
-          multiple
-          on:change={handleImagesChange}
-        />
+        <div
+          class={`rounded-md border-2 border-dashed p-3 transition ${
+            isImageDropActive
+              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+              : 'border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800'
+          }`}
+          role="group"
+          aria-label="Envio de imagens do imóvel"
+          on:dragover|preventDefault={() => (isImageDropActive = true)}
+          on:dragenter|preventDefault={() => (isImageDropActive = true)}
+          on:dragleave={() => (isImageDropActive = false)}
+          on:drop={handleImagesDrop}
+        >
+          <input
+            id="create-images-input"
+            bind:this={imagesInput}
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            type="file"
+            accept="image/*"
+            multiple
+            on:change={handleImagesChange}
+          />
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Arraste e solte imagens aqui ou clique para selecionar.
+          </p>
+        </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
           Mínimo de 1 imagem e máximo de 20. Tamanho máximo por imagem: {MAX_IMAGE_SIZE_MB}MB.
         </p>
@@ -1089,14 +1142,31 @@
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300" for="create-video-input">
           Vídeo (opcional)
         </label>
-        <input
-          id="create-video-input"
-          bind:this={videoInput}
-          class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-          type="file"
-          accept="video/*"
-          on:change={handleVideoChange}
-        />
+        <div
+          class={`rounded-md border-2 border-dashed p-3 transition ${
+            isVideoDropActive
+              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+              : 'border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-800'
+          }`}
+          role="group"
+          aria-label="Envio de video do imóvel"
+          on:dragover|preventDefault={() => (isVideoDropActive = true)}
+          on:dragenter|preventDefault={() => (isVideoDropActive = true)}
+          on:dragleave={() => (isVideoDropActive = false)}
+          on:drop={handleVideoDrop}
+        >
+          <input
+            id="create-video-input"
+            bind:this={videoInput}
+            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            type="file"
+            accept="video/*"
+            on:change={handleVideoChange}
+          />
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Arraste e solte um video aqui ou clique para selecionar.
+          </p>
+        </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
           Tamanho máximo do vídeo: {MAX_VIDEO_SIZE_MB}MB.
         </p>
