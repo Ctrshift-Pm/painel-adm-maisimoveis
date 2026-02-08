@@ -980,7 +980,6 @@
 
   function stageImages(files: File[]) {
     if (files.length === 0) {
-      clearStagedImages();
       return;
     }
 
@@ -1029,6 +1028,7 @@
 
   async function uploadStagedImages() {
     if (!selectedProperty || stagedImages.length === 0) return;
+    const stagedImagesSnapshot = [...stagedImages];
     imageUploading = true;
     imageUploadError = null;
 
@@ -1053,6 +1053,10 @@
       imageUploadError =
         err?.response?.data?.error ||
         (err instanceof Error ? err.message : 'Falha ao enviar imagens.');
+      if (stagedImages.length === 0 && stagedImagesSnapshot.length > 0) {
+        stagedImages = stagedImagesSnapshot;
+        stagedImagePreviews = stagedImages.map((file) => URL.createObjectURL(file));
+      }
     } finally {
       imageUploading = false;
     }

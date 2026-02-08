@@ -442,6 +442,7 @@
 
   async function handleSubmit() {
     if (isSubmitting) return;
+    const numeroDigits = onlyDigits(numero);
     const requiredMessage =
       !title.trim()
         ? 'Informe o título do imóvel.'
@@ -457,7 +458,7 @@
                     ? 'Informe o endereço.'
                     : !semNumero && !numero.trim()
                       ? 'Informe o número do endereço ou marque "Sem número".'
-                      : !semNumero && !onlyDigits(numero)
+                      : !semNumero && numeroDigits.length === 0
                         ? 'Número do endereço deve conter apenas dígitos.'
                         : !bairro.trim()
                           ? 'Informe o bairro.'
@@ -533,10 +534,12 @@
     if (ownerPhone.trim()) form.append('owner_phone', onlyDigits(ownerPhone));
     form.append('description', description.trim());
     form.append('bairro', bairro.trim());
+    form.append('sem_numero', semNumero ? '1' : '0');
     if (semNumero) {
-      form.append('numero', '');
+      // Compatibilidade com backends legados que exigem "numero" não vazio.
+      form.append('numero', '0');
     } else {
-      form.append('numero', onlyDigits(numero));
+      form.append('numero', numeroDigits);
     }
     form.append('quadra', quadra.trim());
     form.append('lote', lote.trim());
@@ -724,6 +727,12 @@
       console.error('Erro ao criar imóvel:', error);
       const apiError = error as { response?: { data?: { error?: string; message?: string } } };
       const backendMessage = apiError?.response?.data?.error ?? apiError?.response?.data?.message;
+      if (selectedImages.length > 0 && imagePreviewUrls.length === 0) {
+        refreshImagePreviews();
+      }
+      if (video && !videoPreviewUrl) {
+        videoPreviewUrl = URL.createObjectURL(video);
+      }
       toast.error(backendMessage || 'Não foi possível criar o imóvel.');
     } finally {
       isSubmitting = false;
