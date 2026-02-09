@@ -105,6 +105,7 @@
   let isProcessing = false;
   let isEditMode = false;
   let editableProperty: PropertyDetails | null = null;
+  let editSemNumero = false;
   let isSavingEdit = false;
   let editError: string | null = null;
   let editPriceSaleDisplay = '';
@@ -149,7 +150,6 @@
 
   function openImagePreview(url: string, index = 0) {
     if (brokenPreviewImages.has(url)) {
-      toast.error('Imagem corrompida ou indisponível.');
       return;
     }
     previewImagesSnapshot = selectedPropertyImages();
@@ -169,7 +169,6 @@
     if (brokenPreviewImages.has(url)) return;
     brokenPreviewImages = new Set(brokenPreviewImages);
     brokenPreviewImages.add(url);
-    toast.error('Imagem corrompida ou indisponível.');
   }
 
   function findValidIndex(fromIndex: number, direction: 1 | -1) {
@@ -478,15 +477,36 @@
     return `${baseURL.replace(/\/+$/, '')}/${cleaned.replace(/^\/+/, '')}`;
   }
 
+  function splitImageTokens(raw: string): string[] {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    if (trimmed.includes(';')) {
+      return trimmed.split(';').map((item) => item.trim()).filter(Boolean);
+    }
+    if (trimmed.includes('|')) {
+      return [trimmed];
+    }
+    if (/https?:\/\//i.test(trimmed)) {
+      return trimmed
+        .split(/\s*,\s*(?=https?:\/\/)/gi)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return trimmed.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+
   function parseDelimitedImages(raw: string): NormalizedImage[] {
-    const tokens = raw.split(/;|,/).map((t) => t.trim()).filter(Boolean);
+    const tokens = splitImageTokens(raw);
     return tokens
       .map((token, idx) => {
-        const [maybeId, maybeUrl] = token.split('|');
-        const urlPart = maybeUrl ? maybeUrl : maybeId;
+        const separatorIndex = token.indexOf('|');
+        const hasIdPrefix = separatorIndex > 0;
+        const maybeId = hasIdPrefix ? token.slice(0, separatorIndex) : '';
+        const maybeUrl = hasIdPrefix ? token.slice(separatorIndex + 1) : token;
+        const urlPart = maybeUrl || maybeId;
         const parsedUrl = normalizeImageUrl(urlPart);
         if (!parsedUrl) return null;
-        const parsedId = maybeUrl ? Number(maybeId) : idx;
+        const parsedId = hasIdPrefix ? Number(maybeId) : idx;
         return { id: Number.isFinite(parsedId) ? parsedId : idx, url: parsedUrl };
       })
       .filter((img): img is NormalizedImage => Boolean(img));
@@ -578,6 +598,30 @@
     return coerced as unknown as PropertyDetails;
   }
 
+  function isSemNumeroValue(value: unknown): boolean {
+    const normalized = String(value ?? '').trim();
+    return normalized === '' || normalized === '0';
+  }
+
+  function formatNumeroDisplay(value: unknown): string {
+    const raw = String(value ?? '').trim();
+    if (!raw || raw === '0') return 'S/N';
+    return raw;
+  }
+
+  function visibleSelectedPropertyImages() {
+    return selectedPropertyImages().filter((image) => !brokenPreviewImages.has(image.url));
+  }
+
+  function brokenSelectedPropertyImagesCount() {
+    return selectedPropertyImages().filter((image) => brokenPreviewImages.has(image.url)).length;
+  }
+
+  function findImageIndexByUrl(url: string) {
+    const index = selectedPropertyImages().findIndex((image) => image.url === url);
+    return index >= 0 ? index : 0;
+  }
+
   function syncEditPriceDisplays(property: PropertyDetails) {
     const { supportsSale, supportsRent } = getPurposeFlags(property.purpose ?? null);
     const resolvedSale =
@@ -594,8 +638,13 @@
     editError = null;
     if (isEditMode && editableProperty) {
       syncEditPriceDisplays(editableProperty);
+      editSemNumero = isSemNumeroValue(editableProperty.numero);
+      if (editSemNumero) {
+        editableProperty.numero = '';
+      }
     } else {
       editableProperty = sanitizeEditable(selectedProperty as PropertyDetails);
+      editSemNumero = false;
     }
   }
 
@@ -609,6 +658,7 @@
     isEditMode = false;
     selectedProperty = property;
     editableProperty = sanitizeEditable({ ...property } as PropertyDetails);
+    brokenPreviewImages = new Set();
 
     try {
       const details = await api.get<PropertyDetails>(`/admin/properties/${property.id}`);
@@ -624,6 +674,10 @@
         price_sale: resolvedSale,
         price_rent: resolvedRent,
       });
+      editSemNumero = isSemNumeroValue(merged.numero);
+      if (editSemNumero && editableProperty) {
+        editableProperty.numero = '';
+      }
       if (editableProperty) {
         syncEditPriceDisplays(editableProperty);
       }
@@ -649,6 +703,8 @@
     isModalOpen = false;
     selectedProperty = null;
     editableProperty = null;
+    editSemNumero = false;
+    brokenPreviewImages = new Set();
     isEditMode = false;
     editError = null;
   }
@@ -801,6 +857,13 @@
 
       const normalizeInput = (value: unknown) =>
         value === '' || value === undefined || value === null ? null : value;
+      const numeroRaw = String(editableProperty.numero ?? '').trim();
+      const numeroDigits = sanitizeDigitsInput(numeroRaw);
+      if (!editSemNumero && numeroRaw.length > 0 && numeroDigits.length === 0) {
+        editError = 'Número do endereço deve conter apenas dígitos.';
+        isSavingEdit = false;
+        return;
+      }
       const purposeFlags = getPurposeFlags(
         editableProperty.purpose ?? selectedProperty.purpose ?? null
       );
@@ -868,7 +931,8 @@
         city: editableProperty.city,
         state: editableProperty.state,
         bairro: editableProperty.bairro,
-        numero: editableProperty.numero,
+        numero: editSemNumero ? null : (numeroDigits.length > 0 ? numeroDigits : null),
+        sem_numero: editSemNumero ? 1 : 0,
         complemento: editableProperty.complemento,
         quadra: editableProperty.quadra,
         lote: editableProperty.lote,
@@ -1715,24 +1779,22 @@
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Galeria</h3>
           {#if selectedPropertyImages().length > 0}
             <div class="mt-2 flex gap-3 overflow-x-auto rounded-md bg-gray-50 p-3 dark:bg-gray-800/60">
-                {#each selectedPropertyImages() as image, index (image.id)}
+                {#each visibleSelectedPropertyImages() as image (image.id)}
                 <div class="relative flex flex-col gap-2 items-center">
-                  {#if !brokenPreviewImages.has(image.url)}
-                    <button
-                      type="button"
-                      class="rounded-md p-0 shadow focus:outline-none focus:ring-2 focus:ring-green-500"
-                      aria-label="Abrir imagem do imóvel"
-                      on:click={() => openImagePreview(image.url, index)}
-                    >
-                      <img
-                        src={image.url}
-                        alt="Foto do imóvel"
-                        class="h-32 w-auto rounded-md object-cover"
-                        loading="lazy"
-                        on:error={() => markImageAsBroken(image.url)}
-                      />
-                    </button>
-                  {/if}
+                  <button
+                    type="button"
+                    class="rounded-md p-0 shadow focus:outline-none focus:ring-2 focus:ring-green-500"
+                    aria-label="Abrir imagem do imóvel"
+                    on:click={() => openImagePreview(image.url, findImageIndexByUrl(image.url))}
+                  >
+                    <img
+                      src={image.url}
+                      alt="Foto do imóvel"
+                      class="h-32 w-auto rounded-md object-cover"
+                      loading="lazy"
+                      on:error={() => markImageAsBroken(image.url)}
+                    />
+                  </button>
                   {#if isEditMode && image.id != null}
                     <Button variant="destructive" size="sm" on:click={() => handleImageDelete(image.id!)}>
                       Remover
@@ -1741,6 +1803,11 @@
                 </div>
               {/each}
             </div>
+            {#if brokenSelectedPropertyImagesCount() > 0}
+              <p class="mt-2 text-xs text-amber-600 dark:text-amber-300">
+                {brokenSelectedPropertyImagesCount()} imagem(ns) corrompida(s) foram ocultada(s).
+              </p>
+            {/if}
           {:else}
             <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma imagem cadastrada.</p>
           {/if}
@@ -1981,7 +2048,32 @@
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Número:</strong>
-                <input name="numero" class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700" bind:value={editableProperty.numero} />
+                <input
+                  name="numero"
+                  class="w-full rounded border px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-700"
+                  bind:value={editableProperty.numero}
+                  inputmode="numeric"
+                  disabled={editSemNumero}
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    if (editableProperty) {
+                      editableProperty.numero = sanitizeDigitsInput(target.value);
+                    }
+                  }}
+                />
+              </label>
+              <label class="flex items-center gap-2 md:col-span-2">
+                <input
+                  type="checkbox"
+                  name="sem_numero"
+                  bind:checked={editSemNumero}
+                  on:change={() => {
+                    if (editSemNumero && editableProperty) {
+                      editableProperty.numero = '';
+                    }
+                  }}
+                />
+                <span>Sem número</span>
               </label>
               <label class="flex flex-col gap-1">
                 <strong>Complemento:</strong>
@@ -2104,7 +2196,7 @@
               <li><strong>Cidade:</strong> {selectedProperty.city ?? '-'}</li>
               <li><strong>Bairro:</strong> {selectedProperty.bairro ?? '-'}</li>
               <li><strong>Endereço:</strong> {selectedProperty.address ?? '-'}</li>
-              <li><strong>Número:</strong> {selectedProperty.numero ?? '-'}</li>
+              <li><strong>Número:</strong> {formatNumeroDisplay(selectedProperty.numero)}</li>
               <li><strong>Complemento:</strong> {selectedProperty.complemento ?? '-'}</li>
               <li><strong>Quadra:</strong> {selectedProperty.quadra ?? '-'}</li>
               <li><strong>Lote:</strong> {selectedProperty.lote ?? '-'}</li>
