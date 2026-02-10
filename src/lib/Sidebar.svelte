@@ -59,6 +59,8 @@
     verificacao: false
   };
 
+  const STORAGE_KEY = 'sidebar_open_groups';
+
   function viewToGroup(view: View) {
     if (imoveisViews.includes(view)) return 'imoveis';
     if (usuariosViews.includes(view)) return 'usuarios';
@@ -73,6 +75,58 @@
       openGroups = { ...openGroups, [group]: true };
     }
     lastActiveView = activeView;
+  }
+
+  function toggleGroup(group: keyof typeof openGroups) {
+    openGroups = { ...openGroups, [group]: !openGroups[group] };
+  }
+
+  function persistOpenGroups() {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(openGroups));
+  }
+
+  if (typeof window !== 'undefined') {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        openGroups = {
+          imoveis: Boolean(parsed?.imoveis),
+          usuarios: Boolean(parsed?.usuarios),
+          verificacao: Boolean(parsed?.verificacao)
+        };
+      } catch {
+        // ignore invalid cache
+      }
+    }
+  }
+
+  $: persistOpenGroups();
+
+  function resolveViewFromHash(): View | null {
+    if (typeof window === 'undefined') return null;
+    const hash = window.location.hash.replace('#', '').trim();
+    if (isValidView(hash)) return hash as View;
+    return null;
+  }
+
+  if (typeof window !== 'undefined') {
+    const hashView = resolveViewFromHash();
+    if (hashView) {
+      onNavigate(hashView);
+    }
+    window.addEventListener('hashchange', () => {
+      const next = resolveViewFromHash();
+      if (next) onNavigate(next);
+    });
+  }
+
+  function handleNavigationWithHash(view: string) {
+    handleNavigation(view);
+    if (typeof window !== 'undefined') {
+      window.location.hash = view;
+    }
   }
 </script>
 
@@ -118,7 +172,7 @@
     <div class="space-y-2">
       <button
         class="w-full text-left flex items-center px-4 py-2 rounded-lg transition text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white"
-        on:click={() => (openGroups = { ...openGroups, imoveis: !openGroups.imoveis })}
+        on:click={() => toggleGroup('imoveis')}
       >
         <span class="flex-1">Imóveis</span>
         {#if !openGroups.imoveis && pendingCounts.propertyRequests > 0}
@@ -134,26 +188,48 @@
         <div class="space-y-2">
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'properties' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('properties')}
+            on:click={() => handleNavigationWithHash('properties')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m5-4h1m-1 4h1m-1-8h1m-5 8h1m-1-4h1"
+              ></path>
+            </svg>
             Imóveis
           </button>
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'sold_properties' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('sold_properties')}
+            on:click={() => handleNavigationWithHash('sold_properties')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
             Imóveis vendidos
           </button>
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'create_property' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('create_property')}
+            on:click={() => handleNavigationWithHash('create_property')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
             Cadastrar Imóvel
           </button>
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'property_requests' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('property_requests')}
+            on:click={() => handleNavigationWithHash('property_requests')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2h-1V3a1 1 0 00-1-1h-2a1 1 0 00-1 1v2H10V3a1 1 0 00-1-1H7a1 1 0 00-1 1v2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              ></path>
+            </svg>
             Solicitações (Imóveis)
             {#if pendingCounts.propertyRequests > 0}
               <span class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
@@ -168,7 +244,7 @@
     <div class="space-y-2">
       <button
         class="w-full text-left flex items-center px-4 py-2 rounded-lg transition text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white"
-        on:click={() => (openGroups = { ...openGroups, usuarios: !openGroups.usuarios })}
+        on:click={() => toggleGroup('usuarios')}
       >
         <span class="flex-1">Usuários</span>
         <svg class="w-4 h-4 transition-transform {openGroups.usuarios ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,20 +255,39 @@
         <div class="space-y-2">
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'brokers' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('brokers')}
+            on:click={() => handleNavigationWithHash('brokers')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              ></path>
+            </svg>
             Corretores
           </button>
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'clients' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('clients')}
+            on:click={() => handleNavigationWithHash('clients')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"
+              ></path>
+            </svg>
             Clientes
           </button>
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'create_user' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('create_user')}
+            on:click={() => handleNavigationWithHash('create_user')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v6m3-3h-6M5 7a4 4 0 118 0 4 4 0 01-8 0zm-2 14a6 6 0 0112 0v1" />
+            </svg>
             Cadastrar Usuário
           </button>
         </div>
@@ -202,7 +297,7 @@
     <div class="space-y-2">
       <button
         class="w-full text-left flex items-center px-4 py-2 rounded-lg transition text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white"
-        on:click={() => (openGroups = { ...openGroups, verificacao: !openGroups.verificacao })}
+        on:click={() => toggleGroup('verificacao')}
       >
         <span class="flex-1">Verificação</span>
         {#if !openGroups.verificacao && pendingCounts.brokerRequests > 0}
@@ -218,8 +313,16 @@
         <div class="space-y-2">
           <button
             class="w-full text-left flex items-center px-4 py-2 pl-10 rounded-lg transition {activeView === 'verification' ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/20' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:text-white'}"
-            on:click={() => handleNavigation('verification')}
+            on:click={() => handleNavigationWithHash('verification')}
           >
+            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              />
+            </svg>
             Solicitações de Corretores
             {#if pendingCounts.brokerRequests > 0}
               <span class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
