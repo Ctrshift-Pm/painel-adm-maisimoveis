@@ -24,3 +24,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+app-imobiliario.code-workspace
+src/lib/app-imobiliario.code-workspace
