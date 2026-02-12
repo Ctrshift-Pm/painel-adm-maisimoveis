@@ -19,8 +19,6 @@ O **Painel Administrativo Mais Imóveis** é uma aplicação web desenvolvida pa
 
 O projeto foi construído utilizando **Svelte** e **TypeScript** para garantir alta performance e tipagem segura, estilizado com **Tailwind CSS** para um design limpo e eficiente, e utiliza **Vite** para um ambiente de desenvolvimento ultra-rápido.
 
-> **Acesse a versão online:** [painel-adm-encontreaquiimoveis.vercel.app](https://painel-adm-encontreaquiimoveis.vercel.app)
-
 ---
 
 ## Tecnologias Utilizadas
