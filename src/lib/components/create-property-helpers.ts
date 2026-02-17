@@ -2,8 +2,16 @@ export function onlyDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+function normalizePhoneBrDigits(value: string): string {
+  const digits = onlyDigits(value);
+  if (digits.length > 11 && digits.startsWith('55')) {
+    return digits.slice(2);
+  }
+  return digits;
+}
+
 export function formatPhoneBr(value: string): string {
-  const digits = onlyDigits(value).slice(0, 11);
+  const digits = normalizePhoneBrDigits(value).slice(0, 11);
   if (!digits) return '';
   if (digits.length <= 2) return `(${digits}`;
   if (digits.length <= 7) return `(${digits.slice(0, 2)})${digits.slice(2)}`;
@@ -12,7 +20,7 @@ export function formatPhoneBr(value: string): string {
 }
 
 export function hasValidPhoneBr(value: string): boolean {
-  return onlyDigits(value).length === 11;
+  return normalizePhoneBrDigits(value).length === 11;
 }
 
 export function sanitizeCreciInput(value: string): string {
