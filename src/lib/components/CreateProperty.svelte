@@ -48,6 +48,10 @@
   const DIRECT_UPLOAD_IMAGE_CONCURRENCY = 4;
   const CREATE_REQUEST_TIMEOUT_MS = 420000;
   const DIRECT_UPLOAD_TIMEOUT_MS = 240000;
+  const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  const BLOCKED_IMAGE_MIME_TYPES = new Set(['image/gif', 'image/svg+xml']);
+  const ALLOWED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
+  const BLOCKED_IMAGE_EXTENSIONS = new Set(['gif', 'svg', 'svgz']);
   const states = [
     'AC',
     'AL',
@@ -138,6 +142,24 @@
   let citiesError: string | null = null;
   let cepLookupError: string | null = null;
   let lastCepLookup = '';
+
+  function getFileExtension(fileName: string): string {
+    const index = fileName.lastIndexOf('.');
+    if (index < 0) return '';
+    return fileName.slice(index + 1).toLowerCase();
+  }
+
+  function isAllowedRasterImage(file: File): boolean {
+    const mime = (file.type || '').toLowerCase();
+    const extension = getFileExtension(file.name);
+    if (BLOCKED_IMAGE_MIME_TYPES.has(mime) || BLOCKED_IMAGE_EXTENSIONS.has(extension)) {
+      return false;
+    }
+    if (ALLOWED_IMAGE_MIME_TYPES.has(mime)) {
+      return true;
+    }
+    return ALLOWED_IMAGE_EXTENSIONS.has(extension);
+  }
 
   async function fetchBrokers(searchTerm = '') {
     brokersLoading = true;
@@ -276,8 +298,8 @@
   }
 
   async function optimizeImageForUpload(file: File): Promise<File> {
-    const isImage = file.type.startsWith('image/');
-    const isOptimizableType = !['image/gif', 'image/svg+xml'].includes(file.type);
+    const isImage = isAllowedRasterImage(file);
+    const isOptimizableType = ALLOWED_IMAGE_MIME_TYPES.has((file.type || '').toLowerCase());
 
     if (!isImage || !isOptimizableType || file.size < IMAGE_OPTIMIZATION_MIN_BYTES) {
       return file;
@@ -333,10 +355,15 @@
   }
 
   async function addSelectedImages(files: File[]) {
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    const imageFiles = files.filter((file) => isAllowedRasterImage(file));
+    const rejectedFiles = files.filter((file) => !isAllowedRasterImage(file));
     if (imageFiles.length === 0) {
-      toast.error('Selecione apenas arquivos de imagem.');
+      toast.error('Formato de arquivo não suportado. Use apenas JPG, PNG ou WEBP.');
       return;
+    }
+
+    if (rejectedFiles.length > 0) {
+      toast.error('Formato de arquivo não suportado. Use apenas JPG, PNG ou WEBP.');
     }
 
     const current = [...selectedImages];
@@ -1307,7 +1334,7 @@
           on:dragleave={() => (isImageDropActive = false)}
           on:drop={handleImagesDrop}
         >
-          <input id="create-images-input" name="images" bind:this={imagesInput} class="sr-only" type="file" accept="image/*" multiple on:change={handleImagesChange} />
+          <input id="create-images-input" name="images" bind:this={imagesInput} class="sr-only" type="file" accept="image/png,image/jpeg,image/webp" multiple on:change={handleImagesChange} />
           <div class="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" on:click={openImagesPicker} disabled={isSubmitting}>
               Escolher imagens
