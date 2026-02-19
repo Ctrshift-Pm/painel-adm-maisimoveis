@@ -31,7 +31,14 @@
 
   type GroupKey = 'imoveis' | 'negociacoes' | 'usuarios' | 'verificacao';
 
-  const imoveisItems = [
+  type SidebarItem = {
+    view: View | null;
+    label: string;
+    icon: string;
+    disabled?: boolean;
+  };
+
+  const imoveisItems: SidebarItem[] = [
     {
       view: 'properties',
       label: 'Imoveis',
@@ -39,8 +46,14 @@
     },
     {
       view: 'sold_properties',
-      label: 'Imoveis vendidos',
+      label: 'Imóveis Vendidos/Alugados',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />`
+    },
+    {
+      view: null,
+      label: 'Contratos (Em breve)',
+      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 3h10a2 2 0 012 2v14l-7-3-7 3V5a2 2 0 012-2z" />`,
+      disabled: true,
     },
     {
       view: 'create_property',
@@ -52,9 +65,9 @@
       label: 'Solicitacoes (Imoveis)',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2h-1V3a1 1 0 00-1-1h-2a1 1 0 00-1 1v2H10V3a1 1 0 00-1-1H7a1 1 0 00-1 1v2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />`
     }
-  ] as const;
+  ];
 
-  const usuariosItems = [
+  const usuariosItems: SidebarItem[] = [
     {
       view: 'brokers',
       label: 'Corretores',
@@ -70,9 +83,9 @@
       label: 'Cadastrar Usuario',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v6m3-3h-6M5 7a4 4 0 118 0 4 4 0 01-8 0zm-2 14a6 6 0 0112 0" />`
     }
-  ] as const;
+  ];
 
-  const negociacoesItems = [
+  const negociacoesItems: SidebarItem[] = [
     {
       view: 'negotiation_requests',
       label: 'Solicitação de Propostas',
@@ -88,15 +101,15 @@
       label: 'Contratos (Em breve)',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 3h8a2 2 0 012 2v14l-6-3-6 3V5a2 2 0 012-2z" />`
     }
-  ] as const;
+  ];
 
-  const verificacaoItems = [
+  const verificacaoItems: SidebarItem[] = [
     {
       view: 'verification',
       label: 'Solicitacoes de Corretores',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />`
     }
-  ] as const;
+  ];
 
   const storageKey = 'sidebar_open_groups';
 
@@ -282,22 +295,34 @@
       {#if openGroups.imoveis}
         <div class="space-y-1">
           {#each imoveisItems as item}
-            <button
-              class={navItemClass(item.view, 'pl-10')}
-              on:click={() => handleNavigation(item.view)}
-            >
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {@html item.icon}
-              </svg>
-              {item.label}
-              {#if item.view === 'property_requests' && pendingCounts.propertyRequests > 0}
-                <span
-                  class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white"
-                >
-                  {pendingCounts.propertyRequests}
-                </span>
-              {/if}
-            </button>
+            {#if item.view && !item.disabled}
+              <button
+                class={navItemClass(item.view, 'pl-10')}
+                on:click={() => handleNavigation(item.view as View)}
+              >
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {@html item.icon}
+                </svg>
+                {item.label}
+                {#if item.view === 'property_requests' && pendingCounts.propertyRequests > 0}
+                  <span
+                    class="ml-auto inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white"
+                  >
+                    {pendingCounts.propertyRequests}
+                  </span>
+                {/if}
+              </button>
+            {:else}
+              <button
+                class="w-full cursor-not-allowed text-left flex items-center px-4 py-2 rounded-lg text-slate-400 dark:text-slate-500 pl-10"
+                disabled
+              >
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {@html item.icon}
+                </svg>
+                {item.label}
+              </button>
+            {/if}
           {/each}
         </div>
       {/if}
@@ -333,8 +358,8 @@
         <div class="space-y-1">
           {#each usuariosItems as item}
             <button
-              class={navItemClass(item.view, 'pl-10')}
-              on:click={() => handleNavigation(item.view)}
+              class={navItemClass(item.view as View, 'pl-10')}
+              on:click={() => handleNavigation(item.view as View)}
             >
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html item.icon}
@@ -376,8 +401,8 @@
         <div class="space-y-1">
           {#each negociacoesItems as item}
             <button
-              class={navItemClass(item.view, 'pl-10')}
-              on:click={() => handleNavigation(item.view)}
+              class={navItemClass(item.view as View, 'pl-10')}
+              on:click={() => handleNavigation(item.view as View)}
             >
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html item.icon}
@@ -426,8 +451,8 @@
         <div class="space-y-1">
           {#each verificacaoItems as item}
             <button
-              class={navItemClass(item.view, 'pl-10')}
-              on:click={() => handleNavigation(item.view)}
+              class={navItemClass(item.view as View, 'pl-10')}
+              on:click={() => handleNavigation(item.view as View)}
             >
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {@html item.icon}

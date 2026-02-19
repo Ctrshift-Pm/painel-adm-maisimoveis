@@ -74,6 +74,7 @@
     let BrokerManagementComponent: LazySvelteComponent | null = null;
     let CreatePropertyComponent: LazySvelteComponent | null = null;
     let CreateUserComponent: LazySvelteComponent | null = null;
+    let PropertyArchiveComponent: LazySvelteComponent | null = null;
     let NegotiationRequestsComponent: LazySvelteComponent | null = null;
     let NegotiationProgressComponent: LazySvelteComponent | null = null;
     let SendNotificationComponent: LazySvelteComponent | null = null;
@@ -93,10 +94,17 @@
     }
 
     async function ensureViewComponents(view: View) {
-        if (view === 'properties' || view === 'property_requests' || view === 'sold_properties') {
+        if (view === 'properties' || view === 'property_requests') {
             if (!PropertyManagementComponent) {
                 const module = await import('./PropertyManagement.svelte');
                 PropertyManagementComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'sold_properties') {
+            if (!PropertyArchiveComponent) {
+                const module = await import('./components/PropertyArchive.svelte');
+                PropertyArchiveComponent = module.default;
             }
             return;
         }
@@ -178,7 +186,7 @@
             title: 'Solicitações de Imóveis'
         },
         sold_properties: {
-            title: 'Imóveis vendidos'
+            title: 'Imóveis Vendidos/Alugados'
         },
         negotiation_requests: {
             title: 'Solicitação de Propostas'
@@ -786,8 +794,8 @@
                     </div>
                 {/if}
             {:else if activeView === 'sold_properties'}
-                {#if PropertyManagementComponent}
-                    <svelte:component this={PropertyManagementComponent} initialStatus="sold" />
+                {#if PropertyArchiveComponent}
+                    <svelte:component this={PropertyArchiveComponent} />
                 {:else}
                     <div class="flex justify-center items-center h-64">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
