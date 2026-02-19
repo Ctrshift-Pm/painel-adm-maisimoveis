@@ -33,6 +33,8 @@
       initialView = 'negotiation_progress';
     } else if (path === '/admin/contratos') {
       initialView = 'negotiation_contracts';
+    } else if (path === '/admin/comissoes') {
+      initialView = 'commissions';
     }
   }
 

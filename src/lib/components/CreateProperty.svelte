@@ -11,6 +11,7 @@
     formatPhoneBr,
     hasValidPhoneBr,
     normalizeDecimal,
+    parseCurrency,
     onlyDigits,
     resolveCreatePropertyPrices,
     sanitizeDecimalInput,
@@ -93,6 +94,8 @@
   let status = 'approved';
   let priceSale = '';
   let priceRent = '';
+  let promotionPriceSale = '';
+  let promotionPriceRent = '';
   let ownerName = '';
   let ownerPhone = '';
   let address = '';
@@ -639,6 +642,34 @@
       return;
     }
 
+    const supportsSale = purpose.toLowerCase().includes('vend');
+    const supportsRent = purpose.toLowerCase().includes('alug');
+    const parsedPromotionPriceSale =
+      supportsSale ? parseCurrency(promotionPriceSale) : null;
+    const parsedPromotionPriceRent =
+      supportsRent ? parseCurrency(promotionPriceRent) : null;
+
+    if (
+      parsedPromotionPriceSale != null &&
+      resolvedSale != null &&
+      parsedPromotionPriceSale >= resolvedSale
+    ) {
+      toast.error('Preço promocional de venda deve ser menor que o preço de venda.');
+      return;
+    }
+
+    if (
+      parsedPromotionPriceRent != null &&
+      resolvedRent != null &&
+      parsedPromotionPriceRent >= resolvedRent
+    ) {
+      toast.error('Preço promocional de aluguel deve ser menor que o preço de aluguel.');
+      return;
+    }
+
+    const hasPromotion =
+      (parsedPromotionPriceSale ?? 0) > 0 || (parsedPromotionPriceRent ?? 0) > 0;
+
     const parsedBedrooms = bedrooms ? Number(bedrooms) : null;
     const parsedBathrooms = bathrooms ? Number(bathrooms) : null;
     const parsedGarage = garageSpots ? Number(garageSpots) : null;
@@ -736,6 +767,9 @@
         price,
         price_sale: resolvedSale,
         price_rent: resolvedRent,
+        is_promoted: hasPromotion ? 1 : 0,
+        promotion_price: parsedPromotionPriceSale,
+        promotional_rent_price: parsedPromotionPriceRent,
         owner_name: ownerName.trim() || null,
         owner_phone: ownerPhone.trim() ? onlyDigits(ownerPhone) : null,
         address: address.trim(),
@@ -784,6 +818,8 @@
       status = 'approved';
       priceSale = '';
       priceRent = '';
+      promotionPriceSale = '';
+      promotionPriceRent = '';
       ownerName = '';
       ownerPhone = '';
       address = '';
@@ -1053,6 +1089,43 @@
               on:input={(event) => {
                 const target = event.target as HTMLInputElement;
                 priceRent = formatCurrencyInput(target.value);
+              }}
+            />
+          </label>
+        {/if}
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        {#if purpose !== 'Aluguel'}
+          <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            Preço Promocional (Venda)
+            <input
+              id="create-property-promotion-price-sale"
+              name="promotion_price_display"
+              class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              bind:value={promotionPriceSale}
+              inputmode="numeric"
+              placeholder="R$ 420.000,00"
+              on:input={(event) => {
+                const target = event.target as HTMLInputElement;
+                promotionPriceSale = formatCurrencyInput(target.value);
+              }}
+            />
+          </label>
+        {/if}
+        {#if purpose !== 'Venda'}
+          <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            Preço Promocional (Aluguel)
+            <input
+              id="create-property-promotion-price-rent"
+              name="promotional_rent_price_display"
+              class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              bind:value={promotionPriceRent}
+              inputmode="numeric"
+              placeholder="R$ 2.200,00"
+              on:input={(event) => {
+                const target = event.target as HTMLInputElement;
+                promotionPriceRent = formatCurrencyInput(target.value);
               }}
             />
           </label>

@@ -78,6 +78,7 @@
     let NegotiationRequestsComponent: LazySvelteComponent | null = null;
     let NegotiationProgressComponent: LazySvelteComponent | null = null;
     let ContractsModuleComponent: LazySvelteComponent | null = null;
+    let CommissionsModuleComponent: LazySvelteComponent | null = null;
     let SendNotificationComponent: LazySvelteComponent | null = null;
     let AdminNotificationsPanelComponent: LazySvelteComponent | null = null;
     let StatusPieChartComponent: LazySvelteComponent | null = null;
@@ -144,6 +145,13 @@
             }
             return;
         }
+        if (view === 'commissions') {
+            if (!CommissionsModuleComponent) {
+                const module = await import('./components/CommissionsModule.svelte');
+                CommissionsModuleComponent = module.default;
+            }
+            return;
+        }
         if (view === 'brokers') {
             if (!BrokerManagementComponent) {
                 const module = await import('./BrokerManagement.svelte');
@@ -205,6 +213,9 @@
         negotiation_contracts: {
             title: 'Contratos'
         },
+        commissions: {
+            title: 'Comissões (VGV)'
+        },
         create_property: {
             title: 'Cadastrar Imóvel'
         },
@@ -261,6 +272,7 @@
             activeView === 'negotiation_requests' ||
             activeView === 'negotiation_progress' ||
             activeView === 'negotiation_contracts' ||
+            activeView === 'commissions' ||
             activeView === 'brokers' ||
             activeView === 'create_property' ||
             activeView === 'create_user'
@@ -490,7 +502,8 @@
             activeView === 'brokers' ||
             activeView === 'negotiation_requests' ||
             activeView === 'negotiation_progress' ||
-            activeView === 'negotiation_contracts'
+            activeView === 'negotiation_contracts' ||
+            activeView === 'commissions'
         ) return;
         const config = getViewConfig(activeView);
         if (!config.sortColumn) return;
@@ -828,6 +841,14 @@
             {:else if activeView === 'negotiation_contracts'}
                 {#if ContractsModuleComponent}
                     <svelte:component this={ContractsModuleComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
+            {:else if activeView === 'commissions'}
+                {#if CommissionsModuleComponent}
+                    <svelte:component this={CommissionsModuleComponent} />
                 {:else}
                     <div class="flex justify-center items-center h-64">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>

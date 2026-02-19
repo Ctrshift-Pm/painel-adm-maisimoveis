@@ -21,6 +21,8 @@ export interface Property {
   price: number;
   price_sale?: number | null;
   price_rent?: number | null;
+  promotion_price?: number | null;
+  promotional_rent_price?: number | null;
   address?: string | null;
   quadra?: string | null;
   lote?: string | null;
@@ -124,6 +126,7 @@ export type View =
   | 'negotiation_requests'
   | 'negotiation_progress'
   | 'negotiation_contracts'
+  | 'commissions'
   | 'create_property'
   | 'create_user'
   | 'brokers'

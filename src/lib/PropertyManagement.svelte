@@ -24,6 +24,8 @@
     price?: number | null;
     price_sale?: number | null;
     price_rent?: number | null;
+    promotion_price?: number | null;
+    promotional_rent_price?: number | null;
     status: PropertyStatus;
     purpose?: string | null;
     broker_id?: number | null;
@@ -55,6 +57,8 @@
     area_terreno?: number | null;
     price_sale?: number | null;
     price_rent?: number | null;
+    promotion_price?: number | null;
+    promotional_rent_price?: number | null;
     valor_condominio?: number | null;
     video_url?: string | null;
     has_wifi?: boolean | null;
@@ -110,6 +114,8 @@
   let editError: string | null = null;
   let editPriceSaleDisplay = '';
   let editPriceRentDisplay = '';
+  let editPromotionPriceSaleDisplay = '';
+  let editPromotionPriceRentDisplay = '';
   let imageUploading = false;
   let imageUploadError: string | null = null;
   let imageDeleteError: string | null = null;
@@ -312,6 +318,8 @@
           const priceValue = record['price'];
           const priceSaleValue = record['price_sale'];
           const priceRentValue = record['price_rent'];
+          const promotionPriceValue = record['promotion_price'];
+          const promotionalRentPriceValue = record['promotional_rent_price'];
           const brokerIdValue = record['broker_id'];
           const ownerIdValue = record['owner_id'];
           const ownerNameValue = record['owner_name'];
@@ -330,6 +338,12 @@
             price: priceValue != null ? Number(priceValue) : null,
             price_sale: priceSaleValue != null ? Number(priceSaleValue) : null,
             price_rent: priceRentValue != null ? Number(priceRentValue) : null,
+            promotion_price:
+              promotionPriceValue != null ? Number(promotionPriceValue) : null,
+            promotional_rent_price:
+              promotionalRentPriceValue != null
+                ? Number(promotionalRentPriceValue)
+                : null,
             status: (record['status'] as PropertyStatus) ?? 'pending_approval',
             purpose: (record['purpose'] as string | null | undefined) ?? null,
             broker_id: brokerIdValue != null ? Number(brokerIdValue) : null,
@@ -630,6 +644,14 @@
       property.price_rent ?? (supportsRent && !supportsSale ? property.price ?? null : null);
     editPriceSaleDisplay = resolvedSale != null ? formatCurrency(Number(resolvedSale)) : '';
     editPriceRentDisplay = resolvedRent != null ? formatCurrency(Number(resolvedRent)) : '';
+    editPromotionPriceSaleDisplay =
+      property.promotion_price != null
+        ? formatCurrency(Number(property.promotion_price))
+        : '';
+    editPromotionPriceRentDisplay =
+      property.promotional_rent_price != null
+        ? formatCurrency(Number(property.promotional_rent_price))
+        : '';
   }
 
   function toggleEditMode() {
@@ -673,6 +695,12 @@
         ...merged,
         price_sale: resolvedSale,
         price_rent: resolvedRent,
+        promotion_price:
+          merged.promotion_price != null ? Number(merged.promotion_price) : null,
+        promotional_rent_price:
+          merged.promotional_rent_price != null
+            ? Number(merged.promotional_rent_price)
+            : null,
       });
       editSemNumero = isSemNumeroValue(merged.numero);
       if (editSemNumero && editableProperty) {
@@ -845,6 +873,8 @@
         'price',
         'price_sale',
         'price_rent',
+        'promotion_price',
+        'promotional_rent_price',
         'area_construida',
         'area_terreno',
         'bedrooms',
@@ -885,6 +915,12 @@
         resolvedPriceRent != null ? Number(resolvedPriceRent) : null;
       const resolvedPriceValue =
         resolvedPrice != null ? Number(resolvedPrice) : null;
+      const promotionPriceSaleValue = purposeFlags.supportsSale
+        ? parseCurrency(editPromotionPriceSaleDisplay)
+        : null;
+      const promotionPriceRentValue = purposeFlags.supportsRent
+        ? parseCurrency(editPromotionPriceRentDisplay)
+        : null;
 
       if (purposeFlags.isDual) {
         if (
@@ -899,6 +935,26 @@
         }
       } else if (resolvedPriceValue == null || resolvedPriceValue <= 0) {
         editError = 'Informe um preço válido.';
+        isSavingEdit = false;
+        return;
+      }
+
+      if (
+        promotionPriceSaleValue != null &&
+        resolvedPriceSaleValue != null &&
+        promotionPriceSaleValue >= resolvedPriceSaleValue
+      ) {
+        editError = 'Preço promocional de venda deve ser menor que o preço de venda.';
+        isSavingEdit = false;
+        return;
+      }
+
+      if (
+        promotionPriceRentValue != null &&
+        resolvedPriceRentValue != null &&
+        promotionPriceRentValue >= resolvedPriceRentValue
+      ) {
+        editError = 'Preço promocional de aluguel deve ser menor que o preço de aluguel.';
         isSavingEdit = false;
         return;
       }
@@ -926,6 +982,12 @@
         price: resolvedPriceValue ?? undefined,
         price_sale: resolvedPriceSaleValue ?? undefined,
         price_rent: resolvedPriceRentValue ?? undefined,
+        promotion_price: promotionPriceSaleValue,
+        promotional_rent_price: promotionPriceRentValue,
+        is_promoted:
+          (promotionPriceSaleValue ?? 0) > 0 || (promotionPriceRentValue ?? 0) > 0
+            ? 1
+            : 0,
         address: editableProperty.address,
         cep: editableProperty.cep ? onlyDigits(editableProperty.cep) : editableProperty.cep,
         city: editableProperty.city,
@@ -1741,6 +1803,81 @@
                   }}
                 />
               {/if}
+
+              {#if flags.isDual}
+                <div class="mt-2 grid gap-3 md:grid-cols-2">
+                  <input
+                    name="promotion_price_display"
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                    type="text"
+                    inputmode="numeric"
+                    bind:value={editPromotionPriceSaleDisplay}
+                    placeholder="Preço promocional (venda)"
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      editPromotionPriceSaleDisplay = formatCurrencyInput(target.value);
+                      if (editableProperty) {
+                        editableProperty.promotion_price = parseCurrency(
+                          editPromotionPriceSaleDisplay
+                        );
+                      }
+                    }}
+                  />
+                  <input
+                    name="promotional_rent_price_display"
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                    type="text"
+                    inputmode="numeric"
+                    bind:value={editPromotionPriceRentDisplay}
+                    placeholder="Preço promocional (aluguel)"
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      editPromotionPriceRentDisplay = formatCurrencyInput(target.value);
+                      if (editableProperty) {
+                        editableProperty.promotional_rent_price = parseCurrency(
+                          editPromotionPriceRentDisplay
+                        );
+                      }
+                    }}
+                  />
+                </div>
+              {:else if flags.supportsRent}
+                <input
+                  name="promotional_rent_price_display"
+                  class="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                  type="text"
+                  inputmode="numeric"
+                  bind:value={editPromotionPriceRentDisplay}
+                  placeholder="Preço promocional (aluguel)"
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    editPromotionPriceRentDisplay = formatCurrencyInput(target.value);
+                    if (editableProperty) {
+                      editableProperty.promotional_rent_price = parseCurrency(
+                        editPromotionPriceRentDisplay
+                      );
+                    }
+                  }}
+                />
+              {:else}
+                <input
+                  name="promotion_price_display"
+                  class="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                  type="text"
+                  inputmode="numeric"
+                  bind:value={editPromotionPriceSaleDisplay}
+                  placeholder="Preço promocional (venda)"
+                  on:input={(event) => {
+                    const target = event.target as HTMLInputElement;
+                    editPromotionPriceSaleDisplay = formatCurrencyInput(target.value);
+                    if (editableProperty) {
+                      editableProperty.promotion_price = parseCurrency(
+                        editPromotionPriceSaleDisplay
+                      );
+                    }
+                  }}
+                />
+              {/if}
             {:else}
               <p class="text-base text-gray-800 dark:text-gray-200">{selectedProperty.purpose ?? '-'} </p>
               <div class="space-y-1">
@@ -1749,6 +1886,16 @@
                     {line.label}: {formatCurrency(line.value)}
                   </p>
                 {/each}
+                {#if selectedProperty.promotion_price != null && selectedProperty.promotion_price > 0}
+                  <p class="text-sm font-semibold text-amber-600 dark:text-amber-300">
+                    Promoção venda: {formatCurrency(selectedProperty.promotion_price)}
+                  </p>
+                {/if}
+                {#if selectedProperty.promotional_rent_price != null && selectedProperty.promotional_rent_price > 0}
+                  <p class="text-sm font-semibold text-amber-600 dark:text-amber-300">
+                    Promoção aluguel: {formatCurrency(selectedProperty.promotional_rent_price)}
+                  </p>
+                {/if}
               </div>
             {/if}
           </div>

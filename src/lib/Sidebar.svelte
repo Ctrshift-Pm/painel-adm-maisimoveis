@@ -21,6 +21,7 @@
     'negotiation_requests',
     'negotiation_progress',
     'negotiation_contracts',
+    'commissions',
     'create_property',
     'create_user',
     'brokers',
@@ -94,6 +95,11 @@
       view: 'negotiation_contracts',
       label: 'Contratos',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 3h8a2 2 0 012 2v14l-6-3-6 3V5a2 2 0 012-2z" />`
+    },
+    {
+      view: 'commissions',
+      label: 'Comissões (VGV)',
+      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11h8M8 15h5M6 21h12a2 2 0 002-2V7l-5-4H6a2 2 0 00-2 2v14a2 2 0 002 2zm7-18v4h4" />`
     }
   ];
 
@@ -155,6 +161,7 @@
       negotiation_requests: '/admin/negociacoes/solicitacoes',
       negotiation_progress: '/admin/negociacoes/andamento',
       negotiation_contracts: '/admin/contratos',
+      commissions: '/admin/comissoes',
     };
 
     const mappedPath = pathMap[view];
