@@ -12,6 +12,12 @@
     | 'AWAITING_SIGNATURES'
     | 'FINALIZED';
 
+  type ContractApprovalStatus =
+    | 'PENDING'
+    | 'APPROVED'
+    | 'APPROVED_WITH_RES'
+    | 'REJECTED';
+
   type ContractDocument = {
     id: number;
     type?: string | null;
@@ -31,6 +37,10 @@
     sellingBrokerName?: string | null;
     sellerInfo?: Record<string, unknown> | null;
     buyerInfo?: Record<string, unknown> | null;
+    sellerApprovalStatus?: ContractApprovalStatus | null;
+    buyerApprovalStatus?: ContractApprovalStatus | null;
+    sellerApprovalReason?: Record<string, unknown> | null;
+    buyerApprovalReason?: Record<string, unknown> | null;
     commissionData?: Record<string, unknown> | null;
     documents?: ContractDocument[];
     createdAt?: string | null;
@@ -45,8 +55,6 @@
     { key: 'AWAITING_SIGNATURES', label: 'Aguardando Assinaturas' },
     { key: 'FINALIZED', label: 'Finalizados' },
   ];
-
-  const statusFlow: ContractStatus[] = tabs.map((tab) => tab.key);
 
   const documentTypeLabels: Record<string, string> = {
     doc_identidade: 'Documento de Identidade',
@@ -79,10 +87,13 @@
   let itemsPerPage = 10;
   let totalItems = 0;
   let totalPages = 1;
-  let transitioning = false;
   let downloadingDocumentId: number | null = null;
   let selectedDraftFile: File | null = null;
   let uploadingDraft = false;
+  let evaluatingSide: 'seller' | 'buyer' | null = null;
+  let uploadingSignedDoc = false;
+  let signedDocType = 'contrato_assinado';
+  let selectedSignedFile: File | null = null;
   let finalizingContract = false;
   let finalizeForm = {
     valorVenda: '',
@@ -126,6 +137,38 @@
 
   function statusLabel(status: ContractStatus): string {
     return tabs.find((tab) => tab.key === status)?.label ?? status;
+  }
+
+  function approvalLabel(status?: ContractApprovalStatus | null): string {
+    switch (String(status ?? '').toUpperCase()) {
+      case 'APPROVED':
+        return 'Aprovado';
+      case 'APPROVED_WITH_RES':
+        return 'Aprovado com ressalvas';
+      case 'REJECTED':
+        return 'Rejeitado';
+      default:
+        return 'Pendente';
+    }
+  }
+
+  function approvalBadgeClass(status?: ContractApprovalStatus | null): string {
+    switch (String(status ?? '').toUpperCase()) {
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
+      case 'APPROVED_WITH_RES':
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
+      default:
+        return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+    }
+  }
+
+  function readReasonText(reasonPayload?: Record<string, unknown> | null): string {
+    if (!reasonPayload) return '';
+    const reason = reasonPayload.reason;
+    return reason == null ? '' : String(reason).trim();
   }
 
   function readCommissionValue(
@@ -218,56 +261,70 @@
     modalMode = resolveModalMode(item);
     showModal = true;
     selectedDraftFile = null;
+    selectedSignedFile = null;
+    signedDocType = 'contrato_assinado';
     uploadingDraft = false;
+    uploadingSignedDoc = false;
+    evaluatingSide = null;
     finalizingContract = false;
-    transitioning = false;
     hydrateFinalizeForm(item);
   }
 
   function closeModal(force = false) {
-    if (!force && (transitioning || uploadingDraft || finalizingContract)) {
+    if (
+      !force &&
+      (uploadingDraft ||
+        uploadingSignedDoc ||
+        finalizingContract ||
+        evaluatingSide !== null)
+    ) {
       return;
     }
     showModal = false;
     selected = null;
     selectedDraftFile = null;
+    selectedSignedFile = null;
     modalMode = 'review_docs';
   }
 
-  function selectedIndex(): number {
-    if (!selected) return -1;
-    return statusFlow.indexOf(selected.status);
-  }
-
-  function canGoPrevious(): boolean {
-    return selectedIndex() > 0;
-  }
-
-  function canGoNext(): boolean {
-    const index = selectedIndex();
-    return index >= 0 && index < statusFlow.length - 1;
-  }
-
-  async function transition(direction: 'next' | 'previous') {
+  async function evaluateContractSide(
+    side: 'seller' | 'buyer',
+    status: ContractApprovalStatus
+  ) {
     if (!selected) return;
-    if (direction === 'next' && !canGoNext()) return;
-    if (direction === 'previous' && !canGoPrevious()) return;
 
-    transitioning = true;
+    let reason = '';
+    if (status === 'APPROVED_WITH_RES' || status === 'REJECTED') {
+      const promptMessage =
+        status === 'REJECTED'
+          ? 'Informe o motivo da rejeição:'
+          : 'Informe a ressalva da aprovação:';
+      const value = window.prompt(promptMessage, '');
+      if (value == null) {
+        return;
+      }
+      reason = value.trim();
+      if (reason.length < 3) {
+        toast.error('Motivo deve ter ao menos 3 caracteres.');
+        return;
+      }
+    }
+
+    evaluatingSide = side;
     try {
-      await api.put(`/admin/contracts/${selected.id}/transition`, { direction });
-      toast.success(
-        direction === 'next'
-          ? 'Contrato avançado para a próxima etapa.'
-          : 'Contrato retornado para a etapa anterior.'
-      );
+      await api.put(`/admin/contracts/${selected.id}/evaluate-side`, {
+        side,
+        status,
+        reason: reason || undefined,
+      });
+      toast.success('Avaliação registrada com sucesso.');
       closeModal(true);
       refresh();
     } catch (error) {
-      console.error('Erro ao transicionar contrato:', error);
-      toast.error('Não foi possível atualizar a etapa do contrato.');
+      console.error('Erro ao avaliar documentação por lado:', error);
+      toast.error('Não foi possível registrar a avaliação.');
     } finally {
-      transitioning = false;
+      evaluatingSide = null;
     }
   }
 
@@ -275,6 +332,37 @@
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0] ?? null;
     selectedDraftFile = file;
+  }
+
+  function handleSignedFileChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    selectedSignedFile = target.files?.[0] ?? null;
+  }
+
+  async function uploadSignedDocsByAdmin() {
+    if (!selected) return;
+    if (!selectedSignedFile) {
+      toast.error('Selecione um arquivo para enviar.');
+      return;
+    }
+
+    uploadingSignedDoc = true;
+    try {
+      const form = new FormData();
+      form.append('documentType', signedDocType);
+      form.append('file', selectedSignedFile);
+      await apiClient.post(`/admin/contracts/${selected.id}/signed-docs`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Documento físico anexado com sucesso.');
+      closeModal(true);
+      refresh();
+    } catch (error) {
+      console.error('Erro ao anexar documento físico:', error);
+      toast.error('Não foi possível anexar o documento físico.');
+    } finally {
+      uploadingSignedDoc = false;
+    }
   }
 
   async function submitDraft() {
@@ -540,27 +628,110 @@
       {#if modalMode === 'review_docs'}
         <div class="grid gap-4 md:grid-cols-2">
           <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-              Dados do Captador
-            </p>
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                Captador
+              </p>
+              <span
+                class={`rounded-full px-2 py-1 text-xs font-semibold ${approvalBadgeClass(
+                  selected.sellerApprovalStatus
+                )}`}
+              >
+                {approvalLabel(selected.sellerApprovalStatus)}
+              </span>
+            </div>
             <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
               <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.sellerInfo, ['estado_civil', 'estadoCivil'])}</p>
               <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.sellerInfo, ['profissao'])}</p>
               <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.sellerInfo, ['email'])}</p>
               <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.sellerInfo, ['telefone', 'phone'])}</p>
               <p><span class="font-semibold">Banco:</span> {getRecordValue(selected.sellerInfo, ['dados_bancarios', 'dadosBancarios'])}</p>
+              {#if readReasonText(selected.sellerApprovalReason).length > 0}
+                <p class="text-xs text-amber-700 dark:text-amber-300">
+                  Motivo: {readReasonText(selected.sellerApprovalReason)}
+                </p>
+              {/if}
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                className="bg-green-600 text-white hover:bg-green-700"
+                on:click={() => evaluateContractSide('seller', 'APPROVED')}
+                disabled={evaluatingSide === 'seller'}
+              >
+                Aprovar
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                on:click={() =>
+                  evaluateContractSide('seller', 'APPROVED_WITH_RES')}
+                disabled={evaluatingSide === 'seller'}
+              >
+                Aprovar c/ ressalvas
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                on:click={() => evaluateContractSide('seller', 'REJECTED')}
+                disabled={evaluatingSide === 'seller'}
+              >
+                Rejeitar
+              </Button>
             </div>
           </div>
           <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-              Dados do Cliente
-            </p>
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                Vendedor
+              </p>
+              <span
+                class={`rounded-full px-2 py-1 text-xs font-semibold ${approvalBadgeClass(
+                  selected.buyerApprovalStatus
+                )}`}
+              >
+                {approvalLabel(selected.buyerApprovalStatus)}
+              </span>
+            </div>
             <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
               <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.buyerInfo, ['estado_civil', 'estadoCivil'])}</p>
               <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.buyerInfo, ['profissao'])}</p>
               <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.buyerInfo, ['email'])}</p>
               <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.buyerInfo, ['telefone', 'phone'])}</p>
               <p><span class="font-semibold">Garantia:</span> {getRecordValue(selected.buyerInfo, ['garantia_locacao', 'garantiaLocacao'])}</p>
+              {#if readReasonText(selected.buyerApprovalReason).length > 0}
+                <p class="text-xs text-amber-700 dark:text-amber-300">
+                  Motivo: {readReasonText(selected.buyerApprovalReason)}
+                </p>
+              {/if}
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                className="bg-green-600 text-white hover:bg-green-700"
+                on:click={() => evaluateContractSide('buyer', 'APPROVED')}
+                disabled={evaluatingSide === 'buyer'}
+              >
+                Aprovar
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                on:click={() => evaluateContractSide('buyer', 'APPROVED_WITH_RES')}
+                disabled={evaluatingSide === 'buyer'}
+              >
+                Aprovar c/ ressalvas
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                on:click={() => evaluateContractSide('buyer', 'REJECTED')}
+                disabled={evaluatingSide === 'buyer'}
+              >
+                Rejeitar
+              </Button>
             </div>
           </div>
         </div>
@@ -598,28 +769,8 @@
           {/if}
         </div>
 
-        <div class="mt-5 flex flex-wrap items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            on:click={() => transition('previous')}
-            disabled={!canGoPrevious() || transitioning}
-          >
-            {#if transitioning}
-              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-            {/if}
-            Voltar Etapa
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-green-600 text-white hover:bg-green-700"
-            on:click={() => transition('next')}
-            disabled={!canGoNext() || transitioning}
-          >
-            {#if transitioning}
-              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-            {/if}
-            Aprovar Documentos (Avançar)
-          </Button>
+        <div class="mt-5 flex justify-end">
+          <Button variant="outline" on:click={() => closeModal()}>Fechar</Button>
         </div>
       {:else if modalMode === 'upload_draft'}
         <div class="space-y-4">
@@ -699,6 +850,54 @@
 
           <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
             <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Anexar Contrato Físico/Comprovantes
+            </p>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Use esta área para anexar documentos físicos assinados diretamente pelo painel administrativo.
+            </p>
+            <div class="mt-3 grid gap-3 md:grid-cols-2">
+              <label class="text-sm text-gray-700 dark:text-gray-200">
+                Tipo do Documento
+                <select
+                  bind:value={signedDocType}
+                  class="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                >
+                  <option value="contrato_assinado">Contrato Assinado</option>
+                  <option value="comprovante_pagamento">Comprovante de Pagamento</option>
+                  <option value="boleto_vistoria">Boleto/Vistoria</option>
+                </select>
+              </label>
+              <label class="text-sm text-gray-700 dark:text-gray-200">
+                Arquivo
+                <input
+                  type="file"
+                  accept="application/pdf,image/png,image/jpeg,image/webp"
+                  on:change={handleSignedFileChange}
+                  class="mt-1 block w-full text-sm text-gray-700 dark:text-gray-200"
+                />
+              </label>
+            </div>
+            {#if selectedSignedFile}
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Selecionado: {selectedSignedFile.name}
+              </p>
+            {/if}
+            <div class="mt-3 flex justify-end">
+              <Button
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                on:click={uploadSignedDocsByAdmin}
+                disabled={uploadingSignedDoc || !selectedSignedFile}
+              >
+                {#if uploadingSignedDoc}
+                  <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                {/if}
+                Anexar Documento Físico
+              </Button>
+            </div>
+          </div>
+
+          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
               Formulário de Comissões
             </p>
             <div class="mt-3 grid gap-3 md:grid-cols-2">
@@ -746,13 +945,17 @@
           </div>
 
           <div class="flex justify-end gap-2">
-            <Button variant="outline" on:click={() => closeModal()} disabled={finalizingContract}>
+            <Button
+              variant="outline"
+              on:click={() => closeModal()}
+              disabled={finalizingContract || uploadingSignedDoc}
+            >
               Fechar
             </Button>
             <Button
               className="bg-green-600 text-white hover:bg-green-700"
               on:click={submitFinalize}
-              disabled={finalizingContract}
+              disabled={finalizingContract || uploadingSignedDoc}
             >
               {#if finalizingContract}
                 <Loader2 class="mr-2 h-4 w-4 animate-spin" />
