@@ -24,8 +24,10 @@
     price?: number | null;
     price_sale?: number | null;
     price_rent?: number | null;
+    promotion_percentage?: number | null;
     promotion_price?: number | null;
     promotional_rent_price?: number | null;
+    promotional_rent_percentage?: number | null;
     status: PropertyStatus;
     purpose?: string | null;
     broker_id?: number | null;
@@ -57,8 +59,10 @@
     area_terreno?: number | null;
     price_sale?: number | null;
     price_rent?: number | null;
+    promotion_percentage?: number | null;
     promotion_price?: number | null;
     promotional_rent_price?: number | null;
+    promotional_rent_percentage?: number | null;
     valor_condominio?: number | null;
     video_url?: string | null;
     has_wifi?: boolean | null;
@@ -114,6 +118,8 @@
   let editError: string | null = null;
   let editPriceSaleDisplay = '';
   let editPriceRentDisplay = '';
+  let editPromotionSalePercentageDisplay = '';
+  let editPromotionRentPercentageDisplay = '';
   let editPromotionPriceSaleDisplay = '';
   let editPromotionPriceRentDisplay = '';
   let imageUploading = false;
@@ -318,8 +324,10 @@
           const priceValue = record['price'];
           const priceSaleValue = record['price_sale'];
           const priceRentValue = record['price_rent'];
+          const promotionPercentageValue = record['promotion_percentage'];
           const promotionPriceValue = record['promotion_price'];
           const promotionalRentPriceValue = record['promotional_rent_price'];
+          const promotionalRentPercentageValue = record['promotional_rent_percentage'];
           const brokerIdValue = record['broker_id'];
           const ownerIdValue = record['owner_id'];
           const ownerNameValue = record['owner_name'];
@@ -338,11 +346,17 @@
             price: priceValue != null ? Number(priceValue) : null,
             price_sale: priceSaleValue != null ? Number(priceSaleValue) : null,
             price_rent: priceRentValue != null ? Number(priceRentValue) : null,
+            promotion_percentage:
+              promotionPercentageValue != null ? Number(promotionPercentageValue) : null,
             promotion_price:
               promotionPriceValue != null ? Number(promotionPriceValue) : null,
             promotional_rent_price:
               promotionalRentPriceValue != null
                 ? Number(promotionalRentPriceValue)
+                : null,
+            promotional_rent_percentage:
+              promotionalRentPercentageValue != null
+                ? Number(promotionalRentPercentageValue)
                 : null,
             status: (record['status'] as PropertyStatus) ?? 'pending_approval',
             purpose: (record['purpose'] as string | null | undefined) ?? null,
@@ -432,6 +446,36 @@
     if (!digits) return null;
     const parsed = Number(digits) / 100;
     return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function parsePercentage(value: string): number | null {
+    const normalized = String(value ?? '').replace('%', '').replace(',', '.').trim();
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) return null;
+    return Number(parsed.toFixed(2));
+  }
+
+  function formatPercentageInput(value: string): string {
+    const sanitized = String(value ?? '').replace(/[^\d.,]/g, '').replace(',', '.');
+    if (!sanitized) return '';
+    const parsed = Number(sanitized);
+    if (!Number.isFinite(parsed)) return '';
+    return Math.min(100, Math.max(0, parsed)).toString();
+  }
+
+  function calculateDiscountedValue(basePrice: number | null, percentage: number | null): number | null {
+    if (basePrice == null || basePrice <= 0 || percentage == null || percentage <= 0 || percentage >= 100) {
+      return null;
+    }
+    return Number((basePrice * (1 - percentage / 100)).toFixed(2));
+  }
+
+  function resolvePromotionPercentage(basePrice: number | null, promoPrice: number | null): number | null {
+    if (basePrice == null || basePrice <= 0 || promoPrice == null || promoPrice <= 0 || promoPrice >= basePrice) {
+      return null;
+    }
+    return Number((((basePrice - promoPrice) / basePrice) * 100).toFixed(2));
   }
 
   function sanitizeDigitsInput(value: string) {
@@ -642,16 +686,71 @@
       property.price_sale ?? (supportsSale && !supportsRent ? property.price ?? null : null);
     const resolvedRent =
       property.price_rent ?? (supportsRent && !supportsSale ? property.price ?? null : null);
+    const resolvedSalePromotionPercentage =
+      property.promotion_percentage != null
+        ? Number(property.promotion_percentage)
+        : resolvePromotionPercentage(
+            resolvedSale != null ? Number(resolvedSale) : null,
+            property.promotion_price != null ? Number(property.promotion_price) : null
+          );
+    const resolvedRentPromotionPercentage =
+      property.promotional_rent_percentage != null
+        ? Number(property.promotional_rent_percentage)
+        : resolvePromotionPercentage(
+            resolvedRent != null ? Number(resolvedRent) : null,
+            property.promotional_rent_price != null
+              ? Number(property.promotional_rent_price)
+              : null
+          );
+
+    const salePromoPrice = calculateDiscountedValue(
+      resolvedSale != null ? Number(resolvedSale) : null,
+      resolvedSalePromotionPercentage
+    );
+    const rentPromoPrice = calculateDiscountedValue(
+      resolvedRent != null ? Number(resolvedRent) : null,
+      resolvedRentPromotionPercentage
+    );
+
     editPriceSaleDisplay = resolvedSale != null ? formatCurrency(Number(resolvedSale)) : '';
     editPriceRentDisplay = resolvedRent != null ? formatCurrency(Number(resolvedRent)) : '';
-    editPromotionPriceSaleDisplay =
-      property.promotion_price != null
-        ? formatCurrency(Number(property.promotion_price))
+    editPromotionSalePercentageDisplay =
+      resolvedSalePromotionPercentage != null
+        ? String(resolvedSalePromotionPercentage)
         : '';
-    editPromotionPriceRentDisplay =
-      property.promotional_rent_price != null
-        ? formatCurrency(Number(property.promotional_rent_price))
+    editPromotionRentPercentageDisplay =
+      resolvedRentPromotionPercentage != null
+        ? String(resolvedRentPromotionPercentage)
         : '';
+    editPromotionPriceSaleDisplay = salePromoPrice != null ? formatCurrency(salePromoPrice) : '';
+    editPromotionPriceRentDisplay = rentPromoPrice != null ? formatCurrency(rentPromoPrice) : '';
+  }
+
+  function refreshPromotionPreviewDisplays() {
+    if (!editableProperty) return;
+    const { supportsSale, supportsRent } = getPurposeFlags(editableProperty.purpose ?? null);
+    const baseSale =
+      editableProperty.price_sale ??
+      (supportsSale && !supportsRent ? editableProperty.price ?? null : null);
+    const baseRent =
+      editableProperty.price_rent ??
+      (supportsRent && !supportsSale ? editableProperty.price ?? null : null);
+    const salePercentage = supportsSale ? parsePercentage(editPromotionSalePercentageDisplay) : null;
+    const rentPercentage = supportsRent ? parsePercentage(editPromotionRentPercentageDisplay) : null;
+    const salePromo = calculateDiscountedValue(
+      baseSale != null ? Number(baseSale) : null,
+      salePercentage
+    );
+    const rentPromo = calculateDiscountedValue(
+      baseRent != null ? Number(baseRent) : null,
+      rentPercentage
+    );
+    editPromotionPriceSaleDisplay = salePromo != null ? formatCurrency(salePromo) : '';
+    editPromotionPriceRentDisplay = rentPromo != null ? formatCurrency(rentPromo) : '';
+    editableProperty.promotion_percentage = salePercentage;
+    editableProperty.promotional_rent_percentage = rentPercentage;
+    editableProperty.promotion_price = salePromo;
+    editableProperty.promotional_rent_price = rentPromo;
   }
 
   function toggleEditMode() {
@@ -695,11 +794,19 @@
         ...merged,
         price_sale: resolvedSale,
         price_rent: resolvedRent,
+        promotion_percentage:
+          merged.promotion_percentage != null
+            ? Number(merged.promotion_percentage)
+            : null,
         promotion_price:
           merged.promotion_price != null ? Number(merged.promotion_price) : null,
         promotional_rent_price:
           merged.promotional_rent_price != null
             ? Number(merged.promotional_rent_price)
+            : null,
+        promotional_rent_percentage:
+          merged.promotional_rent_percentage != null
+            ? Number(merged.promotional_rent_percentage)
             : null,
       });
       editSemNumero = isSemNumeroValue(merged.numero);
@@ -873,6 +980,8 @@
         'price',
         'price_sale',
         'price_rent',
+        'promotion_percentage',
+        'promotional_rent_percentage',
         'promotion_price',
         'promotional_rent_price',
         'area_construida',
@@ -915,12 +1024,40 @@
         resolvedPriceRent != null ? Number(resolvedPriceRent) : null;
       const resolvedPriceValue =
         resolvedPrice != null ? Number(resolvedPrice) : null;
-      const promotionPriceSaleValue = purposeFlags.supportsSale
-        ? parseCurrency(editPromotionPriceSaleDisplay)
+      const promotionSalePercentageValue = purposeFlags.supportsSale
+        ? parsePercentage(editPromotionSalePercentageDisplay)
         : null;
-      const promotionPriceRentValue = purposeFlags.supportsRent
-        ? parseCurrency(editPromotionPriceRentDisplay)
+      const promotionRentPercentageValue = purposeFlags.supportsRent
+        ? parsePercentage(editPromotionRentPercentageDisplay)
         : null;
+      const promotionPriceSaleValue = calculateDiscountedValue(
+        resolvedPriceSaleValue,
+        promotionSalePercentageValue
+      );
+      const promotionPriceRentValue = calculateDiscountedValue(
+        resolvedPriceRentValue,
+        promotionRentPercentageValue
+      );
+
+      if (
+        purposeFlags.supportsSale &&
+        editPromotionSalePercentageDisplay.trim() &&
+        promotionSalePercentageValue == null
+      ) {
+        editError = 'Percentual de desconto da venda inválido.';
+        isSavingEdit = false;
+        return;
+      }
+
+      if (
+        purposeFlags.supportsRent &&
+        editPromotionRentPercentageDisplay.trim() &&
+        promotionRentPercentageValue == null
+      ) {
+        editError = 'Percentual de desconto do aluguel inválido.';
+        isSavingEdit = false;
+        return;
+      }
 
       if (purposeFlags.isDual) {
         if (
@@ -984,8 +1121,13 @@
         price_rent: resolvedPriceRentValue ?? undefined,
         promotion_price: promotionPriceSaleValue,
         promotional_rent_price: promotionPriceRentValue,
+        promotion_percentage: promotionSalePercentageValue,
+        promotional_rent_percentage: promotionRentPercentageValue,
         is_promoted:
-          (promotionPriceSaleValue ?? 0) > 0 || (promotionPriceRentValue ?? 0) > 0
+          (promotionPriceSaleValue ?? 0) > 0 ||
+          (promotionPriceRentValue ?? 0) > 0 ||
+          (promotionSalePercentageValue ?? 0) > 0 ||
+          (promotionRentPercentageValue ?? 0) > 0
             ? 1
             : 0,
         address: editableProperty.address,
@@ -1726,6 +1868,16 @@
                   name="purpose"
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:border-green-500 focus:ring-2 focus:ring-green-500"
                   bind:value={editableProperty.purpose}
+                  on:change={() => {
+                    const flags = getPurposeFlags(editableProperty?.purpose ?? null);
+                    if (!flags.supportsSale) {
+                      editPromotionSalePercentageDisplay = '';
+                    }
+                    if (!flags.supportsRent) {
+                      editPromotionRentPercentageDisplay = '';
+                    }
+                    refreshPromotionPreviewDisplays();
+                  }}
                 >
                   <option value="Venda">Venda</option>
                   <option value="Aluguel">Aluguel</option>
@@ -1748,6 +1900,7 @@
                       if (editableProperty) {
                         editableProperty.price_sale = parseCurrency(editPriceSaleDisplay);
                         editableProperty.price = editableProperty.price_sale ?? editableProperty.price;
+                        refreshPromotionPreviewDisplays();
                       }
                     }}
                   />
@@ -1764,6 +1917,7 @@
                       if (editableProperty) {
                         editableProperty.price_rent = parseCurrency(editPriceRentDisplay);
                         editableProperty.price = editableProperty.price_rent ?? editableProperty.price;
+                        refreshPromotionPreviewDisplays();
                       }
                     }}
                   />
@@ -1782,6 +1936,7 @@
                     if (editableProperty) {
                       editableProperty.price_rent = parseCurrency(editPriceRentDisplay);
                       editableProperty.price = editableProperty.price_rent ?? editableProperty.price;
+                      refreshPromotionPreviewDisplays();
                     }
                   }}
                 />
@@ -1799,6 +1954,7 @@
                     if (editableProperty) {
                       editableProperty.price_sale = parseCurrency(editPriceSaleDisplay);
                       editableProperty.price = editableProperty.price_sale ?? editableProperty.price;
+                      refreshPromotionPreviewDisplays();
                     }
                   }}
                 />
@@ -1806,77 +1962,85 @@
 
               {#if flags.isDual}
                 <div class="mt-2 grid gap-3 md:grid-cols-2">
-                  <input
-                    name="promotion_price_display"
-                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
-                    type="text"
-                    inputmode="numeric"
-                    bind:value={editPromotionPriceSaleDisplay}
-                    placeholder="Preço promocional (venda)"
-                    on:input={(event) => {
-                      const target = event.target as HTMLInputElement;
-                      editPromotionPriceSaleDisplay = formatCurrencyInput(target.value);
-                      if (editableProperty) {
-                        editableProperty.promotion_price = parseCurrency(
-                          editPromotionPriceSaleDisplay
-                        );
-                      }
-                    }}
-                  />
-                  <input
-                    name="promotional_rent_price_display"
-                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
-                    type="text"
-                    inputmode="numeric"
-                    bind:value={editPromotionPriceRentDisplay}
-                    placeholder="Preço promocional (aluguel)"
-                    on:input={(event) => {
-                      const target = event.target as HTMLInputElement;
-                      editPromotionPriceRentDisplay = formatCurrencyInput(target.value);
-                      if (editableProperty) {
-                        editableProperty.promotional_rent_price = parseCurrency(
-                          editPromotionPriceRentDisplay
-                        );
-                      }
-                    }}
-                  />
+                  <label class="flex flex-col gap-1">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">% Desconto (Venda)</span>
+                    <input
+                      name="promotion_percentage"
+                      class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                      type="text"
+                      inputmode="decimal"
+                      bind:value={editPromotionSalePercentageDisplay}
+                      placeholder="Ex: 8.5"
+                      on:input={(event) => {
+                        const target = event.target as HTMLInputElement;
+                        editPromotionSalePercentageDisplay = formatPercentageInput(target.value);
+                        refreshPromotionPreviewDisplays();
+                      }}
+                    />
+                    <span class="text-xs text-emerald-700 dark:text-emerald-300">
+                      Valor promocional: {editPromotionPriceSaleDisplay || '-'}
+                    </span>
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">% Desconto (Aluguel)</span>
+                    <input
+                      name="promotional_rent_percentage"
+                      class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                      type="text"
+                      inputmode="decimal"
+                      bind:value={editPromotionRentPercentageDisplay}
+                      placeholder="Ex: 12"
+                      on:input={(event) => {
+                        const target = event.target as HTMLInputElement;
+                        editPromotionRentPercentageDisplay = formatPercentageInput(target.value);
+                        refreshPromotionPreviewDisplays();
+                      }}
+                    />
+                    <span class="text-xs text-emerald-700 dark:text-emerald-300">
+                      Valor promocional: {editPromotionPriceRentDisplay || '-'}
+                    </span>
+                  </label>
                 </div>
               {:else if flags.supportsRent}
-                <input
-                  name="promotional_rent_price_display"
-                  class="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
-                  type="text"
-                  inputmode="numeric"
-                  bind:value={editPromotionPriceRentDisplay}
-                  placeholder="Preço promocional (aluguel)"
-                  on:input={(event) => {
-                    const target = event.target as HTMLInputElement;
-                    editPromotionPriceRentDisplay = formatCurrencyInput(target.value);
-                    if (editableProperty) {
-                      editableProperty.promotional_rent_price = parseCurrency(
-                        editPromotionPriceRentDisplay
-                      );
-                    }
-                  }}
-                />
+                <label class="mt-2 flex flex-col gap-1">
+                  <span class="text-xs text-gray-500 dark:text-gray-400">% Desconto (Aluguel)</span>
+                  <input
+                    name="promotional_rent_percentage"
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                    type="text"
+                    inputmode="decimal"
+                    bind:value={editPromotionRentPercentageDisplay}
+                    placeholder="Ex: 12"
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      editPromotionRentPercentageDisplay = formatPercentageInput(target.value);
+                      refreshPromotionPreviewDisplays();
+                    }}
+                  />
+                  <span class="text-xs text-emerald-700 dark:text-emerald-300">
+                    Valor promocional: {editPromotionPriceRentDisplay || '-'}
+                  </span>
+                </label>
               {:else}
-                <input
-                  name="promotion_price_display"
-                  class="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
-                  type="text"
-                  inputmode="numeric"
-                  bind:value={editPromotionPriceSaleDisplay}
-                  placeholder="Preço promocional (venda)"
-                  on:input={(event) => {
-                    const target = event.target as HTMLInputElement;
-                    editPromotionPriceSaleDisplay = formatCurrencyInput(target.value);
-                    if (editableProperty) {
-                      editableProperty.promotion_price = parseCurrency(
-                        editPromotionPriceSaleDisplay
-                      );
-                    }
-                  }}
-                />
+                <label class="mt-2 flex flex-col gap-1">
+                  <span class="text-xs text-gray-500 dark:text-gray-400">% Desconto (Venda)</span>
+                  <input
+                    name="promotion_percentage"
+                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-amber-300"
+                    type="text"
+                    inputmode="decimal"
+                    bind:value={editPromotionSalePercentageDisplay}
+                    placeholder="Ex: 8.5"
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      editPromotionSalePercentageDisplay = formatPercentageInput(target.value);
+                      refreshPromotionPreviewDisplays();
+                    }}
+                  />
+                  <span class="text-xs text-emerald-700 dark:text-emerald-300">
+                    Valor promocional: {editPromotionPriceSaleDisplay || '-'}
+                  </span>
+                </label>
               {/if}
             {:else}
               <p class="text-base text-gray-800 dark:text-gray-200">{selectedProperty.purpose ?? '-'} </p>
