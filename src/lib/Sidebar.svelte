@@ -92,7 +92,7 @@
     },
     {
       view: 'negotiation_contracts',
-      label: 'Contratos (Em breve)',
+      label: 'Contratos',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 3h8a2 2 0 012 2v14l-6-3-6 3V5a2 2 0 012-2z" />`
     }
   ];
@@ -147,8 +147,25 @@
     return null;
   }
 
-  function updateHash(view: View) {
+  function updateLocation(view: View) {
     if (typeof window === 'undefined') return;
+
+    const pathMap: Partial<Record<View, string>> = {
+      properties: '/admin/properties',
+      negotiation_requests: '/admin/negociacoes/solicitacoes',
+      negotiation_progress: '/admin/negociacoes/andamento',
+      negotiation_contracts: '/admin/contratos',
+    };
+
+    const mappedPath = pathMap[view];
+    if (mappedPath) {
+      const currentPath = window.location.pathname;
+      if (currentPath !== mappedPath || window.location.hash) {
+        window.history.replaceState({}, '', mappedPath);
+      }
+      return;
+    }
+
     if (window.location.hash.replace('#', '') === view) return;
     window.location.hash = view;
   }
@@ -156,11 +173,11 @@
   function handleNavigation(view: string) {
     if (isValidView(view)) {
       onNavigate(view);
-      updateHash(view);
+      updateLocation(view);
     } else {
       console.error(`Tentativa de navegar para view invalida: ${view}`);
       onNavigate('dashboard');
-      updateHash('dashboard');
+      updateLocation('dashboard');
     }
   }
 

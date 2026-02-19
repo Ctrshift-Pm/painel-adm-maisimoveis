@@ -31,6 +31,8 @@
       initialView = 'negotiation_requests';
     } else if (path === '/admin/negociacoes/andamento') {
       initialView = 'negotiation_progress';
+    } else if (path === '/admin/contratos') {
+      initialView = 'negotiation_contracts';
     }
   }
 

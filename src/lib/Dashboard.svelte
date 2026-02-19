@@ -77,6 +77,7 @@
     let PropertyArchiveComponent: LazySvelteComponent | null = null;
     let NegotiationRequestsComponent: LazySvelteComponent | null = null;
     let NegotiationProgressComponent: LazySvelteComponent | null = null;
+    let ContractsModuleComponent: LazySvelteComponent | null = null;
     let SendNotificationComponent: LazySvelteComponent | null = null;
     let AdminNotificationsPanelComponent: LazySvelteComponent | null = null;
     let StatusPieChartComponent: LazySvelteComponent | null = null;
@@ -133,6 +134,13 @@
             if (!NegotiationProgressComponent) {
                 const module = await import('./components/NegotiationProgress.svelte');
                 NegotiationProgressComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'negotiation_contracts') {
+            if (!ContractsModuleComponent) {
+                const module = await import('./components/ContractsModule.svelte');
+                ContractsModuleComponent = module.default;
             }
             return;
         }
@@ -195,7 +203,7 @@
             title: 'Imóveis em Negociação'
         },
         negotiation_contracts: {
-            title: 'Contratos (Em breve)'
+            title: 'Contratos'
         },
         create_property: {
             title: 'Cadastrar Imóvel'
@@ -818,12 +826,13 @@
                     </div>
                 {/if}
             {:else if activeView === 'negotiation_contracts'}
-                <div class="rounded-xl border border-amber-300 bg-amber-50 p-6 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
-                    <h2 class="text-lg font-semibold">Contratos (Em breve)</h2>
-                    <p class="mt-2 text-sm opacity-90">
-                        Esta área será habilitada após a etapa de revisão e aprovação de propostas.
-                    </p>
-                </div>
+                {#if ContractsModuleComponent}
+                    <svelte:component this={ContractsModuleComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
             {:else if activeView === 'create_property'}
                 {#if CreatePropertyComponent}
                     <svelte:component this={CreatePropertyComponent} />
