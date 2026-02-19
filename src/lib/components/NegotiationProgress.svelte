@@ -12,8 +12,11 @@
     propertyId: number;
     propertyCode?: string | null;
     propertyTitle?: string | null;
+    propertyAddress?: string | null;
     brokerName?: string | null;
     clientName?: string | null;
+    clientCpf?: string | null;
+    value?: number | null;
     approvedAt?: string | null;
   };
 
@@ -28,6 +31,7 @@
   let selected: NegotiationItem | null = null;
   let showConfirm = false;
   let processing = false;
+  let cancelReason = '';
 
   function requestFetch(resetPage = false) {
     if (resetPage) currentPage = 1;
@@ -39,6 +43,37 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString('pt-BR');
+  }
+
+  function formatCurrency(value?: number | null) {
+    const amount = Number(value ?? 0);
+    if (!Number.isFinite(amount)) return 'R$ 0,00';
+    return amount.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+    });
+  }
+
+  function readClientName(item: NegotiationItem | null): string {
+    if (!item) return '-';
+    const raw =
+      item.clientName ??
+      (item as unknown as Record<string, unknown>).client_name ??
+      (item as unknown as Record<string, unknown>).client;
+
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      return raw.trim();
+    }
+
+    if (raw && typeof raw === 'object') {
+      const nestedName = (raw as Record<string, unknown>).name;
+      if (typeof nestedName === 'string' && nestedName.trim().length > 0) {
+        return nestedName.trim();
+      }
+    }
+
+    return '-';
   }
 
   async function fetchNegotiations() {
@@ -71,19 +106,26 @@
   function openCancelModal(item: NegotiationItem) {
     selected = item;
     showConfirm = true;
+    cancelReason = '';
   }
 
   function closeCancelModal(force = false) {
     if (processing && !force) return;
     showConfirm = false;
     selected = null;
+    cancelReason = '';
   }
 
   async function confirmCancel() {
     if (!selected) return;
+    const trimmedReason = cancelReason.trim();
+    if (trimmedReason.length < 5) {
+      toast.error('Informe um motivo com no mínimo 5 caracteres.');
+      return;
+    }
     processing = true;
     try {
-      await api.put(`/admin/negotiations/${selected.id}/cancel`, {});
+      await api.put(`/admin/negotiations/${selected.id}/cancel`, { reason: trimmedReason });
       toast.success('Negociação cancelada e imóvel devolvido para a vitrine.');
       negotiations = negotiations.filter((item) => item.id !== selected!.id);
       closeCancelModal(true);
@@ -153,6 +195,9 @@
             Cliente
           </th>
           <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Valor
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Data Aprovação
           </th>
           <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -163,13 +208,13 @@
       <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
         {#if isLoading}
           <tr>
-            <td colspan="5" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            <td colspan="6" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               Carregando negociações em andamento...
             </td>
           </tr>
         {:else if negotiations.length === 0}
           <tr>
-            <td colspan="5" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            <td colspan="6" class="px-6 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               Nenhuma negociação em andamento.
             </td>
           </tr>
@@ -188,7 +233,10 @@
                 {item.brokerName ?? '-'}
               </td>
               <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                {item.clientName ?? '-'}
+                {readClientName(item)}
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                {formatCurrency(item.value)}
               </td>
               <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                 {formatDate(item.approvedAt)}
@@ -216,26 +264,56 @@
 </div>
 
 {#if showConfirm && selected}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    role="button"
+    tabindex="0"
+    aria-label="Fechar modal de cancelamento"
+    on:click={(event) => {
+      if (event.target === event.currentTarget) {
+        closeCancelModal();
+      }
+    }}
+    on:keydown={(event) => {
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        closeCancelModal();
+      }
+    }}
+  >
     <div class="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Voltar para Disponível</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cancelar Negociação</h3>
       <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-        Tem certeza? Isso cancelará a negociação atual e devolverá o imóvel para a vitrine.
+        Tem a certeza? Esta ação cancelará a venda atual e o imóvel voltará a ficar disponível para todos os corretores no aplicativo.
       </p>
+      <div class="mt-4">
+        <label
+          for="cancel-reason"
+          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          Motivo do cancelamento
+        </label>
+        <textarea
+          id="cancel-reason"
+          bind:value={cancelReason}
+          rows={4}
+          class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+          placeholder="Digite o motivo do cancelamento (Ex: Cliente não obteve financiamento)..."
+        ></textarea>
+      </div>
       <div class="mt-5 flex justify-end gap-2">
         <Button variant="outline" on:click={() => closeCancelModal()} disabled={processing}>
-          Não
+          Fechar
         </Button>
         <Button
           variant="destructive"
           className="bg-red-600 text-white hover:bg-red-700"
           on:click={confirmCancel}
-          disabled={processing}
+          disabled={processing || cancelReason.trim().length < 5}
         >
           {#if processing}
             <Loader2 class="mr-2 h-4 w-4 animate-spin" />
           {/if}
-          Sim, cancelar
+          Confirmar Cancelamento
         </Button>
       </div>
     </div>

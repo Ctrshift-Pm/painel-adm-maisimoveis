@@ -48,6 +48,49 @@
   let rejectReason = '';
   let viewingPdf = false;
 
+  function readClientName(item: NegotiationItem | null): string {
+    if (!item) return '-';
+    const raw =
+      item.clientName ??
+      (item as unknown as Record<string, unknown>).client_name ??
+      (item as unknown as Record<string, unknown>).client;
+
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      return raw.trim();
+    }
+
+    if (raw && typeof raw === 'object') {
+      const nestedName = (raw as Record<string, unknown>).name;
+      if (typeof nestedName === 'string' && nestedName.trim().length > 0) {
+        return nestedName.trim();
+      }
+    }
+
+    return '-';
+  }
+
+  function readClientCpf(item: NegotiationItem | null): string {
+    if (!item) return '-';
+    const raw =
+      item.clientCpf ??
+      (item as unknown as Record<string, unknown>).client_cpf ??
+      (item as unknown as Record<string, unknown>).cpf ??
+      (item as unknown as Record<string, unknown>).client;
+
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      return raw.trim();
+    }
+
+    if (raw && typeof raw === 'object') {
+      const nestedCpf = (raw as Record<string, unknown>).cpf;
+      if (typeof nestedCpf === 'string' && nestedCpf.trim().length > 0) {
+        return nestedCpf.trim();
+      }
+    }
+
+    return '-';
+  }
+
   function requestFetch(resetPage = false) {
     if (resetPage) currentPage = 1;
     refreshKey += 1;
@@ -291,7 +334,7 @@
                 {item.brokerName ?? '-'}
               </td>
               <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                {item.clientName ?? '-'}
+                {readClientName(item)}
               </td>
               <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                 {formatCurrency(item.value)}
@@ -317,7 +360,22 @@
 </div>
 
 {#if showModal && selected}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    role="button"
+    tabindex="0"
+    aria-label="Fechar modal de análise"
+    on:click={(event) => {
+      if (event.target === event.currentTarget) {
+        closeModal();
+      }
+    }}
+    on:keydown={(event) => {
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        closeModal();
+      }
+    }}
+  >
     <div class="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
       <div class="mb-4 flex items-start justify-between gap-3">
         <div>
@@ -344,8 +402,8 @@
       <div class="grid gap-4 md:grid-cols-2">
         <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
           <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Cliente</p>
-          <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{selected.clientName ?? '-'}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{selected.clientCpf ?? '-'}</p>
+          <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{readClientName(selected)}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{readClientCpf(selected)}</p>
         </div>
         <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
           <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Validade</p>
