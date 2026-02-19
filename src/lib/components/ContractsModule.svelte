@@ -14,6 +14,7 @@
 
   type ContractDocument = {
     id: number;
+    type?: string | null;
     documentType?: string | null;
     downloadUrl?: string | null;
     createdAt?: string | null;
@@ -30,9 +31,13 @@
     sellingBrokerName?: string | null;
     sellerInfo?: Record<string, unknown> | null;
     buyerInfo?: Record<string, unknown> | null;
+    commissionData?: Record<string, unknown> | null;
     documents?: ContractDocument[];
     createdAt?: string | null;
+    updatedAt?: string | null;
   };
+
+  type ModalMode = 'review_docs' | 'upload_draft' | 'finalize' | 'view';
 
   const tabs: { key: ContractStatus; label: string }[] = [
     { key: 'AWAITING_DOCS', label: 'Aguardando Documentação' },
@@ -41,8 +46,6 @@
     { key: 'FINALIZED', label: 'Finalizados' },
   ];
 
-  const firstStatus: ContractStatus = 'AWAITING_DOCS';
-  const lastStatus: ContractStatus = 'FINALIZED';
   const statusFlow: ContractStatus[] = tabs.map((tab) => tab.key);
 
   const documentTypeLabels: Record<string, string> = {
@@ -58,10 +61,17 @@
     boleto_vistoria: 'Boleto de Vistoria',
   };
 
+  const signedReviewDocTypes = new Set([
+    'contrato_assinado',
+    'comprovante_pagamento',
+    'boleto_vistoria',
+  ]);
+
   let activeTab: ContractStatus = 'AWAITING_DOCS';
   let items: ContractItem[] = [];
   let selected: ContractItem | null = null;
   let showModal = false;
+  let modalMode: ModalMode = 'review_docs';
   let isLoading = true;
   let hasMounted = false;
   let refreshKey = 0;
@@ -71,6 +81,15 @@
   let totalPages = 1;
   let transitioning = false;
   let downloadingDocumentId: number | null = null;
+  let selectedDraftFile: File | null = null;
+  let uploadingDraft = false;
+  let finalizingContract = false;
+  let finalizeForm = {
+    valorVenda: '',
+    comissaoCaptador: '',
+    comissaoVendedor: '',
+    taxaPlataforma: '',
+  };
 
   function getRecordValue(
     source: Record<string, unknown> | null | undefined,
@@ -98,8 +117,51 @@
     return documentTypeLabels[type] ?? type;
   }
 
-  function actionLabel(status: ContractStatus): string {
-    return status === 'AWAITING_DOCS' ? 'Analisar Documentação' : 'Gerenciar Etapa';
+  function tableActionLabel(status: ContractStatus): string {
+    if (status === 'AWAITING_DOCS') return 'Analisar Documentação';
+    if (status === 'IN_DRAFT') return 'Anexar Minuta';
+    if (status === 'AWAITING_SIGNATURES') return 'Finalizar Venda/Locação';
+    return 'Visualizar';
+  }
+
+  function statusLabel(status: ContractStatus): string {
+    return tabs.find((tab) => tab.key === status)?.label ?? status;
+  }
+
+  function readCommissionValue(
+    source: Record<string, unknown> | null | undefined,
+    key: string
+  ): string {
+    if (!source) return '';
+    const value = source[key];
+    if (value == null) return '';
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return '';
+    return parsed.toFixed(2);
+  }
+
+  function hydrateFinalizeForm(contract: ContractItem | null): void {
+    const data = contract?.commissionData ?? null;
+    finalizeForm = {
+      valorVenda: readCommissionValue(data, 'valorVenda'),
+      comissaoCaptador: readCommissionValue(data, 'comissaoCaptador'),
+      comissaoVendedor: readCommissionValue(data, 'comissaoVendedor'),
+      taxaPlataforma: readCommissionValue(data, 'taxaPlataforma'),
+    };
+  }
+
+  function parseMoney(value: string): number | null {
+    const normalized = value.replace(',', '.').trim();
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed)) return null;
+    return Number(parsed.toFixed(2));
+  }
+
+  function getDocumentsForFinalize(contract: ContractItem): ContractDocument[] {
+    return (contract.documents ?? []).filter((doc) =>
+      signedReviewDocTypes.has((doc.documentType ?? '').trim().toLowerCase())
+    );
   }
 
   async function fetchContracts() {
@@ -140,20 +202,36 @@
   function changeTab(status: ContractStatus) {
     if (activeTab === status) return;
     activeTab = status;
-    selected = null;
-    showModal = false;
+    closeModal(true);
     refresh(true);
+  }
+
+  function resolveModalMode(item: ContractItem): ModalMode {
+    if (item.status === 'AWAITING_DOCS') return 'review_docs';
+    if (item.status === 'IN_DRAFT') return 'upload_draft';
+    if (item.status === 'AWAITING_SIGNATURES') return 'finalize';
+    return 'view';
   }
 
   function openModal(item: ContractItem) {
     selected = item;
+    modalMode = resolveModalMode(item);
     showModal = true;
+    selectedDraftFile = null;
+    uploadingDraft = false;
+    finalizingContract = false;
+    transitioning = false;
+    hydrateFinalizeForm(item);
   }
 
   function closeModal(force = false) {
-    if (transitioning && !force) return;
+    if (!force && (transitioning || uploadingDraft || finalizingContract)) {
+      return;
+    }
     showModal = false;
     selected = null;
+    selectedDraftFile = null;
+    modalMode = 'review_docs';
   }
 
   function selectedIndex(): number {
@@ -172,7 +250,6 @@
 
   async function transition(direction: 'next' | 'previous') {
     if (!selected) return;
-
     if (direction === 'next' && !canGoNext()) return;
     if (direction === 'previous' && !canGoPrevious()) return;
 
@@ -191,6 +268,76 @@
       toast.error('Não foi possível atualizar a etapa do contrato.');
     } finally {
       transitioning = false;
+    }
+  }
+
+  function handleDraftFileChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0] ?? null;
+    selectedDraftFile = file;
+  }
+
+  async function submitDraft() {
+    if (!selected) return;
+    if (!selectedDraftFile) {
+      toast.error('Selecione um PDF da minuta para continuar.');
+      return;
+    }
+
+    uploadingDraft = true;
+    try {
+      const form = new FormData();
+      form.append('file', selectedDraftFile);
+      await apiClient.post(`/admin/contracts/${selected.id}/draft`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Minuta anexada e contrato avançado para assinaturas.');
+      closeModal(true);
+      refresh();
+    } catch (error) {
+      console.error('Erro ao anexar minuta:', error);
+      toast.error('Não foi possível anexar a minuta.');
+    } finally {
+      uploadingDraft = false;
+    }
+  }
+
+  async function submitFinalize() {
+    if (!selected) return;
+
+    const valorVenda = parseMoney(finalizeForm.valorVenda);
+    const comissaoCaptador = parseMoney(finalizeForm.comissaoCaptador);
+    const comissaoVendedor = parseMoney(finalizeForm.comissaoVendedor);
+    const taxaPlataforma = parseMoney(finalizeForm.taxaPlataforma);
+
+    if (
+      valorVenda == null ||
+      comissaoCaptador == null ||
+      comissaoVendedor == null ||
+      taxaPlataforma == null
+    ) {
+      toast.error('Preencha todos os campos de comissão com valores válidos.');
+      return;
+    }
+
+    finalizingContract = true;
+    try {
+      await api.post(`/admin/contracts/${selected.id}/finalize`, {
+        commission_data: {
+          valorVenda,
+          comissaoCaptador,
+          comissaoVendedor,
+          taxaPlataforma,
+        },
+      });
+      toast.success('Contrato finalizado com sucesso.');
+      closeModal(true);
+      refresh();
+    } catch (error) {
+      console.error('Erro ao finalizar contrato:', error);
+      toast.error('Não foi possível finalizar o contrato.');
+    } finally {
+      finalizingContract = false;
     }
   }
 
@@ -240,7 +387,7 @@
   <div>
     <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Contratos</h2>
     <p class="text-sm text-gray-500 dark:text-gray-400">
-      Acompanhe a esteira de contratos e avance/retorne etapas conforme a documentação.
+      Gerencie o pipeline completo de contratos.
     </p>
   </div>
 
@@ -300,7 +447,7 @@
             Vendedor
           </th>
           <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Data Criação
+            Data
           </th>
           <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Ação
@@ -338,11 +485,11 @@
                 {item.sellingBrokerName ?? '-'}
               </td>
               <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                {formatDate(item.createdAt)}
+                {formatDate(item.updatedAt ?? item.createdAt)}
               </td>
               <td class="px-6 py-4 text-right">
                 <Button size="sm" variant="outline" on:click={() => openModal(item)}>
-                  {actionLabel(item.status)}
+                  {tableActionLabel(item.status)}
                 </Button>
               </td>
             </tr>
@@ -371,7 +518,13 @@
     <div class="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
       <div class="mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Análise de Contrato
+          {modalMode === 'review_docs'
+            ? 'Análise de Documentação'
+            : modalMode === 'upload_draft'
+            ? 'Anexar Minuta'
+            : modalMode === 'finalize'
+            ? 'Finalizar Venda/Locação'
+            : 'Contrato Finalizado'}
         </h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">
           {selected.propertyCode ? selected.propertyCode : `#${selected.propertyId}`}
@@ -379,91 +532,252 @@
             {' - '}{selected.propertyTitle}
           {/if}
         </p>
-      </div>
-
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-          <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-            Dados do Captador
-          </p>
-          <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
-            <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.sellerInfo, ['estado_civil', 'estadoCivil'])}</p>
-            <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.sellerInfo, ['profissao'])}</p>
-            <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.sellerInfo, ['email'])}</p>
-            <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.sellerInfo, ['telefone', 'phone'])}</p>
-            <p><span class="font-semibold">Banco:</span> {getRecordValue(selected.sellerInfo, ['dados_bancarios', 'dadosBancarios'])}</p>
-          </div>
-        </div>
-        <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-          <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-            Dados do Cliente
-          </p>
-          <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
-            <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.buyerInfo, ['estado_civil', 'estadoCivil'])}</p>
-            <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.buyerInfo, ['profissao'])}</p>
-            <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.buyerInfo, ['email'])}</p>
-            <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.buyerInfo, ['telefone', 'phone'])}</p>
-            <p><span class="font-semibold">Garantia:</span> {getRecordValue(selected.buyerInfo, ['garantia_locacao', 'garantiaLocacao'])}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-4 rounded-md border border-gray-200 p-3 dark:border-gray-700">
-        <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-          Documentos Anexados
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Etapa: {statusLabel(selected.status)}
         </p>
-        {#if (selected.documents ?? []).length === 0}
-          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Nenhum documento anexado até o momento.
-          </p>
-        {:else}
-          <div class="mt-2 space-y-2">
-            {#each selected.documents ?? [] as doc (doc.id)}
-              <div class="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800">
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-gray-100">{documentLabel(doc.documentType)}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.createdAt)}</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  on:click={() => selected && viewDocument(doc, selected)}
-                  disabled={downloadingDocumentId === doc.id}
-                >
-                  {#if downloadingDocumentId === doc.id}
-                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                  {/if}
-                  Baixar/Visualizar
-                </Button>
-              </div>
-            {/each}
-          </div>
-        {/if}
       </div>
 
-      <div class="mt-5 flex flex-wrap items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          on:click={() => transition('previous')}
-          disabled={!canGoPrevious() || transitioning}
-        >
-          {#if transitioning}
-            <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+      {#if modalMode === 'review_docs'}
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Dados do Captador
+            </p>
+            <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+              <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.sellerInfo, ['estado_civil', 'estadoCivil'])}</p>
+              <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.sellerInfo, ['profissao'])}</p>
+              <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.sellerInfo, ['email'])}</p>
+              <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.sellerInfo, ['telefone', 'phone'])}</p>
+              <p><span class="font-semibold">Banco:</span> {getRecordValue(selected.sellerInfo, ['dados_bancarios', 'dadosBancarios'])}</p>
+            </div>
+          </div>
+          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Dados do Cliente
+            </p>
+            <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+              <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.buyerInfo, ['estado_civil', 'estadoCivil'])}</p>
+              <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.buyerInfo, ['profissao'])}</p>
+              <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.buyerInfo, ['email'])}</p>
+              <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.buyerInfo, ['telefone', 'phone'])}</p>
+              <p><span class="font-semibold">Garantia:</span> {getRecordValue(selected.buyerInfo, ['garantia_locacao', 'garantiaLocacao'])}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-md border border-gray-200 p-3 dark:border-gray-700">
+          <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+            Documentos Anexados
+          </p>
+          {#if (selected.documents ?? []).length === 0}
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              Nenhum documento anexado até o momento.
+            </p>
+          {:else}
+            <div class="mt-2 space-y-2">
+              {#each selected.documents ?? [] as doc (doc.id)}
+                <div class="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800">
+                  <div>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{documentLabel(doc.documentType)}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.createdAt)}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    on:click={() => selected && viewDocument(doc, selected)}
+                    disabled={downloadingDocumentId === doc.id}
+                  >
+                    {#if downloadingDocumentId === doc.id}
+                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                    {/if}
+                    Baixar/Visualizar
+                  </Button>
+                </div>
+              {/each}
+            </div>
           {/if}
-          Voltar Etapa
-        </Button>
-        <Button
-          variant="outline"
-          className="bg-green-600 text-white hover:bg-green-700"
-          on:click={() => transition('next')}
-          disabled={!canGoNext() || transitioning}
-        >
-          {#if transitioning}
-            <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-          {/if}
-          {selected.status === 'AWAITING_DOCS' ? 'Aprovar Documentos (Avançar)' : 'Avançar Etapa'}
-        </Button>
-      </div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            on:click={() => transition('previous')}
+            disabled={!canGoPrevious() || transitioning}
+          >
+            {#if transitioning}
+              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+            {/if}
+            Voltar Etapa
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-green-600 text-white hover:bg-green-700"
+            on:click={() => transition('next')}
+            disabled={!canGoNext() || transitioning}
+          >
+            {#if transitioning}
+              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+            {/if}
+            Aprovar Documentos (Avançar)
+          </Button>
+        </div>
+      {:else if modalMode === 'upload_draft'}
+        <div class="space-y-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Faça o upload do PDF da minuta (<code>contrato_minuta</code>). Ao enviar, o contrato será movido automaticamente para
+            <span class="font-semibold"> Aguardando Assinaturas</span>.
+          </p>
+
+          <div class="rounded-md border border-dashed border-gray-300 p-4 dark:border-gray-700">
+            <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200" for="draft-pdf">
+              PDF da minuta
+            </label>
+            <input
+              id="draft-pdf"
+              type="file"
+              accept="application/pdf,.pdf"
+              on:change={handleDraftFileChange}
+              class="block w-full text-sm text-gray-700 dark:text-gray-200"
+            />
+            {#if selectedDraftFile}
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Selecionado: {selectedDraftFile.name}
+              </p>
+            {/if}
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" on:click={() => closeModal()} disabled={uploadingDraft}>
+              Fechar
+            </Button>
+            <Button
+              className="bg-green-600 text-white hover:bg-green-700"
+              on:click={submitDraft}
+              disabled={uploadingDraft || !selectedDraftFile}
+            >
+              {#if uploadingDraft}
+                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+              {/if}
+              Anexar Minuta
+            </Button>
+          </div>
+        </div>
+      {:else if modalMode === 'finalize'}
+        <div class="space-y-4">
+          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Documentos para conferência
+            </p>
+            {#if getDocumentsForFinalize(selected).length === 0}
+              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                Nenhum contrato assinado/comprovante anexado.
+              </p>
+            {:else}
+              <div class="mt-2 space-y-2">
+                {#each getDocumentsForFinalize(selected) as doc (doc.id)}
+                  <div class="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800">
+                    <div>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{documentLabel(doc.documentType)}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.createdAt)}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      on:click={() => selected && viewDocument(doc, selected)}
+                      disabled={downloadingDocumentId === doc.id}
+                    >
+                      {#if downloadingDocumentId === doc.id}
+                        <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                      {/if}
+                      Baixar/Visualizar
+                    </Button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+
+          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Formulário de Comissões
+            </p>
+            <div class="mt-3 grid gap-3 md:grid-cols-2">
+              <label class="text-sm text-gray-700 dark:text-gray-200">
+                Valor de Venda/Locação (R$)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  bind:value={finalizeForm.valorVenda}
+                  class="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                />
+              </label>
+              <label class="text-sm text-gray-700 dark:text-gray-200">
+                Comissão Captador (R$)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  bind:value={finalizeForm.comissaoCaptador}
+                  class="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                />
+              </label>
+              <label class="text-sm text-gray-700 dark:text-gray-200">
+                Comissão Vendedor (R$)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  bind:value={finalizeForm.comissaoVendedor}
+                  class="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                />
+              </label>
+              <label class="text-sm text-gray-700 dark:text-gray-200">
+                Taxa Encontre Aqui (R$)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  bind:value={finalizeForm.taxaPlataforma}
+                  class="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" on:click={() => closeModal()} disabled={finalizingContract}>
+              Fechar
+            </Button>
+            <Button
+              className="bg-green-600 text-white hover:bg-green-700"
+              on:click={submitFinalize}
+              disabled={finalizingContract}
+            >
+              {#if finalizingContract}
+                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+              {/if}
+              Finalizar Venda/Locação
+            </Button>
+          </div>
+        </div>
+      {:else}
+        <div class="space-y-4">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Este contrato já está finalizado e está disponível apenas para consulta.
+          </p>
+
+          <div class="rounded-md border border-gray-200 p-3 text-sm dark:border-gray-700">
+            <p><span class="font-semibold">Status:</span> {statusLabel(selected.status)}</p>
+            <p><span class="font-semibold">Atualizado em:</span> {formatDate(selected.updatedAt ?? selected.createdAt)}</p>
+            <p><span class="font-semibold">Valor:</span> {readCommissionValue(selected.commissionData ?? null, 'valorVenda') || '-'}</p>
+          </div>
+
+          <div class="flex justify-end">
+            <Button variant="outline" on:click={() => closeModal()}>Fechar</Button>
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
