@@ -157,6 +157,7 @@
   }
 
   function openAnalysis(item: NegotiationItem) {
+    console.log('Negotiation Item:', item);
     selected = item;
     rejectMode = false;
     rejectReason = '';
