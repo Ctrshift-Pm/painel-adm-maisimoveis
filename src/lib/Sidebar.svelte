@@ -50,12 +50,6 @@
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />`
     },
     {
-      view: null,
-      label: 'Contratos (Em breve)',
-      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 3h10a2 2 0 012 2v14l-7-3-7 3V5a2 2 0 012-2z" />`,
-      disabled: true,
-    },
-    {
       view: 'create_property',
       label: 'Cadastrar Imovel',
       icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />`
