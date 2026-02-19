@@ -363,22 +363,16 @@
 {#if showModal && selected}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    role="button"
-    tabindex="0"
-    aria-label="Fechar modal de análise"
+    role="presentation"
     on:click={(event) => {
       if (event.target === event.currentTarget) {
         closeModal();
       }
     }}
-    on:keydown={(event) => {
-      if (event.key === 'Escape' || event.key === 'Enter') {
-        closeModal();
-      }
-    }}
+    on:keydown={() => {}}
   >
     <div class="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
-      <div class="mb-4 flex items-start justify-between gap-3">
+      <div class="mb-4">
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Análise da proposta
@@ -390,14 +384,6 @@
             {/if}
           </p>
         </div>
-        <button
-          type="button"
-          class="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          on:click={() => closeModal()}
-          disabled={processingAction}
-        >
-          Fechar
-        </button>
       </div>
 
       <div class="grid gap-4 md:grid-cols-2">

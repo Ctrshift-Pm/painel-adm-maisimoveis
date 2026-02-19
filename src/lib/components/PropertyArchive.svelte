@@ -239,19 +239,13 @@
 {#if showModal && selected}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    role="button"
-    tabindex="0"
-    aria-label="Fechar modal de disponibilização"
+    role="presentation"
     on:click={(event) => {
       if (event.target === event.currentTarget) {
         closeModal();
       }
     }}
-    on:keydown={(event) => {
-      if (event.key === 'Escape' || event.key === 'Enter') {
-        closeModal();
-      }
-    }}
+    on:keydown={() => {}}
   >
     <div class="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Disponibilizar Imóvel</h3>
@@ -263,9 +257,6 @@
       </p>
 
       <div class="mt-5 flex justify-end gap-2">
-        <Button variant="outline" on:click={() => closeModal()} disabled={isRelisting}>
-          Cancelar
-        </Button>
         <Button
           variant="outline"
           className="bg-blue-600 text-white hover:bg-blue-700"

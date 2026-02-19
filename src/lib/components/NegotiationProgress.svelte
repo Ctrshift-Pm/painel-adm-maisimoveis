@@ -266,19 +266,13 @@
 {#if showConfirm && selected}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    role="button"
-    tabindex="0"
-    aria-label="Fechar modal de cancelamento"
+    role="presentation"
     on:click={(event) => {
       if (event.target === event.currentTarget) {
         closeCancelModal();
       }
     }}
-    on:keydown={(event) => {
-      if (event.key === 'Escape' || event.key === 'Enter') {
-        closeCancelModal();
-      }
-    }}
+    on:keydown={() => {}}
   >
     <div class="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cancelar Negociação</h3>
@@ -301,9 +295,6 @@
         ></textarea>
       </div>
       <div class="mt-5 flex justify-end gap-2">
-        <Button variant="outline" on:click={() => closeCancelModal()} disabled={processing}>
-          Fechar
-        </Button>
         <Button
           variant="destructive"
           className="bg-red-600 text-white hover:bg-red-700"
