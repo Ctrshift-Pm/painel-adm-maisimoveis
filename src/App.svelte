@@ -23,8 +23,15 @@
   }
 
   let initialView: View = 'dashboard';
-  if (typeof window !== 'undefined' && window.location.pathname === '/admin/properties') {
-    initialView = 'properties';
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    if (path === '/admin/properties') {
+      initialView = 'properties';
+    } else if (path === '/admin/negociacoes/solicitacoes') {
+      initialView = 'negotiation_requests';
+    } else if (path === '/admin/negociacoes/andamento') {
+      initialView = 'negotiation_progress';
+    }
   }
 
   $: if ($authToken) {

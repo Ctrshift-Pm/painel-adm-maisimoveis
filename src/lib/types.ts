@@ -108,6 +108,7 @@ export interface Notification {
     | 'agency'
     | 'user'
     | 'announcement'
+    | 'negotiation'
     | 'other';
   related_entity_id: number | null;
   recipient_id?: number | null;
@@ -120,6 +121,9 @@ export type View =
   | 'properties'
   | 'property_requests'
   | 'sold_properties'
+  | 'negotiation_requests'
+  | 'negotiation_progress'
+  | 'negotiation_contracts'
   | 'create_property'
   | 'create_user'
   | 'brokers'

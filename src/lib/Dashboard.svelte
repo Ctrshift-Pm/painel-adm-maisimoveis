@@ -74,6 +74,8 @@
     let BrokerManagementComponent: LazySvelteComponent | null = null;
     let CreatePropertyComponent: LazySvelteComponent | null = null;
     let CreateUserComponent: LazySvelteComponent | null = null;
+    let NegotiationRequestsComponent: LazySvelteComponent | null = null;
+    let NegotiationProgressComponent: LazySvelteComponent | null = null;
     let SendNotificationComponent: LazySvelteComponent | null = null;
     let AdminNotificationsPanelComponent: LazySvelteComponent | null = null;
     let StatusPieChartComponent: LazySvelteComponent | null = null;
@@ -109,6 +111,20 @@
             if (!CreateUserComponent) {
                 const module = await import('./components/CreateUser.svelte');
                 CreateUserComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'negotiation_requests') {
+            if (!NegotiationRequestsComponent) {
+                const module = await import('./components/NegotiationRequests.svelte');
+                NegotiationRequestsComponent = module.default;
+            }
+            return;
+        }
+        if (view === 'negotiation_progress') {
+            if (!NegotiationProgressComponent) {
+                const module = await import('./components/NegotiationProgress.svelte');
+                NegotiationProgressComponent = module.default;
             }
             return;
         }
@@ -164,6 +180,15 @@
         sold_properties: {
             title: 'Imóveis vendidos'
         },
+        negotiation_requests: {
+            title: 'Solicitação de Propostas'
+        },
+        negotiation_progress: {
+            title: 'Imóveis em Negociação'
+        },
+        negotiation_contracts: {
+            title: 'Contratos (Em breve)'
+        },
         create_property: {
             title: 'Cadastrar Imóvel'
         },
@@ -217,6 +242,9 @@
             activeView === 'properties' ||
             activeView === 'property_requests' ||
             activeView === 'sold_properties' ||
+            activeView === 'negotiation_requests' ||
+            activeView === 'negotiation_progress' ||
+            activeView === 'negotiation_contracts' ||
             activeView === 'brokers' ||
             activeView === 'create_property' ||
             activeView === 'create_user'
@@ -439,7 +467,15 @@
     }
 
     function handleSortToggle() {
-        if (activeView === 'dashboard' || activeView === 'verification' || activeView === 'properties' || activeView === 'brokers') return;
+        if (
+            activeView === 'dashboard' ||
+            activeView === 'verification' ||
+            activeView === 'properties' ||
+            activeView === 'brokers' ||
+            activeView === 'negotiation_requests' ||
+            activeView === 'negotiation_progress' ||
+            activeView === 'negotiation_contracts'
+        ) return;
         const config = getViewConfig(activeView);
         if (!config.sortColumn) return;
 
@@ -757,6 +793,29 @@
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
                     </div>
                 {/if}
+            {:else if activeView === 'negotiation_requests'}
+                {#if NegotiationRequestsComponent}
+                    <svelte:component this={NegotiationRequestsComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
+            {:else if activeView === 'negotiation_progress'}
+                {#if NegotiationProgressComponent}
+                    <svelte:component this={NegotiationProgressComponent} />
+                {:else}
+                    <div class="flex justify-center items-center h-64">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    </div>
+                {/if}
+            {:else if activeView === 'negotiation_contracts'}
+                <div class="rounded-xl border border-amber-300 bg-amber-50 p-6 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">
+                    <h2 class="text-lg font-semibold">Contratos (Em breve)</h2>
+                    <p class="mt-2 text-sm opacity-90">
+                        Esta área será habilitada após a etapa de revisão e aprovação de propostas.
+                    </p>
+                </div>
             {:else if activeView === 'create_property'}
                 {#if CreatePropertyComponent}
                     <svelte:component this={CreatePropertyComponent} />

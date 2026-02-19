@@ -18,6 +18,9 @@
     'properties',
     'property_requests',
     'sold_properties',
+    'negotiation_requests',
+    'negotiation_progress',
+    'negotiation_contracts',
     'create_property',
     'create_user',
     'brokers',
@@ -26,7 +29,7 @@
     'notifications'
   ];
 
-  type GroupKey = 'imoveis' | 'usuarios' | 'verificacao';
+  type GroupKey = 'imoveis' | 'negociacoes' | 'usuarios' | 'verificacao';
 
   const imoveisItems = [
     {
@@ -69,6 +72,24 @@
     }
   ] as const;
 
+  const negociacoesItems = [
+    {
+      view: 'negotiation_requests',
+      label: 'Solicitação de Propostas',
+      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h6m-6 4h8M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />`
+    },
+    {
+      view: 'negotiation_progress',
+      label: 'Imóveis em Negociação',
+      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8m-8 4h8m-8 4h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />`
+    },
+    {
+      view: 'negotiation_contracts',
+      label: 'Contratos (Em breve)',
+      icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 3h8a2 2 0 012 2v14l-6-3-6 3V5a2 2 0 012-2z" />`
+    }
+  ] as const;
+
   const verificacaoItems = [
     {
       view: 'verification',
@@ -81,6 +102,7 @@
 
   let openGroups: Record<GroupKey, boolean> = {
     imoveis: false,
+    negociacoes: false,
     usuarios: false,
     verificacao: false
   };
@@ -112,6 +134,7 @@
   function getGroupForView(view: View | string | null): GroupKey | null {
     if (!view || !isValidView(view)) return null;
     if (imoveisItems.some((item) => item.view === view)) return 'imoveis';
+    if (negociacoesItems.some((item) => item.view === view)) return 'negociacoes';
     if (usuariosItems.some((item) => item.view === view)) return 'usuarios';
     if (verificacaoItems.some((item) => item.view === view)) return 'verificacao';
     return null;
@@ -309,6 +332,49 @@
       {#if openGroups.usuarios}
         <div class="space-y-1">
           {#each usuariosItems as item}
+            <button
+              class={navItemClass(item.view, 'pl-10')}
+              on:click={() => handleNavigation(item.view)}
+            >
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {@html item.icon}
+              </svg>
+              {item.label}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="space-y-1">
+      <button
+        class={groupButtonBase}
+        on:click={() => toggleGroup('negociacoes')}
+        aria-expanded={openGroups.negociacoes}
+      >
+        <span class="flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6M7 3h10a2 2 0 012 2v14l-7-3-7 3V5a2 2 0 012-2z"
+            />
+          </svg>
+          Negociações
+        </span>
+        <svg
+          class="h-4 w-4 transition-transform {openGroups.negociacoes ? 'rotate-180' : ''}"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {#if openGroups.negociacoes}
+        <div class="space-y-1">
+          {#each negociacoesItems as item}
             <button
               class={navItemClass(item.view, 'pl-10')}
               on:click={() => handleNavigation(item.view)}
