@@ -698,7 +698,7 @@
 
 {#if showModal && selected}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4"
     role="presentation"
     on:click={(event) => {
       if (event.target === event.currentTarget) {
@@ -707,7 +707,7 @@
     }}
     on:keydown={() => {}}
   >
-    <div class="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
+    <div class="my-8 w-full max-w-3xl max-h-[80vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
       <div class="mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {modalMode === 'review_docs'
@@ -826,62 +826,98 @@
                     <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
                       Documento
                     </th>
-                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
-                      Captador
-                    </th>
-                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
-                      Vendedor
-                    </th>
+                    {#if isDoubleEndedDeal(selected)}
+                      <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
+                        Corretor
+                      </th>
+                    {:else}
+                      <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
+                        Captador
+                      </th>
+                      <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
+                        Vendedor
+                      </th>
+                    {/if}
                   </tr>
                 </thead>
                 <tbody>
-                  {#each getRequiredDocTypes(selected) as documentType}
-                    {@const sellerDoc = getDocumentForMatrixCell(selected, documentType, 'seller')}
-                    {@const buyerDoc = getDocumentForMatrixCell(selected, documentType, 'buyer')}
-                    <tr class="border-b border-gray-100 dark:border-gray-800">
-                      <td class="px-3 py-3 text-gray-700 dark:text-gray-200">
-                        {documentLabel(documentType)}
-                      </td>
-                      <td class="px-3 py-3">
-                        {#if sellerDoc}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            on:click={() => selected && viewDocument(sellerDoc, selected)}
-                            disabled={downloadingDocumentId === sellerDoc.id}
-                          >
-                            {#if downloadingDocumentId === sellerDoc.id}
-                              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                            {/if}
-                            Baixar
-                          </Button>
-                        {:else}
-                          <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            Pendente
-                          </span>
-                        {/if}
-                      </td>
-                      <td class="px-3 py-3">
-                        {#if buyerDoc}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            on:click={() => selected && viewDocument(buyerDoc, selected)}
-                            disabled={downloadingDocumentId === buyerDoc.id}
-                          >
-                            {#if downloadingDocumentId === buyerDoc.id}
-                              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                            {/if}
-                            Baixar
-                          </Button>
-                        {:else}
-                          <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            Pendente
-                          </span>
-                        {/if}
-                      </td>
-                    </tr>
-                  {/each}
+                  {#if isDoubleEndedDeal(selected)}
+                    {#each getRequiredDocTypes(selected) as documentType}
+                      {@const brokerDoc = getDocumentForMatrixCell(selected, documentType, 'seller')}
+                      <tr class="border-b border-gray-100 dark:border-gray-800">
+                        <td class="px-3 py-3 text-gray-700 dark:text-gray-200">
+                          {documentLabel(documentType)}
+                        </td>
+                        <td class="px-3 py-3">
+                          {#if brokerDoc}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              on:click={() => selected && viewDocument(brokerDoc, selected)}
+                              disabled={downloadingDocumentId === brokerDoc.id}
+                            >
+                              {#if downloadingDocumentId === brokerDoc.id}
+                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                              {/if}
+                              Baixar
+                            </Button>
+                          {:else}
+                            <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              Pendente
+                            </span>
+                          {/if}
+                        </td>
+                      </tr>
+                    {/each}
+                  {:else}
+                    {#each getRequiredDocTypes(selected) as documentType}
+                      {@const sellerDoc = getDocumentForMatrixCell(selected, documentType, 'seller')}
+                      {@const buyerDoc = getDocumentForMatrixCell(selected, documentType, 'buyer')}
+                      <tr class="border-b border-gray-100 dark:border-gray-800">
+                        <td class="px-3 py-3 text-gray-700 dark:text-gray-200">
+                          {documentLabel(documentType)}
+                        </td>
+                        <td class="px-3 py-3">
+                          {#if sellerDoc}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              on:click={() => selected && viewDocument(sellerDoc, selected)}
+                              disabled={downloadingDocumentId === sellerDoc.id}
+                            >
+                              {#if downloadingDocumentId === sellerDoc.id}
+                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                              {/if}
+                              Baixar
+                            </Button>
+                          {:else}
+                            <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              Pendente
+                            </span>
+                          {/if}
+                        </td>
+                        <td class="px-3 py-3">
+                          {#if buyerDoc}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              on:click={() => selected && viewDocument(buyerDoc, selected)}
+                              disabled={downloadingDocumentId === buyerDoc.id}
+                            >
+                              {#if downloadingDocumentId === buyerDoc.id}
+                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                              {/if}
+                              Baixar
+                            </Button>
+                          {:else}
+                            <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                              Pendente
+                            </span>
+                          {/if}
+                        </td>
+                      </tr>
+                    {/each}
+                  {/if}
                 </tbody>
               </table>
             </div>
