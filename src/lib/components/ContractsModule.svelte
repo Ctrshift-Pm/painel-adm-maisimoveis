@@ -22,6 +22,8 @@
     id: number;
     type?: string | null;
     documentType?: string | null;
+    side?: 'seller' | 'buyer' | null;
+    originalFileName?: string | null;
     downloadUrl?: string | null;
     createdAt?: string | null;
   };
@@ -33,6 +35,9 @@
     propertyId: number;
     propertyCode?: string | null;
     propertyTitle?: string | null;
+    propertyPurpose?: string | null;
+    capturingBrokerId?: number | null;
+    sellingBrokerId?: number | null;
     capturingBrokerName?: string | null;
     sellingBrokerName?: string | null;
     sellerInfo?: Record<string, unknown> | null;
@@ -74,6 +79,19 @@
     'comprovante_pagamento',
     'boleto_vistoria',
   ]);
+  const saleRequiredDocTypes = [
+    'doc_identidade',
+    'comprovante_endereco',
+    'certidao_casamento_nascimento',
+    'certidao_inteiro_teor',
+    'certidao_onus_acoes',
+  ];
+  const rentRequiredDocTypes = [
+    'doc_identidade',
+    'comprovante_endereco',
+    'certidao_casamento_nascimento',
+    'comprovante_renda',
+  ];
 
   let activeTab: ContractStatus = 'AWAITING_DOCS';
   let items: ContractItem[] = [];
@@ -205,6 +223,71 @@
     return (contract.documents ?? []).filter((doc) =>
       signedReviewDocTypes.has((doc.documentType ?? '').trim().toLowerCase())
     );
+  }
+
+  function getDocumentSide(doc: ContractDocument): 'seller' | 'buyer' | null {
+    const side = String(doc.side ?? '').trim().toLowerCase();
+    if (side === 'seller' || side === 'buyer') {
+      return side;
+    }
+    return null;
+  }
+
+  function isDoubleEndedDeal(contract: ContractItem): boolean {
+    const capturing = Number(contract.capturingBrokerId ?? 0);
+    const selling = Number(contract.sellingBrokerId ?? 0);
+    return capturing > 0 && selling > 0 && capturing === selling;
+  }
+
+  function getRequiredDocTypes(contract: ContractItem): string[] {
+    const purpose = String(contract.propertyPurpose ?? '').trim().toLowerCase();
+    const isSale = purpose.includes('venda') || purpose.includes('sale');
+    const isRent = purpose.includes('alug') || purpose.includes('rent');
+
+    if (isSale && isRent) {
+      return Array.from(new Set([...saleRequiredDocTypes, ...rentRequiredDocTypes]));
+    }
+    if (isRent) {
+      return [...rentRequiredDocTypes];
+    }
+    return [...saleRequiredDocTypes];
+  }
+
+  function getNonProposalDocuments(contract: ContractItem): ContractDocument[] {
+    return (contract.documents ?? []).filter((doc) => {
+      const documentType = String(doc.documentType ?? '').trim().toLowerCase();
+      return documentType !== 'proposal';
+    });
+  }
+
+  function getDocumentForMatrixCell(
+    contract: ContractItem,
+    documentType: string,
+    side: 'seller' | 'buyer'
+  ): ContractDocument | null {
+    const normalizedType = documentType.trim().toLowerCase();
+    const docs = getNonProposalDocuments(contract).filter(
+      (doc) => String(doc.documentType ?? '').trim().toLowerCase() === normalizedType
+    );
+    if (docs.length === 0) {
+      return null;
+    }
+
+    const direct = docs.find((doc) => getDocumentSide(doc) === side);
+    if (direct) {
+      return direct;
+    }
+
+    const neutral = docs.find((doc) => getDocumentSide(doc) == null);
+    if (neutral) {
+      return neutral;
+    }
+
+    if (isDoubleEndedDeal(contract)) {
+      return docs[0] ?? null;
+    }
+
+    return null;
   }
 
   async function fetchContracts() {
@@ -429,24 +512,45 @@
     }
   }
 
-  async function viewDocument(document: ContractDocument, contract: ContractItem) {
-    if (!document.downloadUrl) {
+  async function viewDocument(doc: ContractDocument, contract: ContractItem) {
+    if (!doc.downloadUrl) {
       toast.error('Documento sem URL de download.');
       return;
     }
 
-    downloadingDocumentId = document.id;
+    downloadingDocumentId = doc.id;
     try {
-      const response = await apiClient.get(document.downloadUrl, {
+      const response = await apiClient.get(doc.downloadUrl, {
         responseType: 'blob',
       });
+      const dispositionHeader = String(
+        response.headers?.['content-disposition'] ??
+          response.headers?.['Content-Disposition'] ??
+          ''
+      );
+      const utfMatch = dispositionHeader.match(/filename\*=UTF-8''([^;]+)/i);
+      const basicMatch = dispositionHeader.match(/filename=\"?([^\";]+)\"?/i);
+      const resolvedFromHeader = utfMatch?.[1]
+        ? decodeURIComponent(utfMatch[1])
+        : basicMatch?.[1];
+      const fallbackName =
+        doc.originalFileName ??
+        `${String(doc.documentType ?? 'documento').trim() || 'documento'}.pdf`;
+      const downloadName = (resolvedFromHeader || fallbackName).trim();
+
       const blob =
         response.data instanceof Blob
           ? response.data
           : new Blob([response.data], { type: 'application/octet-stream' });
       const objectUrl = URL.createObjectURL(blob);
-      window.open(objectUrl, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = downloadName;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 15_000);
     } catch (error) {
       console.error('Erro ao baixar documento do contrato:', error);
       toast.error(
@@ -626,151 +730,235 @@
       </div>
 
       {#if modalMode === 'review_docs'}
-        <div class="grid gap-4 md:grid-cols-2">
-          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-              <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                Captador
-              </p>
-              <span
-                class={`rounded-full px-2 py-1 text-xs font-semibold ${approvalBadgeClass(
-                  selected.sellerApprovalStatus
-                )}`}
-              >
-                {approvalLabel(selected.sellerApprovalStatus)}
-              </span>
-            </div>
-            <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
-              <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.sellerInfo, ['estado_civil', 'estadoCivil'])}</p>
-              <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.sellerInfo, ['profissao'])}</p>
-              <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.sellerInfo, ['email'])}</p>
-              <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.sellerInfo, ['telefone', 'phone'])}</p>
-              <p><span class="font-semibold">Banco:</span> {getRecordValue(selected.sellerInfo, ['dados_bancarios', 'dadosBancarios'])}</p>
-              {#if readReasonText(selected.sellerApprovalReason).length > 0}
-                <p class="text-xs text-amber-700 dark:text-amber-300">
-                  Motivo: {readReasonText(selected.sellerApprovalReason)}
+        <div class="space-y-4">
+          {#if isDoubleEndedDeal(selected)}
+            <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+              <div class="flex items-center justify-between">
+                <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                  Dados do Corretor
                 </p>
-              {/if}
+                <span
+                  class={`rounded-full px-2 py-1 text-xs font-semibold ${approvalBadgeClass(
+                    selected.sellerApprovalStatus
+                  )}`}
+                >
+                  {approvalLabel(selected.sellerApprovalStatus)}
+                </span>
+              </div>
+              <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.sellerInfo ?? selected.buyerInfo, ['estado_civil', 'estadoCivil'])}</p>
+                <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.sellerInfo ?? selected.buyerInfo, ['profissao'])}</p>
+                <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.sellerInfo ?? selected.buyerInfo, ['email'])}</p>
+                <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.sellerInfo ?? selected.buyerInfo, ['telefone', 'phone'])}</p>
+                <p><span class="font-semibold">Banco:</span> {getRecordValue(selected.sellerInfo ?? selected.buyerInfo, ['dados_bancarios', 'dadosBancarios'])}</p>
+                {#if readReasonText(selected.sellerApprovalReason).length > 0}
+                  <p class="text-xs text-amber-700 dark:text-amber-300">
+                    Motivo: {readReasonText(selected.sellerApprovalReason)}
+                  </p>
+                {/if}
+              </div>
             </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                className="bg-green-600 text-white hover:bg-green-700"
-                on:click={() => evaluateContractSide('seller', 'APPROVED')}
-                disabled={evaluatingSide === 'seller'}
-              >
-                Aprovar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
-                on:click={() =>
-                  evaluateContractSide('seller', 'APPROVED_WITH_RES')}
-                disabled={evaluatingSide === 'seller'}
-              >
-                Aprovar c/ ressalvas
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                on:click={() => evaluateContractSide('seller', 'REJECTED')}
-                disabled={evaluatingSide === 'seller'}
-              >
-                Rejeitar
-              </Button>
-            </div>
-          </div>
-          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-              <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                Vendedor
-              </p>
-              <span
-                class={`rounded-full px-2 py-1 text-xs font-semibold ${approvalBadgeClass(
-                  selected.buyerApprovalStatus
-                )}`}
-              >
-                {approvalLabel(selected.buyerApprovalStatus)}
-              </span>
-            </div>
-            <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
-              <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.buyerInfo, ['estado_civil', 'estadoCivil'])}</p>
-              <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.buyerInfo, ['profissao'])}</p>
-              <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.buyerInfo, ['email'])}</p>
-              <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.buyerInfo, ['telefone', 'phone'])}</p>
-              <p><span class="font-semibold">Garantia:</span> {getRecordValue(selected.buyerInfo, ['garantia_locacao', 'garantiaLocacao'])}</p>
-              {#if readReasonText(selected.buyerApprovalReason).length > 0}
-                <p class="text-xs text-amber-700 dark:text-amber-300">
-                  Motivo: {readReasonText(selected.buyerApprovalReason)}
-                </p>
-              {/if}
-            </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                className="bg-green-600 text-white hover:bg-green-700"
-                on:click={() => evaluateContractSide('buyer', 'APPROVED')}
-                disabled={evaluatingSide === 'buyer'}
-              >
-                Aprovar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
-                on:click={() => evaluateContractSide('buyer', 'APPROVED_WITH_RES')}
-                disabled={evaluatingSide === 'buyer'}
-              >
-                Aprovar c/ ressalvas
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                on:click={() => evaluateContractSide('buyer', 'REJECTED')}
-                disabled={evaluatingSide === 'buyer'}
-              >
-                Rejeitar
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-4 rounded-md border border-gray-200 p-3 dark:border-gray-700">
-          <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-            Documentos Anexados
-          </p>
-          {#if (selected.documents ?? []).length === 0}
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              Nenhum documento anexado até o momento.
-            </p>
           {:else}
-            <div class="mt-2 space-y-2">
-              {#each selected.documents ?? [] as doc (doc.id)}
-                <div class="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800">
-                  <div>
-                    <p class="font-medium text-gray-900 dark:text-gray-100">{documentLabel(doc.documentType)}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.createdAt)}</p>
-                  </div>
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    Dados Captador
+                  </p>
+                  <span
+                    class={`rounded-full px-2 py-1 text-xs font-semibold ${approvalBadgeClass(
+                      selected.sellerApprovalStatus
+                    )}`}
+                  >
+                    {approvalLabel(selected.sellerApprovalStatus)}
+                  </span>
+                </div>
+                <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                  <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.sellerInfo, ['estado_civil', 'estadoCivil'])}</p>
+                  <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.sellerInfo, ['profissao'])}</p>
+                  <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.sellerInfo, ['email'])}</p>
+                  <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.sellerInfo, ['telefone', 'phone'])}</p>
+                  <p><span class="font-semibold">Banco:</span> {getRecordValue(selected.sellerInfo, ['dados_bancarios', 'dadosBancarios'])}</p>
+                  {#if readReasonText(selected.sellerApprovalReason).length > 0}
+                    <p class="text-xs text-amber-700 dark:text-amber-300">
+                      Motivo: {readReasonText(selected.sellerApprovalReason)}
+                    </p>
+                  {/if}
+                </div>
+              </div>
+              <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                  <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    Dados Vendedor
+                  </p>
+                  <span
+                    class={`rounded-full px-2 py-1 text-xs font-semibold ${approvalBadgeClass(
+                      selected.buyerApprovalStatus
+                    )}`}
+                  >
+                    {approvalLabel(selected.buyerApprovalStatus)}
+                  </span>
+                </div>
+                <div class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                  <p><span class="font-semibold">Estado Civil:</span> {getRecordValue(selected.buyerInfo, ['estado_civil', 'estadoCivil'])}</p>
+                  <p><span class="font-semibold">Profissão:</span> {getRecordValue(selected.buyerInfo, ['profissao'])}</p>
+                  <p><span class="font-semibold">E-mail:</span> {getRecordValue(selected.buyerInfo, ['email'])}</p>
+                  <p><span class="font-semibold">Telefone:</span> {getRecordValue(selected.buyerInfo, ['telefone', 'phone'])}</p>
+                  <p><span class="font-semibold">Garantia:</span> {getRecordValue(selected.buyerInfo, ['garantia_locacao', 'garantiaLocacao'])}</p>
+                  {#if readReasonText(selected.buyerApprovalReason).length > 0}
+                    <p class="text-xs text-amber-700 dark:text-amber-300">
+                      Motivo: {readReasonText(selected.buyerApprovalReason)}
+                    </p>
+                  {/if}
+                </div>
+              </div>
+            </div>
+          {/if}
+
+          <div class="rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+              Matriz de Documentos
+            </p>
+            <div class="mt-2 overflow-x-auto">
+              <table class="w-full min-w-[620px] text-sm">
+                <thead>
+                  <tr class="border-b border-gray-200 dark:border-gray-700">
+                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
+                      Documento
+                    </th>
+                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
+                      Captador
+                    </th>
+                    <th class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">
+                      Vendedor
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each getRequiredDocTypes(selected) as documentType}
+                    {@const sellerDoc = getDocumentForMatrixCell(selected, documentType, 'seller')}
+                    {@const buyerDoc = getDocumentForMatrixCell(selected, documentType, 'buyer')}
+                    <tr class="border-b border-gray-100 dark:border-gray-800">
+                      <td class="px-3 py-3 text-gray-700 dark:text-gray-200">
+                        {documentLabel(documentType)}
+                      </td>
+                      <td class="px-3 py-3">
+                        {#if sellerDoc}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            on:click={() => selected && viewDocument(sellerDoc, selected)}
+                            disabled={downloadingDocumentId === sellerDoc.id}
+                          >
+                            {#if downloadingDocumentId === sellerDoc.id}
+                              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                            {/if}
+                            Baixar
+                          </Button>
+                        {:else}
+                          <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            Pendente
+                          </span>
+                        {/if}
+                      </td>
+                      <td class="px-3 py-3">
+                        {#if buyerDoc}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            on:click={() => selected && viewDocument(buyerDoc, selected)}
+                            disabled={downloadingDocumentId === buyerDoc.id}
+                          >
+                            {#if downloadingDocumentId === buyerDoc.id}
+                              <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                            {/if}
+                            Baixar
+                          </Button>
+                        {:else}
+                          <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            Pendente
+                          </span>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="space-y-3 rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            <div>
+              <p class="mb-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                Avaliação Captador
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  on:click={() => evaluateContractSide('seller', 'APPROVED')}
+                  disabled={evaluatingSide === 'seller'}
+                >
+                  Aprovar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                  on:click={() => evaluateContractSide('seller', 'APPROVED_WITH_RES')}
+                  disabled={evaluatingSide === 'seller'}
+                >
+                  Aprovar c/ ressalvas
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  on:click={() => evaluateContractSide('seller', 'REJECTED')}
+                  disabled={evaluatingSide === 'seller'}
+                >
+                  Rejeitar
+                </Button>
+              </div>
+            </div>
+            {#if !isDoubleEndedDeal(selected)}
+              <div>
+                <p class="mb-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                  Avaliação Vendedor
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-green-600 text-white hover:bg-green-700"
+                    on:click={() => evaluateContractSide('buyer', 'APPROVED')}
+                    disabled={evaluatingSide === 'buyer'}
+                  >
+                    Aprovar
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    on:click={() => selected && viewDocument(doc, selected)}
-                    disabled={downloadingDocumentId === doc.id}
+                    className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                    on:click={() => evaluateContractSide('buyer', 'APPROVED_WITH_RES')}
+                    disabled={evaluatingSide === 'buyer'}
                   >
-                    {#if downloadingDocumentId === doc.id}
-                      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                    {/if}
-                    Baixar/Visualizar
+                    Aprovar c/ ressalvas
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    on:click={() => evaluateContractSide('buyer', 'REJECTED')}
+                    disabled={evaluatingSide === 'buyer'}
+                  >
+                    Rejeitar
                   </Button>
                 </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
+              </div>
+            {/if}
+          </div>
 
-        <div class="mt-5 flex justify-end">
-          <Button variant="outline" on:click={() => closeModal()}>Fechar</Button>
+          <div class="mt-1 flex justify-end">
+            <Button variant="outline" on:click={() => closeModal()}>Fechar</Button>
+          </div>
         </div>
       {:else if modalMode === 'upload_draft'}
         <div class="space-y-4">
