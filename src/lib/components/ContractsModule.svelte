@@ -138,7 +138,6 @@
   let approvalLockReasons: string[] = [];
   let isReadyToApprove = false;
   let sellerApprovalDisabled = false;
-  let buyerApprovalDisabled = false;
   let finalizeForm = {
     valorVenda: '',
     comissaoCaptador: '',
@@ -187,12 +186,17 @@
     return String(doc?.status ?? '').trim().toUpperCase();
   }
 
+  function hasDocumentReviewStatus(doc?: ContractDocument | null): boolean {
+    const status = normalizeDocumentStatus(doc);
+    return status === 'APPROVED' || status === 'REJECTED' || status === 'PENDING';
+  }
+
   function documentStatusLabel(doc?: ContractDocument | null): string {
     const status = normalizeDocumentStatus(doc);
     if (status === 'APPROVED') return 'Aprovado';
     if (status === 'REJECTED') return 'Rejeitado';
     if (status === 'PENDING') return 'Pendente';
-    return 'Sem revisão';
+    return '';
   }
 
   function documentStatusClass(doc?: ContractDocument | null): string {
@@ -740,7 +744,6 @@
   $: approvalLockReasons = computeApprovalLockReasons(selected);
   $: isReadyToApprove = approvalLockReasons.length === 0;
   $: sellerApprovalDisabled = evaluatingSide === 'seller' || !isReadyToApprove;
-  $: buyerApprovalDisabled = evaluatingSide === 'buyer' || !isReadyToApprove;
 </script>
 
 <div class="space-y-4">
@@ -1030,13 +1033,15 @@
                                 {/if}
                                 Baixar
                               </Button>
-                              <span
-                                class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
-                                  brokerDoc
-                                )}`}
-                              >
-                                {documentStatusLabel(brokerDoc)}
-                              </span>
+                              {#if hasDocumentReviewStatus(brokerDoc)}
+                                <span
+                                  class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
+                                    brokerDoc
+                                  )}`}
+                                >
+                                  {documentStatusLabel(brokerDoc)}
+                                </span>
+                              {/if}
                             </div>
                           {:else}
                             <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -1068,13 +1073,15 @@
                                 {/if}
                                 Baixar
                               </Button>
-                              <span
-                                class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
-                                  sellerDoc
-                                )}`}
-                              >
-                                {documentStatusLabel(sellerDoc)}
-                              </span>
+                              {#if hasDocumentReviewStatus(sellerDoc)}
+                                <span
+                                  class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
+                                    sellerDoc
+                                  )}`}
+                                >
+                                  {documentStatusLabel(sellerDoc)}
+                                </span>
+                              {/if}
                             </div>
                           {:else}
                             <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -1096,13 +1103,15 @@
                                 {/if}
                                 Baixar
                               </Button>
-                              <span
-                                class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
-                                  buyerDoc
-                                )}`}
-                              >
-                                {documentStatusLabel(buyerDoc)}
-                              </span>
+                              {#if hasDocumentReviewStatus(buyerDoc)}
+                                <span
+                                  class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
+                                    buyerDoc
+                                  )}`}
+                                >
+                                  {documentStatusLabel(buyerDoc)}
+                                </span>
+                              {/if}
                             </div>
                           {:else}
                             <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -1150,8 +1159,6 @@
                   variant="outline"
                   className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                   on:click={() => evaluateContractSide('seller', 'APPROVED_WITH_RES')}
-                  disabled={sellerApprovalDisabled}
-                  title={!isReadyToApprove ? approvalLockReasons.join(' | ') : undefined}
                 >
                   Aprovar c/ ressalvas
                 </Button>
@@ -1175,7 +1182,7 @@
                     size="sm"
                     className="bg-green-600 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:opacity-50 disabled:hover:bg-gray-400"
                     on:click={() => evaluateContractSide('buyer', 'APPROVED')}
-                    disabled={buyerApprovalDisabled}
+                    disabled={evaluatingSide === 'buyer' || !isReadyToApprove}
                     title={!isReadyToApprove ? approvalLockReasons.join(' | ') : undefined}
                   >
                     Aprovar
@@ -1185,8 +1192,6 @@
                     variant="outline"
                     className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                     on:click={() => evaluateContractSide('buyer', 'APPROVED_WITH_RES')}
-                    disabled={buyerApprovalDisabled}
-                    title={!isReadyToApprove ? approvalLockReasons.join(' | ') : undefined}
                   >
                     Aprovar c/ ressalvas
                   </Button>
