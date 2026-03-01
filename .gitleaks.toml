@@ -1,0 +1,11 @@
+title = "Painel Web Gitleaks Config"
+
+[allowlist]
+description = "Ignore generated or dependency directories that create noise"
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)dist/''',
+  '''(^|/)\.svelte-kit/''',
+  '''(^|/)coverage/''',
+]

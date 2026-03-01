@@ -22,6 +22,7 @@
     id: number;
     type?: string | null;
     documentType?: string | null;
+    status?: ContractApprovalStatus | null;
     side?: 'seller' | 'buyer' | null;
     originalFileName?: string | null;
     downloadUrl?: string | null;
@@ -50,6 +51,11 @@
     documents?: ContractDocument[];
     createdAt?: string | null;
     updatedAt?: string | null;
+  };
+
+  type RequiredFieldDescriptor = {
+    keys: string[];
+    label: string;
   };
 
   type ModalMode = 'review_docs' | 'upload_draft' | 'finalize' | 'view';
@@ -92,6 +98,22 @@
     'certidao_casamento_nascimento',
     'comprovante_renda',
   ];
+  const sellerRequiredInfoFields: RequiredFieldDescriptor[] = [
+    { keys: ['estado_civil', 'estadoCivil'], label: 'Estado Civil' },
+    { keys: ['profissao'], label: 'Profissão' },
+    { keys: ['email'], label: 'E-mail' },
+    { keys: ['telefone', 'phone'], label: 'Telefone' },
+    { keys: ['dados_bancarios', 'dadosBancarios'], label: 'Dados Bancários' },
+  ];
+  const buyerRequiredInfoFields: RequiredFieldDescriptor[] = [
+    { keys: ['estado_civil', 'estadoCivil'], label: 'Estado Civil' },
+    { keys: ['profissao'], label: 'Profissão' },
+    { keys: ['email'], label: 'E-mail' },
+    { keys: ['telefone', 'phone'], label: 'Telefone' },
+  ];
+  const buyerRentalRequiredInfoFields: RequiredFieldDescriptor[] = [
+    { keys: ['garantia_locacao', 'garantiaLocacao'], label: 'Garantia de Locação' },
+  ];
 
   let activeTab: ContractStatus = 'AWAITING_DOCS';
   let items: ContractItem[] = [];
@@ -113,6 +135,8 @@
   let signedDocType = 'contrato_assinado';
   let selectedSignedFile: File | null = null;
   let finalizingContract = false;
+  let approvalLockReasons: string[] = [];
+  let isReadyToApprove = false;
   let finalizeForm = {
     valorVenda: '',
     comissaoCaptador: '',
@@ -132,6 +156,17 @@
       }
     }
     return '-';
+  }
+
+  function hasRecordValue(
+    source: Record<string, unknown> | null | undefined,
+    keys: string[]
+  ): boolean {
+    if (!source) return false;
+    return keys.some((key) => {
+      const value = source[key];
+      return value != null && String(value).trim().length > 0;
+    });
   }
 
   function formatDate(value?: string | null): string {
@@ -258,6 +293,106 @@
       const documentType = String(doc.documentType ?? '').trim().toLowerCase();
       return documentType !== 'proposal';
     });
+  }
+
+  function listMissingRecordFields(
+    source: Record<string, unknown> | null | undefined,
+    fields: RequiredFieldDescriptor[]
+  ): string[] {
+    return fields
+      .filter((field) => !hasRecordValue(source, field.keys))
+      .map((field) => field.label);
+  }
+
+  function listMissingSellerInfo(contract: ContractItem): string[] {
+    return listMissingRecordFields(contract.sellerInfo ?? null, sellerRequiredInfoFields);
+  }
+
+  function listMissingBuyerInfo(contract: ContractItem): string[] {
+    const normalizedPurpose = String(contract.propertyPurpose ?? '').toLowerCase();
+    const requiresRentalGuarantee =
+      normalizedPurpose.includes('alug') || normalizedPurpose.includes('rent');
+    const requiredFields = requiresRentalGuarantee
+      ? [...buyerRequiredInfoFields, ...buyerRentalRequiredInfoFields]
+      : buyerRequiredInfoFields;
+
+    return listMissingRecordFields(contract.buyerInfo ?? null, requiredFields);
+  }
+
+  function listMissingRequiredDocuments(contract: ContractItem): string[] {
+    const requiredDocTypes = getRequiredDocTypes(contract);
+    const missing: string[] = [];
+
+    if (isDoubleEndedDeal(contract)) {
+      for (const documentType of requiredDocTypes) {
+        if (getDocumentForMatrixCell(contract, documentType, 'seller') == null) {
+          missing.push(documentLabel(documentType));
+        }
+      }
+      return missing;
+    }
+
+    for (const documentType of requiredDocTypes) {
+      const sellerDoc = getDocumentForMatrixCell(contract, documentType, 'seller');
+      const buyerDoc = getDocumentForMatrixCell(contract, documentType, 'buyer');
+      if (sellerDoc == null) {
+        missing.push(`${documentLabel(documentType)} (Captador)`);
+      }
+      if (buyerDoc == null) {
+        missing.push(`${documentLabel(documentType)} (Vendedor)`);
+      }
+    }
+
+    return missing;
+  }
+
+  function listBlockingDocumentStatuses(contract: ContractItem): string[] {
+    return getNonProposalDocuments(contract)
+      .map((doc) => {
+      const status = String(doc.status ?? '').trim().toUpperCase();
+      if (!status) {
+        return null;
+      }
+      if (status !== 'REJECTED' && status !== 'PENDING') {
+        return null;
+      }
+
+      const side = getDocumentSide(doc);
+      const sideLabel = side === 'seller' ? ' (Captador)' : side === 'buyer' ? ' (Vendedor)' : '';
+      const label = documentLabel(doc.documentType) + sideLabel;
+      return `${label}: ${status === 'REJECTED' ? 'rejeitado' : 'pendente'}`;
+    })
+      .filter((item): item is string => item != null);
+  }
+
+  function computeApprovalLockReasons(contract: ContractItem | null): string[] {
+    if (!contract || modalMode !== 'review_docs') {
+      return [];
+    }
+
+    const reasons: string[] = [];
+    const missingSellerInfo = listMissingSellerInfo(contract);
+    const missingBuyerInfo = listMissingBuyerInfo(contract);
+    const missingDocuments = listMissingRequiredDocuments(contract);
+    const blockingDocuments = listBlockingDocumentStatuses(contract);
+
+    if (missingSellerInfo.length > 0) {
+      reasons.push(`Captador sem: ${missingSellerInfo.join(', ')}`);
+    }
+
+    if (missingBuyerInfo.length > 0) {
+      reasons.push(`Vendedor sem: ${missingBuyerInfo.join(', ')}`);
+    }
+
+    if (missingDocuments.length > 0) {
+      reasons.push(`Documentos faltando: ${missingDocuments.join(', ')}`);
+    }
+
+    if (blockingDocuments.length > 0) {
+      reasons.push(`Documentos bloqueados: ${blockingDocuments.join(', ')}`);
+    }
+
+    return reasons;
   }
 
   function getDocumentForMatrixCell(
@@ -573,6 +708,9 @@
     refreshKey;
     fetchContracts();
   }
+
+  $: approvalLockReasons = computeApprovalLockReasons(selected);
+  $: isReadyToApprove = approvalLockReasons.length === 0;
 </script>
 
 <div class="space-y-4">
@@ -924,6 +1062,18 @@
           </div>
 
           <div class="space-y-3 rounded-md border border-gray-200 p-3 dark:border-gray-700">
+            {#if !isReadyToApprove}
+              <div class="rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-900/60 dark:bg-red-950/30">
+                <p class="text-sm font-medium text-red-700 dark:text-red-300">
+                  Aprovação bloqueada.
+                </p>
+                <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-red-600 dark:text-red-300">
+                  {#each approvalLockReasons as reason}
+                    <li>{reason}</li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
             <div>
               <p class="mb-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                 Avaliação Captador
@@ -931,18 +1081,18 @@
               <div class="flex flex-wrap gap-2">
                 <Button
                   size="sm"
-                  className="bg-green-600 text-white hover:bg-green-700"
+                  className="bg-green-600 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:opacity-50 disabled:hover:bg-gray-400"
                   on:click={() => evaluateContractSide('seller', 'APPROVED')}
-                  disabled={evaluatingSide === 'seller'}
+                  disabled={evaluatingSide === 'seller' || !isReadyToApprove}
                 >
                   Aprovar
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                  className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                   on:click={() => evaluateContractSide('seller', 'APPROVED_WITH_RES')}
-                  disabled={evaluatingSide === 'seller'}
+                  disabled={evaluatingSide === 'seller' || !isReadyToApprove}
                 >
                   Aprovar c/ ressalvas
                 </Button>
@@ -964,18 +1114,18 @@
                 <div class="flex flex-wrap gap-2">
                   <Button
                     size="sm"
-                    className="bg-green-600 text-white hover:bg-green-700"
+                    className="bg-green-600 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:opacity-50 disabled:hover:bg-gray-400"
                     on:click={() => evaluateContractSide('buyer', 'APPROVED')}
-                    disabled={evaluatingSide === 'buyer'}
+                    disabled={evaluatingSide === 'buyer' || !isReadyToApprove}
                   >
                     Aprovar
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                    className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                     on:click={() => evaluateContractSide('buyer', 'APPROVED_WITH_RES')}
-                    disabled={evaluatingSide === 'buyer'}
+                    disabled={evaluatingSide === 'buyer' || !isReadyToApprove}
                   >
                     Aprovar c/ ressalvas
                   </Button>
