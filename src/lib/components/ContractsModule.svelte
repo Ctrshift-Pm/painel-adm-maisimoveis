@@ -137,6 +137,8 @@
   let finalizingContract = false;
   let approvalLockReasons: string[] = [];
   let isReadyToApprove = false;
+  let sellerApprovalDisabled = false;
+  let buyerApprovalDisabled = false;
   let finalizeForm = {
     valorVenda: '',
     comissaoCaptador: '',
@@ -179,6 +181,32 @@
   function documentLabel(type?: string | null): string {
     if (!type) return 'Documento';
     return documentTypeLabels[type] ?? type;
+  }
+
+  function normalizeDocumentStatus(doc?: ContractDocument | null): string {
+    return String(doc?.status ?? '').trim().toUpperCase();
+  }
+
+  function documentStatusLabel(doc?: ContractDocument | null): string {
+    const status = normalizeDocumentStatus(doc);
+    if (status === 'APPROVED') return 'Aprovado';
+    if (status === 'REJECTED') return 'Rejeitado';
+    if (status === 'PENDING') return 'Pendente';
+    return 'Sem revisão';
+  }
+
+  function documentStatusClass(doc?: ContractDocument | null): string {
+    const status = normalizeDocumentStatus(doc);
+    if (status === 'APPROVED') {
+      return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
+    }
+    if (status === 'REJECTED') {
+      return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
+    }
+    if (status === 'PENDING') {
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+    }
+    return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
   }
 
   function tableActionLabel(status: ContractStatus): string {
@@ -711,6 +739,8 @@
 
   $: approvalLockReasons = computeApprovalLockReasons(selected);
   $: isReadyToApprove = approvalLockReasons.length === 0;
+  $: sellerApprovalDisabled = evaluatingSide === 'seller' || !isReadyToApprove;
+  $: buyerApprovalDisabled = evaluatingSide === 'buyer' || !isReadyToApprove;
 </script>
 
 <div class="space-y-4">
@@ -988,17 +1018,26 @@
                         </td>
                         <td class="px-3 py-3">
                           {#if brokerDoc}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              on:click={() => selected && viewDocument(brokerDoc, selected)}
-                              disabled={downloadingDocumentId === brokerDoc.id}
-                            >
-                              {#if downloadingDocumentId === brokerDoc.id}
-                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                              {/if}
-                              Baixar
-                            </Button>
+                            <div class="flex flex-wrap items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                on:click={() => selected && viewDocument(brokerDoc, selected)}
+                                disabled={downloadingDocumentId === brokerDoc.id}
+                              >
+                                {#if downloadingDocumentId === brokerDoc.id}
+                                  <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                                {/if}
+                                Baixar
+                              </Button>
+                              <span
+                                class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
+                                  brokerDoc
+                                )}`}
+                              >
+                                {documentStatusLabel(brokerDoc)}
+                              </span>
+                            </div>
                           {:else}
                             <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                               Pendente
@@ -1017,17 +1056,26 @@
                         </td>
                         <td class="px-3 py-3">
                           {#if sellerDoc}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              on:click={() => selected && viewDocument(sellerDoc, selected)}
-                              disabled={downloadingDocumentId === sellerDoc.id}
-                            >
-                              {#if downloadingDocumentId === sellerDoc.id}
-                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                              {/if}
-                              Baixar
-                            </Button>
+                            <div class="flex flex-wrap items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                on:click={() => selected && viewDocument(sellerDoc, selected)}
+                                disabled={downloadingDocumentId === sellerDoc.id}
+                              >
+                                {#if downloadingDocumentId === sellerDoc.id}
+                                  <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                                {/if}
+                                Baixar
+                              </Button>
+                              <span
+                                class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
+                                  sellerDoc
+                                )}`}
+                              >
+                                {documentStatusLabel(sellerDoc)}
+                              </span>
+                            </div>
                           {:else}
                             <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                               Pendente
@@ -1036,17 +1084,26 @@
                         </td>
                         <td class="px-3 py-3">
                           {#if buyerDoc}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              on:click={() => selected && viewDocument(buyerDoc, selected)}
-                              disabled={downloadingDocumentId === buyerDoc.id}
-                            >
-                              {#if downloadingDocumentId === buyerDoc.id}
-                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                              {/if}
-                              Baixar
-                            </Button>
+                            <div class="flex flex-wrap items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                on:click={() => selected && viewDocument(buyerDoc, selected)}
+                                disabled={downloadingDocumentId === buyerDoc.id}
+                              >
+                                {#if downloadingDocumentId === buyerDoc.id}
+                                  <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                                {/if}
+                                Baixar
+                              </Button>
+                              <span
+                                class={`rounded-full px-2 py-1 text-xs font-semibold ${documentStatusClass(
+                                  buyerDoc
+                                )}`}
+                              >
+                                {documentStatusLabel(buyerDoc)}
+                              </span>
+                            </div>
                           {:else}
                             <span class="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                               Pendente
@@ -1083,7 +1140,8 @@
                   size="sm"
                   className="bg-green-600 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:opacity-50 disabled:hover:bg-gray-400"
                   on:click={() => evaluateContractSide('seller', 'APPROVED')}
-                  disabled={evaluatingSide === 'seller' || !isReadyToApprove}
+                  disabled={sellerApprovalDisabled}
+                  title={!isReadyToApprove ? approvalLockReasons.join(' | ') : undefined}
                 >
                   Aprovar
                 </Button>
@@ -1092,7 +1150,8 @@
                   variant="outline"
                   className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                   on:click={() => evaluateContractSide('seller', 'APPROVED_WITH_RES')}
-                  disabled={evaluatingSide === 'seller' || !isReadyToApprove}
+                  disabled={sellerApprovalDisabled}
+                  title={!isReadyToApprove ? approvalLockReasons.join(' | ') : undefined}
                 >
                   Aprovar c/ ressalvas
                 </Button>
@@ -1116,7 +1175,8 @@
                     size="sm"
                     className="bg-green-600 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:opacity-50 disabled:hover:bg-gray-400"
                     on:click={() => evaluateContractSide('buyer', 'APPROVED')}
-                    disabled={evaluatingSide === 'buyer' || !isReadyToApprove}
+                    disabled={buyerApprovalDisabled}
+                    title={!isReadyToApprove ? approvalLockReasons.join(' | ') : undefined}
                   >
                     Aprovar
                   </Button>
@@ -1125,7 +1185,8 @@
                     variant="outline"
                     className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                     on:click={() => evaluateContractSide('buyer', 'APPROVED_WITH_RES')}
-                    disabled={evaluatingSide === 'buyer' || !isReadyToApprove}
+                    disabled={buyerApprovalDisabled}
+                    title={!isReadyToApprove ? approvalLockReasons.join(' | ') : undefined}
                   >
                     Aprovar c/ ressalvas
                   </Button>
