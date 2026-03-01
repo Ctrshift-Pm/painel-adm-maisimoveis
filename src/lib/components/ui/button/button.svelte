@@ -6,6 +6,7 @@
   export let variant: Variant = 'default';
   export let size: Size = 'md';
   export let disabled = false;
+  export let title: string | undefined = undefined;
   export let className = '';
 
   const variantClasses: Record<Variant, string> = {
@@ -28,6 +29,7 @@
 
 <button
   type={type}
+  {title}
   class={cx(
     'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed',
     variantClasses[variant],

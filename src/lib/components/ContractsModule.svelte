@@ -1157,7 +1157,7 @@
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+                  className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
                   on:click={() => evaluateContractSide('seller', 'APPROVED_WITH_RES')}
                 >
                   Aprovar c/ ressalvas
@@ -1190,7 +1190,7 @@
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-amber-400 text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+                    className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/30"
                     on:click={() => evaluateContractSide('buyer', 'APPROVED_WITH_RES')}
                   >
                     Aprovar c/ ressalvas
